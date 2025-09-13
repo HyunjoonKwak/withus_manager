@@ -382,7 +382,12 @@ class NaverShoppingAPI:
         }
         
         if status:
-            params['status'] = status
+            # 여러 상태가 전달된 경우 콤마로 연결하여 테스트
+            if isinstance(status, list):
+                params['status'] = ','.join(status)
+                print(f"다중 상태 조회 테스트: {params['status']}")
+            else:
+                params['status'] = status
         
         response = self.make_authenticated_request('GET', '/external/v1/pay-order/seller/product-orders', params)
         

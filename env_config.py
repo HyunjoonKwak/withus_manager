@@ -61,7 +61,9 @@ class EnvConfig:
             'PRODUCT_STATUS_TYPES': self.get('PRODUCT_STATUS_TYPES', 'SALE,WAIT,OUTOFSTOCK,SUSPENSION,CLOSE,PROHIBITION'),
             'ORDER_COLUMNS': self.get('ORDER_COLUMNS', '주문ID,상품주문ID,주문자,상품명,옵션정보,판매자상품코드,수량,단가,할인금액,금액,결제방법,배송지주소,배송예정일,주문일시,상태'),
             'ALLOWED_IPS': self.get('ALLOWED_IPS', '121.190.40.153,175.125.204.97'),
-            'QUICK_PERIOD_SETTING': str(self.get_int('QUICK_PERIOD_SETTING', 7))
+            'QUICK_PERIOD_SETTING': str(self.get_int('QUICK_PERIOD_SETTING', 7)),
+            'ORDER_STATUS_TYPES': self.get('ORDER_STATUS_TYPES', 'PAYMENT_WAITING,PAYED,DELIVERING,DELIVERED,PURCHASE_DECIDED,EXCHANGED,CANCELED,RETURNED,CANCELED_BY_NOPAYMENT'),
+            'DASHBOARD_PERIOD_DAYS': str(self.get_int('DASHBOARD_PERIOD_DAYS', 1))
         }
         
         with open('.env', 'w', encoding='utf-8') as f:
@@ -87,6 +89,10 @@ class EnvConfig:
             f.write(f"ALLOWED_IPS={env_vars['ALLOWED_IPS']}\n")
             f.write("\n# 기간 설정\n")
             f.write(f"QUICK_PERIOD_SETTING={env_vars['QUICK_PERIOD_SETTING']}\n")
+            f.write("\n# 주문 상태 조회 설정\n")
+            f.write(f"ORDER_STATUS_TYPES={env_vars['ORDER_STATUS_TYPES']}\n")
+            f.write("\n# 대시보드 설정\n")
+            f.write(f"DASHBOARD_PERIOD_DAYS={env_vars['DASHBOARD_PERIOD_DAYS']}\n")
 
 # 전역 설정 인스턴스
 config = EnvConfig()

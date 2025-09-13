@@ -61,7 +61,7 @@ class WithUsOrderManager:
         self.notebook.add(self.home_tab.frame, text="홈")
         
         self.orders_tab = OrdersTab(self.notebook, self)
-        self.notebook.add(self.orders_tab.frame, text="주문수집")
+        self.notebook.add(self.orders_tab.frame, text="주문관리")
         
         self.products_tab = ProductsTab(self.notebook, self)
         self.notebook.add(self.products_tab.frame, text="상품관리")

@@ -32,13 +32,25 @@ class HomeTab(BaseTab):
         # 주문 상태 버튼들 (한 줄로 배치)
         status_frame = ttk.Frame(dashboard_frame)
         status_frame.pack(fill="x", padx=5, pady=5)
+        status_frame.configure(height=60)  # 프레임 높이 고정
+        status_frame.pack_propagate(False)  # 자식 위젯이 프레임 크기를 변경하지 못하도록 방지
         
         self.status_buttons = {}
         statuses = ['신규주문', '발송대기', '배송중', '배송완료', '구매확정', '취소주문', '반품주문', '교환주문']
         
         for i, status in enumerate(statuses):
-            btn = ttk.Button(status_frame, text=f"{status}\n0", command=lambda s=status: self.show_orders_by_status(s))
-            btn.pack(side="left", padx=2, fill="x", expand=True)
+            # 개별 프레임으로 감싸서 높이 제어
+            btn_frame = ttk.Frame(status_frame)
+            btn_frame.pack(side="left", padx=2, fill="both", expand=True)
+            
+            # 일반 tk.Button 사용하여 높이 제어
+            btn = tk.Button(btn_frame, text=f"{status}\n0건", 
+                          command=lambda s=status: self.show_orders_by_status(s),
+                          height=3,  # 버튼 높이를 3줄로 설정
+                          font=("맑은 고딕", 9),
+                          relief="raised",
+                          borderwidth=1)
+            btn.pack(fill="both", expand=True, pady=2)
             self.status_buttons[status] = btn
         
         # 새로고침 버튼
@@ -47,6 +59,21 @@ class HomeTab(BaseTab):
         
         ttk.Button(refresh_frame, text="대시보드 새로고침", command=self.refresh_dashboard).pack(side="left", padx=2)
         ttk.Button(refresh_frame, text="수동 주문 조회", command=self.manual_order_query).pack(side="left", padx=2)
+        
+        # 대시보드 기간 설정
+        ttk.Label(refresh_frame, text="조회 기간:").pack(side="left", padx=(10, 2))
+        
+        from env_config import config
+        self.dashboard_period_var = tk.StringVar()
+        current_period = config.get_int('DASHBOARD_PERIOD_DAYS', 1)
+        self.dashboard_period_var.set(str(current_period))
+        
+        period_combo = ttk.Combobox(refresh_frame, textvariable=self.dashboard_period_var, 
+                                   values=['1', '3', '7'], width=5, state="readonly")
+        period_combo.pack(side="left", padx=2)
+        period_combo.bind('<<ComboboxSelected>>', self.on_period_changed)
+        
+        ttk.Label(refresh_frame, text="일").pack(side="left", padx=(0, 5))
         
         
         # 상태 표시
@@ -111,109 +138,204 @@ class HomeTab(BaseTab):
     def _refresh_dashboard_thread(self):
         """대시보드 새로고침 스레드"""
         try:
-            print("=== 신규주문만 조회 (디버깅 모드) ===")
+            print("=== 대시보드 새로고침 - 전체 주문 상태 조회 ===")
             
-            # 현재 시간 기준으로 1일 전부터 조회
+            # 설정에서 대시보드 기간 가져오기 (기본값: 1일)
+            from env_config import config
+            dashboard_days = config.get_int('DASHBOARD_PERIOD_DAYS', 1)
+            
+            # 현재 시간 기준으로 설정된 기간 전부터 조회
             kst = timezone(timedelta(hours=9))
             now = datetime.now(kst)
-            start_date = now - timedelta(days=1)
+            start_date = now - timedelta(days=dashboard_days)
             
             start_date_str = start_date.strftime('%Y-%m-%d')
             end_date_str = now.strftime('%Y-%m-%d')
             
-            print(f"주문 조회 날짜 범위: {start_date_str} ~ {end_date_str}")
+            print(f"주문 조회 날짜 범위: {start_date_str} ~ {end_date_str} ({dashboard_days}일)")
             
-            # 신규주문만 조회
+            # 홈탭에서는 모든 주문 상태를 조회 (설정과 무관하게)
+            status_list = ['PAYED', 'DELIVERING', 'DELIVERED', 'PURCHASE_DECIDED', 'PAYMENT_WAITING', 'EXCHANGED', 'CANCELED', 'RETURNED', 'CANCELED_BY_NOPAYMENT']
+            
+            print(f"조회할 주문 상태: {status_list}")
+            
+            # 각 상태별 주문 수 집계
             order_counts = {}
+            for status in status_list:
+                order_counts[status] = 0
+            
             all_orders = []
             total_chunks = 0
             
+            # 다중 상태 조회 시도 (주문관리탭과 동일한 방식)
+            print(f"다중 상태 조회 시도: {status_list}")
             try:
                 response = self.app.naver_api.get_orders(
                     start_date=start_date_str,
                     end_date=end_date_str,
-                    order_status='PAYED',  # 신규주문만
-                    limit=100
+                    order_status=status_list,  # 리스트 전체 전달
+                    limit=1000
                 )
                 
+                multi_query_success = False
                 if response.get('success'):
                     data = response.get('data', {})
-                    print(f"대시보드 응답 데이터 구조: {type(data)}")
-                    print(f"대시보드 응답 키들: {list(data.keys()) if isinstance(data, dict) else 'Not a dict'}")
-                    
-                    # API 응답에서 올바른 구조로 주문 데이터 추출
-                    processed_orders = []
-                    # get_orders 함수가 반환하는 구조: {'success': True, 'data': {'data': [실제주문들], 'total': N}}
                     if isinstance(data, dict) and 'data' in data:
-                        raw_orders = data['data']  # 실제 주문 리스트
-                        print(f"대시보드 raw_orders 타입: {type(raw_orders)}")
-                        print(f"대시보드 raw_orders 길이: {len(raw_orders) if isinstance(raw_orders, list) else 'Not a list'}")
-                        
-                        # raw_orders는 이미 contents에서 추출된 주문 데이터 배열
-                        if isinstance(raw_orders, list):
-                            for item in raw_orders:
-                                if isinstance(item, dict):
-                                    # get_orders에서 반환하는 주문 데이터는 이미 contents 구조
-                                    if 'content' in item:
-                                        content = item['content']
-                                        if 'order' in content:
-                                            order_info = content['order']
-                                            # 주문 정보를 표준 형식으로 변환
-                                            order_data = {
-                                                'orderId': order_info.get('orderId'),
-                                                'productOrderId': item.get('productOrderId'),
-                                                'ordererName': order_info.get('ordererName'),
-                                                'orderDate': order_info.get('orderDate'),
-                                                'orderStatus': content.get('productOrderStatus', 'PAYED'),
-                                                'productName': content.get('product', {}).get('name', 'N/A')
-                                            }
-                                            processed_orders.append(order_data)
-                                    # 직접 orderId가 있는 경우 (다른 형식)
-                                    elif 'orderId' in item:
-                                        processed_orders.append(item)
-                        
-                        print(f"대시보드 변환된 주문 수: {len(processed_orders)}")
-                        if processed_orders:
-                            order_ids = [order.get('orderId') for order in processed_orders if order.get('orderId')]
-                            print(f"대시보드 추출된 주문 ID들: {order_ids}")
-                        
-                        # 중복 제거 적용
-                        unique_orders = self.app.remove_duplicate_orders(processed_orders)
-                        order_counts['신규주문'] = len(unique_orders)
-                        all_orders.extend(unique_orders)
-                        chunks = response.get('chunks_processed', 0)
-                        total_chunks += chunks
-                        print(f"신규주문: {len(processed_orders)}건 → {len(unique_orders)}건 조회 완료 ({chunks}개 청크)")
+                        orders_list = data.get('data', [])
+                        if isinstance(orders_list, list) and len(orders_list) > 0:
+                            print(f"다중 상태 조회 성공: 총 {len(orders_list)}건")
+                            multi_query_success = True
+                            
+                            # 상태별로 분류
+                            for order in orders_list:
+                                if isinstance(order, dict) and 'content' in order:
+                                    content = order['content']
+                                    order_status = content.get('productOrderStatus')
+                                    if order_status in order_counts:
+                                        order_counts[order_status] += 1
+                                elif isinstance(order, dict) and 'orderStatus' in order:
+                                    order_status = order.get('orderStatus')
+                                    if order_status in order_counts:
+                                        order_counts[order_status] += 1
+                            
+                            print(f"다중 조회 결과: {order_counts}")
+                        else:
+                            print("다중 상태 조회: 주문 데이터 없음")
+                            multi_query_success = True  # 빈 결과도 성공으로 처리
                     else:
-                        order_counts['신규주문'] = 0
-                        print("신규주문: 0건 조회")
-                        print(f"올바른 데이터 구조가 없음. 전체 응답: {data}")
+                        print("다중 상태 조회: 데이터 구조 인식 실패")
                 else:
-                    order_counts['신규주문'] = 0
-                    print("신규주문: 조회 실패")
-                    print(f"실패 응답: {response}")
+                    error_msg = response.get('error', '알 수 없는 오류')
+                    print(f"다중 상태 조회 실패: {error_msg}")
+                
+                # 다중 조회가 실패한 경우에만 개별 조회로 fallback
+                if not multi_query_success:
+                    print("다중 상태 조회 실패 → 개별 상태 조회로 fallback")
+                    # 각 상태별로 개별 조회
+                    for status in status_list:
+                        try:
+                            print(f"개별 주문 상태 '{status}' 조회 중...")
+                            response = self.app.naver_api.get_orders(
+                                start_date=start_date_str,
+                                end_date=end_date_str,
+                                order_status=status,
+                                limit=1000
+                            )
+                            
+                            if response.get('success'):
+                                data = response.get('data', {})
+                                
+                                # 주문 수 계산
+                                if isinstance(data, dict) and 'total' in data:
+                                    count = data.get('total', 0)
+                                    order_counts[status] = count
+                                    print(f"개별 조회 - 주문 상태 '{status}': {count}건")
+                                elif isinstance(data, dict) and 'data' in data:
+                                    orders_list = data.get('data', [])
+                                    count = len(orders_list) if isinstance(orders_list, list) else 0
+                                    order_counts[status] = count
+                                    print(f"개별 조회 - 주문 상태 '{status}': {count}건")
+                                else:
+                                    order_counts[status] = 0
+                                    print(f"개별 조회 - 주문 상태 '{status}': 데이터 구조 인식 실패")
+                            else:
+                                order_counts[status] = 0
+                                error_msg = response.get('error', '알 수 없는 오류')
+                                print(f"개별 조회 - 주문 상태 '{status}' 조회 실패: {error_msg}")
+                                
+                        except Exception as e:
+                            order_counts[status] = 0
+                            print(f"개별 조회 - 주문 상태 '{status}' 조회 오류: {e}")
+                            
             except Exception as e:
-                print(f"신규주문 조회 오류: {e}")
-                order_counts['신규주문'] = 0
+                print(f"다중 상태 조회 오류: {e}")
+                # 예외 발생 시에도 개별 조회로 fallback
+                for status in status_list:
+                    order_counts[status] = 0
             
-            # 다른 상태들은 0으로 설정 (디버깅용)
-            for status in ['발송대기', '배송중', '배송완료', '구매확정', '취소주문', '반품주문', '교환주문']:
-                order_counts[status] = 0
+            print(f"대시보드 새로고침 결과: {order_counts}")
             
-            # UI 업데이트
-            self.app.root.after(0, self._update_dashboard_ui, order_counts, all_orders, total_chunks)
+            # 버튼 텍스트 업데이트 (기존 status_buttons 딕셔너리 사용)
+            def update_status_buttons():
+                try:
+                    # 상태 이름 매핑 (API 상태 코드 → 홈탭 버튼명)
+                    status_name_mapping = {
+                        'PAYED': '신규주문',
+                        'DELIVERING': '발송대기',  # 버튼명과 일치시킴
+                        'DELIVERED': '배송완료',
+                        'PURCHASE_DECIDED': '구매확정',
+                        'PAYMENT_WAITING': '신규주문',  # 결제대기도 신규주문으로 통합
+                        'EXCHANGED': '교환주문',
+                        'CANCELED': '취소주문',
+                        'RETURNED': '반품주문',
+                        'CANCELED_BY_NOPAYMENT': '취소주문'  # 미결제취소도 취소주문으로 통합
+                    }
+                    
+                    # 버튼별로 상태 합계 계산
+                    button_counts = {}
+                    for button_name in self.status_buttons.keys():
+                        button_counts[button_name] = 0
+                    
+                    # 각 API 상태를 해당 버튼에 합산
+                    for status, count in order_counts.items():
+                        korean_name = status_name_mapping.get(status, status)
+                        
+                        if korean_name in button_counts:
+                            button_counts[korean_name] += count
+                            print(f"상태 '{status}' ({count}건) → 버튼 '{korean_name}'에 합산")
+                        else:
+                            print(f"매핑되지 않은 상태: {status} -> {korean_name}")
+                    
+                    # 버튼 텍스트 업데이트
+                    for button_name, total_count in button_counts.items():
+                        if button_name in self.status_buttons:
+                            new_text = f"{button_name}\n{total_count:,}건"
+                            self.status_buttons[button_name].config(text=new_text)
+                            print(f"버튼 업데이트: {button_name} -> {total_count:,}건")
+                        else:
+                            print(f"버튼을 찾을 수 없음: {button_name}")
+                    
+                    print(f"사용 가능한 버튼들: {list(self.status_buttons.keys())}")
+                    print(f"최종 버튼 집계: {button_counts}")
+                            
+                except Exception as e:
+                    print(f"상태 버튼 업데이트 오류: {e}")
+                    import traceback
+                    traceback.print_exc()
+            
+            # UI 업데이트를 메인 스레드에서 실행
+            self.app.root.after(0, update_status_buttons)
+            
+            print(f"대시보드 새로고침 성공: {sum(order_counts.values())}건 조회 완료")
             
         except Exception as e:
             print(f"대시보드 새로고침 오류: {e}")
             self.app.root.after(0, lambda: messagebox.showerror("오류", f"대시보드 새로고침 실패: {str(e)}"))
     
+    def on_period_changed(self, event=None):
+        """대시보드 기간 변경 이벤트"""
+        try:
+            new_period = int(self.dashboard_period_var.get())
+            from env_config import config
+            config.set('DASHBOARD_PERIOD_DAYS', str(new_period))
+            config.save()
+            print(f"대시보드 조회 기간이 {new_period}일로 변경됨")
+            
+            # 자동으로 대시보드 새로고침
+            self.refresh_dashboard()
+            
+        except Exception as e:
+            print(f"기간 변경 오류: {e}")
+    
     def _update_dashboard_ui(self, order_counts, all_orders, total_chunks):
         """대시보드 UI 업데이트"""
         try:
-            # 주문 상태 버튼 업데이트
+            # 주문 상태 버튼 업데이트 (중앙 정렬된 텍스트)
             for status, count in order_counts.items():
                 if status in self.status_buttons:
-                    self.status_buttons[status].config(text=f"{status}\n{count}")
+                    # 버튼 텍스트를 중앙 정렬된 형태로 구성
+                    button_text = f"{status}\n{count:,}건"  # 천단위 콤마 추가
+                    self.status_buttons[status].config(text=button_text)
             
             # 전체 주문 저장
             self.app.all_orders = all_orders
@@ -583,4 +705,14 @@ class HomeTab(BaseTab):
         self.update_status_display()
         # 현재 표시된 상품들도 다시 필터링
         self.load_saved_products()
+    
+    def show_orders_by_status(self, status):
+        """특정 상태의 주문 조회"""
+        try:
+            # 주문관리 탭으로 이동
+            self.app.notebook.select(1)  # 주문관리 탭은 2번째 탭 (인덱스 1)
+            messagebox.showinfo("안내", f"{status} 주문을 조회합니다.\n주문관리 탭에서 해당 상태로 필터링하여 조회해주세요.")
+        except Exception as e:
+            print(f"주문 상태별 조회 오류: {e}")
+            messagebox.showinfo("안내", f"{status} 주문 조회 기능은 주문관리 탭에서 이용해주세요.")
     
