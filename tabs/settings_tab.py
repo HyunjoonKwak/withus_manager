@@ -338,44 +338,35 @@ class SettingsTab(BaseTab):
         self.ip_status_label.pack(side="left", padx=5)
         
         ttk.Button(current_ip_frame, text="새로고침", command=self.refresh_current_ip).pack(side="right", padx=2)
-        ttk.Button(current_ip_frame, text="도움말", command=self.show_ip_help).pack(side="right", padx=2)
         
-        # IP 관리 섹션 (가로형)
+        # IP 목록과 관리 (컴팩트하게)
         ip_manage_frame = ttk.Frame(ip_management_frame)
         ip_manage_frame.pack(fill="x", padx=5, pady=3)
         
-        # 허가된 IP 목록 (좌측, 작게)
-        ip_list_frame = ttk.Frame(ip_manage_frame)
-        ip_list_frame.pack(side="left", fill="both", expand=True, padx=2)
+        # 허가된 IP 목록 (높이 축소)
+        ttk.Label(ip_manage_frame, text="허가된 IP 목록 (최대 5개):").pack(anchor="w")
+        self.ip_listbox = tk.Listbox(ip_manage_frame, height=2, font=("Consolas", 9))
+        self.ip_listbox.pack(fill="x", pady=(2, 5))
         
-        ttk.Label(ip_list_frame, text="허가된 IP 목록 (최대 5개):").pack(anchor="w")
-        self.ip_listbox = tk.Listbox(ip_list_frame, height=3, font=("Consolas", 9))
-        self.ip_listbox.pack(fill="both", expand=True, pady=2)
-        
-        # IP 관리 컨트롤 (우측)
+        # IP 관리 컨트롤을 한 줄로 배치
         ip_control_frame = ttk.Frame(ip_manage_frame)
-        ip_control_frame.pack(side="right", padx=10)
+        ip_control_frame.pack(fill="x", pady=2)
         
-        ttk.Label(ip_control_frame, text="IP 추가/삭제:").pack(anchor="w")
-        
-        # IP 입력창과 현재IP 버튼을 같은 줄에 배치
-        input_frame = ttk.Frame(ip_control_frame)
-        input_frame.pack(fill="x", pady=1)
-        
+        # IP 입력
         self.new_ip_var = tk.StringVar()
-        self.new_ip_entry = ttk.Entry(input_frame, textvariable=self.new_ip_var, width=12)
-        self.new_ip_entry.pack(side="left", padx=(0, 2))
+        self.new_ip_entry = ttk.Entry(ip_control_frame, textvariable=self.new_ip_var, width=15)
+        self.new_ip_entry.pack(side="left", padx=(0, 5))
         
-        ttk.Button(input_frame, text="현재IP", command=self.add_current_ip, width=5).pack(side="left")
+        # 모든 버튼을 한 줄로
+        ttk.Button(ip_control_frame, text="현재IP", command=self.add_current_ip).pack(side="left", padx=2)
+        ttk.Button(ip_control_frame, text="추가", command=self.add_ip).pack(side="left", padx=2)
+        ttk.Button(ip_control_frame, text="삭제", command=self.delete_selected_ip).pack(side="left", padx=2)
+        ttk.Button(ip_control_frame, text="저장", command=self.save_ip_settings).pack(side="left", padx=2)
         
-        # 추가/삭제 버튼들
-        buttons_frame = ttk.Frame(ip_control_frame)
-        buttons_frame.pack(fill="x", pady=1)
-        
-        ttk.Button(buttons_frame, text="추가", command=self.add_ip, width=6).pack(side="left", padx=1)
-        ttk.Button(buttons_frame, text="삭제", command=self.delete_selected_ip, width=6).pack(side="left", padx=1)
-        
-        ttk.Button(ip_control_frame, text="저장", command=self.save_ip_settings).pack(pady=2)
+        # 도움말 버튼을 맨 아래로
+        help_frame = ttk.Frame(ip_management_frame)
+        help_frame.pack(fill="x", padx=5, pady=(5, 3))
+        ttk.Button(help_frame, text="도움말", command=self.show_ip_help).pack(anchor="w")
         
         # 컨텍스트 메뉴 활성화
         enable_context_menu(self.client_id_entry)
