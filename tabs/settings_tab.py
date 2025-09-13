@@ -449,7 +449,7 @@ class SettingsTab(BaseTab):
         """API 연결 테스트"""
         try:
             if not self.app.naver_api:
-                messagebox.showwarning("경고", "API가 초기화되지 않았습니다.")
+                messagebox.showwarning("API 설정 필요", "네이버 커머스 API가 설정되지 않았습니다.\nAPI 정보를 입력해주세요.")
                 return
             
             # API 연결 테스트

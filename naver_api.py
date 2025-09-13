@@ -367,33 +367,6 @@ class NaverShoppingAPI:
             
             return result
     
-    def get_orders(self, start_date: str = None, end_date: str = None, 
-                   status: str = None, limit: int = 100) -> List[Dict]:
-        """주문 목록 조회 (최대 24시간 범위)"""
-        if not start_date:
-            start_date = (datetime.now() - timedelta(hours=24)).strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3] + 'Z'
-        if not end_date:
-            end_date = datetime.now().strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3] + 'Z'
-        
-        params = {
-            'from': start_date,  # 네이버 API 요구사항에 맞게 수정
-            'to': end_date,
-            'limit': limit
-        }
-        
-        if status:
-            # 여러 상태가 전달된 경우 콤마로 연결하여 테스트
-            if isinstance(status, list):
-                params['status'] = ','.join(status)
-                print(f"다중 상태 조회 테스트: {params['status']}")
-            else:
-                params['status'] = status
-        
-        response = self.make_authenticated_request('GET', '/external/v1/pay-order/seller/product-orders', params)
-        
-        if response and 'data' in response:
-            return response['data']
-        return []
     
     def get_order_detail(self, order_id: str) -> Optional[Dict]:
         """주문 상세 조회"""
@@ -577,7 +550,13 @@ class NaverShoppingAPI:
             }
             
             if order_status:
-                params['orderStatusType'] = order_status
+                # 여러 상태가 전달된 경우 처리
+                if isinstance(order_status, list):
+                    # 리스트인 경우 콤마로 연결하여 다중 상태 조회 시도
+                    params['orderStatusType'] = ','.join(order_status)
+                    print(f"다중 상태 조회 시도: {params['orderStatusType']}")
+                else:
+                    params['orderStatusType'] = order_status
             
             # 재시도 로직 (최대 3회)
             max_retries = 3

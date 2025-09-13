@@ -112,10 +112,15 @@ class WithUsOrderManager:
             if client_id and client_secret:
                 self.naver_api = NaverShoppingAPI(client_id, client_secret)
                 print("API 초기화 완료")
+                return True
             else:
                 print("API 설정이 없습니다. 설정 탭에서 API 정보를 입력해주세요.")
+                self.naver_api = None
+                return False
         except Exception as e:
             print(f"API 초기화 오류: {e}")
+            self.naver_api = None
+            return False
     
     def initialize_notifications(self):
         """알림 매니저 초기화"""

@@ -241,7 +241,19 @@ class OrdersTab(BaseTab):
         """API에서 주문 조회 스레드"""
         try:
             if not self.app.naver_api:
-                self.app.root.after(0, lambda: messagebox.showerror("오류", "API가 초기화되지 않았습니다."))
+                def show_api_error():
+                    result = messagebox.showwarning(
+                        "API 설정 필요", 
+                        "네이버 커머스 API가 설정되지 않았습니다.\n\n"
+                        "설정 탭에서 다음 정보를 입력해주세요:\n"
+                        "- Client ID\n"
+                        "- Client Secret\n\n"
+                        "설정 탭으로 이동하시겠습니까?"
+                    )
+                    # 설정 탭으로 이동
+                    self.app.notebook.select(5)  # 설정 탭은 6번째 탭 (인덱스 5)
+                
+                self.app.root.after(0, show_api_error)
                 return
             
             start_date = self.start_date_entry.get_date()

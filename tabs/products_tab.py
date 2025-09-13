@@ -76,7 +76,15 @@ class ProductsTab(BaseTab):
         """상품 목록 조회 스레드"""
         try:
             if not self.app.naver_api:
-                self.app.root.after(0, lambda: messagebox.showerror("오류", "API가 초기화되지 않았습니다."))
+                def show_api_error():
+                    messagebox.showwarning(
+                        "API 설정 필요", 
+                        "네이버 커머스 API가 설정되지 않았습니다.\n설정 탭에서 API 정보를 입력해주세요."
+                    )
+                    # 설정 탭으로 이동
+                    self.app.notebook.select(5)
+                
+                self.app.root.after(0, show_api_error)
                 return
             
             self.app.root.after(0, lambda: self.products_status_var.set("상품 목록 조회 중..."))
