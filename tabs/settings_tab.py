@@ -339,18 +339,25 @@ class SettingsTab(BaseTab):
         
         ttk.Button(current_ip_frame, text="새로고침", command=self.refresh_current_ip).pack(side="right", padx=2)
         
-        # IP 목록과 관리 (컴팩트하게)
+        # IP 목록과 관리 (좌우로 배치)
         ip_manage_frame = ttk.Frame(ip_management_frame)
         ip_manage_frame.pack(fill="x", padx=5, pady=3)
         
-        # 허가된 IP 목록 (높이 축소)
-        ttk.Label(ip_manage_frame, text="허가된 IP 목록 (최대 5개):").pack(anchor="w")
-        self.ip_listbox = tk.Listbox(ip_manage_frame, height=2, font=("Consolas", 9))
-        self.ip_listbox.pack(fill="x", pady=(2, 5))
+        # 허가된 IP 목록 (좌측, 폭 50%)
+        ip_list_container = ttk.Frame(ip_manage_frame)
+        ip_list_container.pack(side="left", fill="both", expand=True, padx=(0, 10))
+        
+        ttk.Label(ip_list_container, text="허가된 IP 목록 (최대 5개):").pack(anchor="w")
+        self.ip_listbox = tk.Listbox(ip_list_container, height=5, font=("Consolas", 9), width=25)
+        self.ip_listbox.pack(anchor="w", pady=(2, 5))
+        
+        # IP 관리 컨트롤 (우측)
+        ip_control_container = ttk.Frame(ip_manage_frame)
+        ip_control_container.pack(side="right", padx=(10, 0))
         
         # IP 관리 컨트롤을 한 줄로 배치
-        ip_control_frame = ttk.Frame(ip_manage_frame)
-        ip_control_frame.pack(fill="x", pady=2)
+        ip_control_frame = ttk.Frame(ip_control_container)
+        ip_control_frame.pack(anchor="w", pady=2)
         
         # IP 입력
         self.new_ip_var = tk.StringVar()
