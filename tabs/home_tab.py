@@ -19,9 +19,18 @@ class HomeTab(BaseTab):
     
     def __init__(self, parent, app):
         super().__init__(parent, app)
+        
+        # 리프레시 타이머 관련 변수들
+        self.last_refresh_time = None
+        self.refresh_interval = 60  # 기본값
+        self.countdown_job = None
+        
         self.create_home_tab()
         self.setup_copy_paste_bindings()
         self.update_status_display()
+        
+        # 홈탭 로드 시 자동으로 대시보드 새로고침 (3초 후)
+        self.app.root.after(3000, self.refresh_dashboard)
     
     def create_home_tab(self):
         """홈 탭 UI 생성"""
@@ -133,6 +142,16 @@ class HomeTab(BaseTab):
     
     def refresh_dashboard(self):
         """대시보드 새로고침"""
+        # 현재 시간을 기록하고 env에서 간격 설정 로드
+        import time
+        from env_config import config
+        
+        self.last_refresh_time = time.time()
+        self.refresh_interval = config.get_int('REFRESH_INTERVAL', 60)
+        
+        # 카운트다운 시작
+        self.start_countdown()
+        
         run_in_thread(self._refresh_dashboard_thread)
     
     def _refresh_dashboard_thread(self):
@@ -180,30 +199,80 @@ class HomeTab(BaseTab):
                 multi_query_success = False
                 if response.get('success'):
                     data = response.get('data', {})
-                    if isinstance(data, dict) and 'data' in data:
+                    print(f"홈탭 대시보드 - API 응답 데이터 구조: {list(data.keys()) if isinstance(data, dict) else type(data)}")
+                    
+                    # 주문관리탭과 동일한 구조로 처리
+                    orders_list = []
+                    if isinstance(data, list):
+                        # 데이터가 직접 리스트인 경우
+                        orders_list = data
+                    elif isinstance(data, dict) and 'data' in data:
+                        # 'data' 키 안에 리스트가 있는 경우
                         orders_list = data.get('data', [])
-                        if isinstance(orders_list, list) and len(orders_list) > 0:
-                            print(f"다중 상태 조회 성공: 총 {len(orders_list)}건")
-                            multi_query_success = True
+                    elif isinstance(data, dict) and 'contents' in data:
+                        # 'contents' 키 안에 리스트가 있는 경우
+                        orders_list = data.get('contents', [])
+                    
+                    print(f"홈탭 대시보드 - 처리할 주문 수: {len(orders_list)}")
+                    
+                    if isinstance(orders_list, list) and len(orders_list) > 0:
+                        print(f"다중 상태 조회 성공: 총 {len(orders_list)}건")
+                        multi_query_success = True
+                        
+                        # 상태별로 분류 (주문관리탭과 동일한 로직)
+                        for i, order in enumerate(orders_list):
+                            print(f"홈탭 대시보드 - 주문 {i+1} 구조: {list(order.keys()) if isinstance(order, dict) else type(order)}")
                             
-                            # 상태별로 분류
-                            for order in orders_list:
-                                if isinstance(order, dict) and 'content' in order:
+                            order_status = None
+                            
+                            if isinstance(order, dict):
+                                # 네이버 API의 다양한 응답 구조 처리
+                                if 'content' in order:
                                     content = order['content']
-                                    order_status = content.get('productOrderStatus')
-                                    if order_status in order_counts:
-                                        order_counts[order_status] += 1
-                                elif isinstance(order, dict) and 'orderStatus' in order:
+                                    print(f"홈탭 대시보드 - 주문 {i+1} content 키들: {list(content.keys()) if isinstance(content, dict) else type(content)}")
+                                    
+                                    # content 내부 구조 상세 분석 (주문관리탭과 동일한 방식)
+                                    if isinstance(content, dict):
+                                        # 주문관리탭과 동일한 방식: content.get('productOrder', {})
+                                        product_order = content.get('productOrder', {})
+                                        print(f"홈탭 대시보드 - 주문 {i+1} productOrder 키들: {list(product_order.keys()) if isinstance(product_order, dict) else type(product_order)}")
+                                        
+                                        if isinstance(product_order, dict):
+                                            order_status = product_order.get('productOrderStatus')
+                                            print(f"홈탭 대시보드 - 주문 {i+1} productOrder.productOrderStatus: {order_status}")
+                                        else:
+                                            # productOrder가 없거나 dict가 아닌 경우, 직접 찾기
+                                            order_status = content.get('productOrderStatus')
+                                            print(f"홈탭 대시보드 - 주문 {i+1} content.productOrderStatus: {order_status}")
+                                        
+                                        # content 안의 모든 키-값 구조 확인 (첫 번째 주문만)
+                                        if i == 0:
+                                            print(f"홈탭 대시보드 - 첫 번째 주문 content 전체 구조:")
+                                            for k, v in content.items():
+                                                if isinstance(v, dict):
+                                                    print(f"  {k}: dict with keys {list(v.keys())}")
+                                                else:
+                                                    print(f"  {k}: {type(v)} = {v}")
+                                    
+                                    print(f"홈탭 대시보드 - 주문 {i+1} 최종 추출된 상태: {order_status}")
+                                elif 'orderStatus' in order:
                                     order_status = order.get('orderStatus')
-                                    if order_status in order_counts:
-                                        order_counts[order_status] += 1
-                            
-                            print(f"다중 조회 결과: {order_counts}")
-                        else:
-                            print("다중 상태 조회: 주문 데이터 없음")
-                            multi_query_success = True  # 빈 결과도 성공으로 처리
+                                    print(f"홈탭 대시보드 - 주문 {i+1} 직접 상태: {order_status}")
+                                elif 'productOrderStatus' in order:
+                                    order_status = order.get('productOrderStatus')
+                                    print(f"홈탭 대시보드 - 주문 {i+1} productOrderStatus: {order_status}")
+                                
+                                # 상태별 카운트 증가
+                                if order_status and order_status in order_counts:
+                                    order_counts[order_status] += 1
+                                    print(f"홈탭 대시보드 - 상태 '{order_status}' 카운트 증가: {order_counts[order_status]}")
+                                else:
+                                    print(f"홈탭 대시보드 - 주문 {i+1} 상태 인식 실패 또는 미지원 상태: {order_status}")
+                        
+                        print(f"다중 조회 결과: {order_counts}")
                     else:
-                        print("다중 상태 조회: 데이터 구조 인식 실패")
+                        print("다중 상태 조회: 주문 데이터 없음")
+                        multi_query_success = True  # 빈 결과도 성공으로 처리
                 else:
                     error_msg = response.get('error', '알 수 없는 오류')
                     print(f"다중 상태 조회 실패: {error_msg}")
@@ -495,8 +564,8 @@ class HomeTab(BaseTab):
                         "네이버 커머스 API가 설정되지 않았습니다.\n\n"
                         "설정 탭에서 API 정보를 입력해주세요."
                     )
-                    # 설정 탭으로 이동
-                    self.app.notebook.select(5)  # 설정 탭은 6번째 탭 (인덱스 5)
+                    # 기본설정 탭으로 이동
+                    self.app.notebook.select(5)  # 기본설정 탭 (인덱스 5)
                 
                 self.app.root.after(0, show_api_error)
                 return
@@ -647,7 +716,7 @@ class HomeTab(BaseTab):
         """설정 탭으로 이동"""
         try:
             # 탭 컨트롤에서 설정 탭 선택
-            self.app.notebook.select(5)  # 설정 탭은 6번째 탭 (인덱스 5)
+            self.app.notebook.select(6)  # 조건설정 탭 (인덱스 6)
         except Exception as e:
             print(f"설정 탭 이동 오류: {e}")
             messagebox.showinfo("안내", "설정 탭에서 상품 상태를 변경해주세요.")
@@ -724,4 +793,85 @@ class HomeTab(BaseTab):
         except Exception as e:
             print(f"주문 상태별 조회 오류: {e}")
             messagebox.showinfo("안내", f"{status} 주문 조회 기능은 주문관리 탭에서 이용해주세요.")
+    
+    def start_countdown(self):
+        """리프레시 카운트다운 시작"""
+        # 기존 카운트다운 작업이 있으면 취소
+        if self.countdown_job:
+            self.app.root.after_cancel(self.countdown_job)
+        
+        # 카운트다운 시작
+        self.update_countdown()
+    
+    def update_countdown(self):
+        """카운트다운 업데이트"""
+        try:
+            if self.last_refresh_time is None:
+                return
+            
+            import time
+            from env_config import config
+            
+            # 자동 리프레시가 활성화되어 있는지 확인
+            auto_refresh = config.get_bool('AUTO_REFRESH', False)
+            if not auto_refresh:
+                # 자동 리프레시가 비활성화된 경우 시간 표시 안함
+                current_status = self.home_status_var.get()
+                if " (" in current_status:
+                    # 기존 시간 표시 제거
+                    base_status = current_status.split(" (")[0]
+                    self.home_status_var.set(base_status)
+                return
+            
+            # 현재 시간과 마지막 리프레시 시간의 차이 계산
+            current_time = time.time()
+            elapsed = current_time - self.last_refresh_time
+            remaining = max(0, self.refresh_interval - elapsed)
+            
+            if remaining > 0:
+                # 남은 시간을 분:초 형식으로 변환
+                minutes = int(remaining // 60)
+                seconds = int(remaining % 60)
+                
+                if minutes > 0:
+                    time_str = f"{minutes}분 {seconds}초"
+                else:
+                    time_str = f"{seconds}초"
+                
+                # 현재 상태에 시간 정보 추가
+                current_status = self.home_status_var.get()
+                
+                # 기존에 시간 정보가 있다면 제거
+                if " (" in current_status:
+                    base_status = current_status.split(" (")[0]
+                else:
+                    base_status = current_status
+                
+                # 새로운 시간 정보 추가
+                new_status = f"{base_status} (다음 새로고침까지 {time_str})"
+                self.home_status_var.set(new_status)
+                
+                # 1초 후 다시 업데이트
+                self.countdown_job = self.app.root.after(1000, self.update_countdown)
+            else:
+                # 시간이 다 되었으면 카운트다운 멈춤
+                current_status = self.home_status_var.get()
+                if " (" in current_status:
+                    base_status = current_status.split(" (")[0]
+                    self.home_status_var.set(base_status)
+        
+        except Exception as e:
+            print(f"카운트다운 업데이트 오류: {e}")
+    
+    def stop_countdown(self):
+        """카운트다운 중지"""
+        if self.countdown_job:
+            self.app.root.after_cancel(self.countdown_job)
+            self.countdown_job = None
+        
+        # 상태에서 시간 정보 제거
+        current_status = self.home_status_var.get()
+        if " (" in current_status:
+            base_status = current_status.split(" (")[0]
+            self.home_status_var.set(base_status)
     

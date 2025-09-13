@@ -14,7 +14,7 @@ from naver_api import NaverShoppingAPI
 from notification_manager import NotificationManager
 from env_config import config
 from ui_utils import enable_context_menu
-from tabs import HomeTab, APITestTab, SettingsTab, OrdersTab, ShippingTab, ProductsTab
+from tabs import HomeTab, APITestTab, BasicSettingsTab, ConditionSettingsTab, OrdersTab, ShippingTab, ProductsTab
 
 
 class WithUsOrderManager:
@@ -72,8 +72,11 @@ class WithUsOrderManager:
         self.api_test_tab = APITestTab(self.notebook, self)
         self.notebook.add(self.api_test_tab.frame, text="API 테스트")
         
-        self.settings_tab = SettingsTab(self.notebook, self)
-        self.notebook.add(self.settings_tab.frame, text="설정")
+        self.basic_settings_tab = BasicSettingsTab(self.notebook, self)
+        self.notebook.add(self.basic_settings_tab.frame, text="기본설정")
+        
+        self.condition_settings_tab = ConditionSettingsTab(self.notebook, self)
+        self.notebook.add(self.condition_settings_tab.frame, text="조건설정")
         
         # 탭 변경 이벤트 바인딩
         self.notebook.bind("<<NotebookTabChanged>>", self.on_tab_changed)
@@ -157,12 +160,22 @@ class WithUsOrderManager:
     
     def start_dashboard_refresh(self):
         """대시보드 주기적 새로고침 시작"""
+        # env 설정에서 자동 새로고침 설정 확인
+        auto_refresh = config.get_bool('AUTO_REFRESH', False)
+        refresh_interval = config.get_int('REFRESH_INTERVAL', 300)  # 기본값 300초
+        
+        print(f"자동 새로고침 설정: {auto_refresh}, 간격: {refresh_interval}초")
+        
+        if not auto_refresh:
+            print("자동 새로고침이 비활성화되어 있습니다.")
+            return
+        
         def refresh_loop():
             while True:
                 try:
-                    # 5분마다 새로고침
-                    time.sleep(300)
+                    time.sleep(refresh_interval)
                     if self.naver_api:
+                        print(f"자동 대시보드 새로고침 실행 ({refresh_interval}초 간격)")
                         self.root.after(0, self.home_tab.refresh_dashboard)
                 except Exception as e:
                     print(f"대시보드 새로고침 오류: {e}")

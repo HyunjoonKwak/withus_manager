@@ -15,6 +15,9 @@ class ProductsTab(BaseTab):
         super().__init__(parent, app)
         self.create_products_tab()
         self.setup_copy_paste_bindings()
+        
+        # 탭 생성 후 저장된 상품 데이터 우선 로드
+        self.app.root.after(100, self.load_cached_products_on_init)
     
     def create_products_tab(self):
         """상품관리 탭 UI 생성"""
@@ -81,7 +84,7 @@ class ProductsTab(BaseTab):
                         "API 설정 필요", 
                         "네이버 커머스 API가 설정되지 않았습니다.\n설정 탭에서 API 정보를 입력해주세요."
                     )
-                    # 설정 탭으로 이동
+                    # 기본설정 탭으로 이동
                     self.app.notebook.select(5)
                 
                 self.app.root.after(0, show_api_error)
@@ -155,7 +158,7 @@ class ProductsTab(BaseTab):
                 
                 # UI 업데이트
                 self.app.root.after(0, self._update_products_tree, filtered_products)
-                self.app.root.after(0, lambda: self.products_status_var.set(f"상품 {len(filtered_products)}개 조회 완료 (필터링됨)"))
+                self.app.root.after(0, lambda: self.update_refresh_status_message(len(filtered_products), is_from_api=True))
                 
                 # 서버 응답 표시
                 response_text = f"상품 목록 조회 성공!\n조회된 상품 수: {len(products)}개\n\n응답 데이터:\n{json.dumps(response, indent=2, ensure_ascii=False)}"
@@ -190,7 +193,7 @@ class ProductsTab(BaseTab):
                 
                 # UI 업데이트
                 self._update_products_tree(filtered_products)
-                self.products_status_var.set(f"저장된 상품 {len(filtered_products)}개 로드 완료")
+                self.update_refresh_status_message(len(filtered_products), is_from_api=False)
             else:
                 self.products_status_var.set("저장된 상품이 없습니다.")
                 
@@ -284,3 +287,56 @@ class ProductsTab(BaseTab):
                 # 향후 가격 수정, 상태 변경 등 로직 구현 예정
         except Exception as e:
             print(f"상품 클릭 처리 오류: {e}")
+    
+    def load_cached_products_on_init(self):
+        """초기화 시 캐시된 상품 데이터 로드"""
+        try:
+            # 데이터베이스에서 저장된 상품 조회
+            products = self.app.db_manager.get_products()
+            
+            if products and len(products) > 0:
+                # 상품 상태 설정에 따른 필터링
+                from env_config import config
+                saved_statuses = config.get('PRODUCT_STATUS_TYPES', 'SALE,WAIT,OUTOFSTOCK')
+                status_list = [s.strip() for s in saved_statuses.split(',')]
+                
+                # 상태별 필터링
+                filtered_products = []
+                for product in products:
+                    if product.get('status_type') in status_list:
+                        filtered_products.append(product)
+                
+                print(f"상품관리 탭 - 캐시된 상품 데이터 {len(products)}개 중 {len(filtered_products)}개 필터링됨")
+                
+                if filtered_products:
+                    # UI 업데이트
+                    self._update_products_tree(filtered_products)
+                    
+                    # 상태 메시지 설정
+                    if hasattr(self, 'products_status_var'):
+                        self.products_status_var.set(f"저장된 상품 {len(filtered_products)}개 표시 (기존 데이터)")
+                        
+                    print("상품관리 탭 - 저장된 상품 데이터 표시 완료")
+                else:
+                    if hasattr(self, 'products_status_var'):
+                        self.products_status_var.set("설정된 상태 조건에 맞는 상품 없음 - 새로고침하여 최신 데이터 조회")
+            else:
+                print("상품관리 탭 - 저장된 상품 데이터 없음")
+                if hasattr(self, 'products_status_var'):
+                    self.products_status_var.set("저장된 상품 없음 - 새로고침하여 최신 데이터 조회")
+                    
+        except Exception as e:
+            print(f"상품관리 탭 - 캐시된 상품 로드 오류: {e}")
+            if hasattr(self, 'products_status_var'):
+                self.products_status_var.set("저장된 데이터 로드 실패")
+    
+    def update_refresh_status_message(self, count, is_from_api=True):
+        """새로고침 후 상태 메시지 업데이트"""
+        try:
+            if hasattr(self, 'products_status_var'):
+                if is_from_api:
+                    self.products_status_var.set(f"상품 {count}개 조회 완료 (최신 데이터)")
+                else:
+                    self.products_status_var.set(f"저장된 상품 {count}개 표시 (기존 데이터)")
+        except Exception as e:
+            print(f"상품관리 탭 - 상태 메시지 업데이트 오류: {e}")

@@ -16,6 +16,7 @@ class ShippingTab(BaseTab):
         super().__init__(parent, app)
         self.create_shipping_tab()
         self.setup_copy_paste_bindings()
+        self.app.root.after(100, self.load_cached_shipping_on_init)
     
     def create_shipping_tab(self):
         """배송 탭 UI 생성"""
@@ -78,7 +79,7 @@ class ShippingTab(BaseTab):
             
             if orders:
                 self._update_shipping_tree(orders)
-                self.shipping_status_var.set(f"{status} 주문 {len(orders)}건 조회 완료")
+                self.update_refresh_status_message(len(orders), is_from_api=True)
             else:
                 self.shipping_status_var.set(f"{status} 주문이 없습니다.")
                 
@@ -186,3 +187,30 @@ class ShippingTab(BaseTab):
             
         except Exception as e:
             messagebox.showerror("오류", f"송장 번호 입력 실패: {str(e)}")
+    
+    def load_cached_shipping_on_init(self):
+        """초기화 시 캐시된 배송 데이터 로드"""
+        try:
+            orders = self.app.db_manager.get_orders()
+            if orders and len(orders) > 0:
+                print(f"배송관리 탭 - 캐시된 주문 데이터 {len(orders)}건 로드")
+                self._update_shipping_tree(orders)
+                if hasattr(self, 'shipping_status_var'):
+                    self.shipping_status_var.set(f"저장된 주문 {len(orders)}건 표시 (기존 데이터)")
+            else:
+                if hasattr(self, 'shipping_status_var'):
+                    self.shipping_status_var.set("저장된 주문 데이터가 없습니다.")
+        except Exception as e:
+            print(f"캐시된 배송 데이터 로드 오류: {e}")
+            if hasattr(self, 'shipping_status_var'):
+                self.shipping_status_var.set("데이터 로드 오류")
+    
+    def update_refresh_status_message(self, count, is_from_api=True):
+        """새로고침 상태 메시지 업데이트"""
+        if is_from_api:
+            message = f"조회 완료: {count}건 (최신 데이터)"
+        else:
+            message = f"저장된 주문 {count}건 표시 (기존 데이터)"
+        
+        if hasattr(self, 'shipping_status_var'):
+            self.shipping_status_var.set(message)

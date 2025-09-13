@@ -21,6 +21,9 @@ class OrdersTab(BaseTab):
         self.create_orders_tab()
         self.setup_copy_paste_bindings()
         self.update_order_status_display()
+        
+        # 탭 생성 후 저장된 주문 데이터 우선 로드
+        self.app.root.after(100, self.load_cached_orders_on_init)
     
     def create_orders_tab(self):
         """주문 탭 UI 생성"""
@@ -80,8 +83,8 @@ class OrdersTab(BaseTab):
                                                    foreground="blue", font=("맑은 고딕", 9))
         self.order_status_display_label.pack(side="left", padx=5)
         
-        ttk.Button(status_display_frame, text="설정에서 변경", 
-                  command=lambda: self.app.notebook.select(5)).pack(side="right", padx=5)  # 설정 탭으로 이동
+        ttk.Button(status_display_frame, text="조건설정에서 변경", 
+                  command=lambda: self.app.notebook.select(6)).pack(side="right", padx=5)  # 조건설정 탭으로 이동
         
         # 주문 목록
         orders_frame = ttk.LabelFrame(self.frame, text="주문 목록")
@@ -250,8 +253,8 @@ class OrdersTab(BaseTab):
                         "- Client Secret\n\n"
                         "설정 탭으로 이동하시겠습니까?"
                     )
-                    # 설정 탭으로 이동
-                    self.app.notebook.select(5)  # 설정 탭은 6번째 탭 (인덱스 5)
+                    # 기본설정 탭으로 이동
+                    self.app.notebook.select(5)  # 기본설정 탭 (인덱스 5)
                 
                 self.app.root.after(0, show_api_error)
                 return
@@ -440,7 +443,7 @@ class OrdersTab(BaseTab):
             
             # UI 업데이트
             self.app.root.after(0, self._update_orders_tree, unique_orders)
-            self.app.root.after(0, lambda: self.orders_status_var.set(f"주문 {len(unique_orders)}건 조회 완료 (상태: {len(status_list)}개)"))
+            self.app.root.after(0, lambda: self.update_refresh_status_message(len(unique_orders), is_from_api=True))
             
             if not unique_orders:
                 self.app.root.after(0, lambda: self.orders_status_var.set("해당 기간과 상태 조건에 맞는 주문이 없습니다."))
@@ -471,7 +474,7 @@ class OrdersTab(BaseTab):
                 # DB 데이터를 API 형식으로 변환하여 UI에 표시
                 api_format_orders = self._convert_db_orders_to_api_format(orders)
                 self._update_orders_tree(api_format_orders)
-                self.orders_status_var.set(f"DB에서 주문 {len(orders)}건 조회 완료")
+                self.update_refresh_status_message(len(orders), is_from_api=False)
             else:
                 print("해당 기간의 주문이 데이터베이스에 없습니다.")
                 self.orders_status_var.set("해당 기간의 주문이 없습니다.")
@@ -1172,3 +1175,45 @@ class OrdersTab(BaseTab):
             print(f"주문 상태 표시 업데이트 오류: {e}")
             if hasattr(self, 'order_status_display_var'):
                 self.order_status_display_var.set("설정 오류")
+    
+    def load_cached_orders_on_init(self):
+        """초기화 시 캐시된 주문 데이터 로드"""
+        try:
+            # 데이터베이스에서 저장된 주문 조회
+            orders = self.app.db_manager.get_orders()
+            
+            if orders and len(orders) > 0:
+                print(f"주문관리 탭 - 캐시된 주문 데이터 {len(orders)}건 로드")
+                
+                # UI 업데이트
+                self._update_orders_tree(orders)
+                
+                # 상태 메시지 설정
+                if hasattr(self, 'orders_status_var'):
+                    self.orders_status_var.set(f"저장된 주문 {len(orders)}건 표시 (기존 데이터)")
+                    
+                # 첫 로드가 아님을 표시
+                self.is_first_load = False
+                self.last_orders_data = orders
+                
+                print("주문관리 탭 - 저장된 주문 데이터 표시 완료")
+            else:
+                print("주문관리 탭 - 저장된 주문 데이터 없음")
+                if hasattr(self, 'orders_status_var'):
+                    self.orders_status_var.set("저장된 주문 없음 - 새로고침하여 최신 데이터 조회")
+                    
+        except Exception as e:
+            print(f"주문관리 탭 - 캐시된 주문 로드 오류: {e}")
+            if hasattr(self, 'orders_status_var'):
+                self.orders_status_var.set("저장된 데이터 로드 실패")
+    
+    def update_refresh_status_message(self, count, is_from_api=True):
+        """새로고침 후 상태 메시지 업데이트"""
+        try:
+            if hasattr(self, 'orders_status_var'):
+                if is_from_api:
+                    self.orders_status_var.set(f"주문 {count}건 조회 완료 (최신 데이터)")
+                else:
+                    self.orders_status_var.set(f"저장된 주문 {count}건 표시 (기존 데이터)")
+        except Exception as e:
+            print(f"주문관리 탭 - 상태 메시지 업데이트 오류: {e}")
