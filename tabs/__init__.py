@@ -8,5 +8,6 @@ from .condition_settings_tab import ConditionSettingsTab
 from .orders_tab import OrdersTab
 from .shipping_tab import ShippingTab
 from .products_tab import ProductsTab
+from .help_tab import HelpTab
 
-__all__ = ['HomeTab', 'APITestTab', 'BasicSettingsTab', 'ConditionSettingsTab', 'OrdersTab', 'ShippingTab', 'ProductsTab']
+__all__ = ['HomeTab', 'APITestTab', 'BasicSettingsTab', 'ConditionSettingsTab', 'OrdersTab', 'ShippingTab', 'ProductsTab', 'HelpTab']

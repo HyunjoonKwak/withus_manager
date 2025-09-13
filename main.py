@@ -14,7 +14,7 @@ from naver_api import NaverShoppingAPI
 from notification_manager import NotificationManager
 from env_config import config
 from ui_utils import enable_context_menu
-from tabs import HomeTab, APITestTab, BasicSettingsTab, ConditionSettingsTab, OrdersTab, ShippingTab, ProductsTab
+from tabs import HomeTab, APITestTab, BasicSettingsTab, ConditionSettingsTab, OrdersTab, ShippingTab, ProductsTab, HelpTab
 
 
 class WithUsOrderManager:
@@ -24,6 +24,19 @@ class WithUsOrderManager:
         self.root = tk.Tk()
         self.root.title("WithUs 주문 관리 시스템")
         self.root.geometry("1400x900")
+        
+        # 라이트모드 강제 설정 (다크모드 비활성화)
+        self.root.configure(bg='white')
+        
+        # 시스템 다크모드 비활성화
+        try:
+            # macOS Monterey+ 다크모드 강제 비활성화
+            self.root.tk.call("tk", "::tk::unsupported::MacWindowStyle", "style", self.root._w, "document", "closeBox collapseBox resizable")
+            # ttk 스타일을 라이트 테마로 강제 설정
+            self.setup_light_theme()
+        except Exception as e:
+            print(f"다크모드 비활성화 시도 중 오류: {e}")
+            self.root.configure(bg='white')
         
         # 데이터베이스 매니저 초기화
         print("데이터베이스 매니저 초기화 시작")
@@ -45,6 +58,46 @@ class WithUsOrderManager:
         
         # 주기적 대시보드 새로고침
         self.start_dashboard_refresh()
+    
+    def setup_light_theme(self):
+        """라이트 테마 강제 설정"""
+        style = ttk.Style()
+        
+        # 사용 가능한 테마 확인
+        available_themes = style.theme_names()
+        print(f"사용 가능한 테마: {available_themes}")
+        
+        # 라이트 테마 우선순위로 설정
+        light_themes = ['aqua', 'clam', 'alt', 'default', 'classic']
+        
+        for theme in light_themes:
+            if theme in available_themes:
+                try:
+                    style.theme_use(theme)
+                    print(f"테마 설정 완료: {theme}")
+                    break
+                except Exception as e:
+                    print(f"테마 {theme} 설정 실패: {e}")
+                    continue
+        
+        # 모든 위젯에 라이트 색상 강제 적용
+        try:
+            # 기본 배경색과 전경색 설정
+            style.configure('TFrame', background='white', foreground='black')
+            style.configure('TLabel', background='white', foreground='black')
+            style.configure('TButton', background='white', foreground='black')
+            style.configure('TEntry', background='white', foreground='black', fieldbackground='white')
+            style.configure('TCombobox', background='white', foreground='black', fieldbackground='white')
+            style.configure('TText', background='white', foreground='black')
+            style.configure('TNotebook', background='white', foreground='black')
+            style.configure('TNotebook.Tab', background='lightgray', foreground='black')
+            style.configure('Treeview', background='white', foreground='black', fieldbackground='white')
+            style.configure('Treeview.Heading', background='lightgray', foreground='black')
+            style.configure('TLabelFrame', background='white', foreground='black')
+            
+            print("라이트 테마 색상 설정 완료")
+        except Exception as e:
+            print(f"색상 설정 실패: {e}")
     
     def setup_ui(self):
         """UI 설정"""
@@ -77,6 +130,9 @@ class WithUsOrderManager:
         
         self.condition_settings_tab = ConditionSettingsTab(self.notebook, self)
         self.notebook.add(self.condition_settings_tab.frame, text="조건설정")
+        
+        self.help_tab = HelpTab(self.notebook, self)
+        self.notebook.add(self.help_tab.frame, text="도움말")
         
         # 탭 변경 이벤트 바인딩
         self.notebook.bind("<<NotebookTabChanged>>", self.on_tab_changed)

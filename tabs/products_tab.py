@@ -4,6 +4,7 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 import json
+import webbrowser
 
 from ui_utils import BaseTab, run_in_thread, enable_context_menu
 
@@ -33,22 +34,41 @@ class ProductsTab(BaseTab):
         ttk.Button(product_query_frame, text="저장된 상품 조회", command=self.load_saved_products).pack(side="left", padx=5)
         
         # 상품 목록 트리뷰
-        product_columns = ('상품ID', '상품명', '상태', '원래판매가', '셀러할인가', '실제판매가', '재고', '원상품ID')
+        product_columns = ('변경', '조회', '상품ID', '상품명', '상태', '원래판매가', '셀러할인가', '실제판매가', '재고', '원상품ID')
         self.products_tree = ttk.Treeview(product_frame, columns=product_columns, show='headings', height=15)
         
         for col in product_columns:
             self.products_tree.heading(col, text=col)
-            self.products_tree.column(col, width=100)
+            if col in ['변경', '조회']:
+                self.products_tree.column(col, width=60, anchor='center')
+            elif col == '상품명':
+                self.products_tree.column(col, width=200, anchor='w')  # 상품명만 좌측 정렬
+            else:
+                self.products_tree.column(col, width=100, anchor='center')  # 나머지는 가운데 정렬
         
         product_scrollbar = ttk.Scrollbar(product_frame, orient="vertical", command=self.products_tree.yview)
         self.products_tree.configure(yscrollcommand=product_scrollbar.set)
+        
+        # 버튼 스타일 설정 (제거)
+        
+        # Treeview 스타일 설정 (포커스 없을 때도 텍스트가 보이도록)
+        style = ttk.Style()
+        
+        # 선택된 항목의 배경색과 텍스트색 설정 (포커스 있을 때)
+        style.map('Treeview', 
+                  background=[('selected', 'focus', '#0078d4'),    # 포커스 있을 때 파란색
+                             ('selected', '!focus', '#e6f3ff')],   # 포커스 없을 때 연한 파란색
+                  foreground=[('selected', 'focus', 'white'),     # 포커스 있을 때 흰색 텍스트
+                             ('selected', '!focus', 'black')])     # 포커스 없을 때 검은색 텍스트
         
         self.products_tree.pack(side="left", fill="both", expand=True, padx=5, pady=5)
         product_scrollbar.pack(side="right", fill="y", pady=5)
         
         # 상품 트리뷰 이벤트 바인딩
         self.products_tree.bind("<Double-1>", self.on_product_double_click)
-        self.products_tree.bind("<Button-1>", self.on_product_click)
+        
+        # 변경/조회 버튼 기능을 위한 바인딩
+        self.products_tree.bind("<ButtonRelease-1>", self.on_product_button_release)
         
         
         # 서버 응답 표시 창
@@ -64,6 +84,7 @@ class ProductsTab(BaseTab):
         
         # 컨텍스트 메뉴 활성화
         enable_context_menu(self.server_response_text)
+        
         
         # 상품 상태 표시 (탭 하단)
         self.products_status_var = tk.StringVar()
@@ -224,7 +245,7 @@ class ProductsTab(BaseTab):
                     origin_product_id = product.get('origin_product_no', 'N/A')
                     
                     self.products_tree.insert('', 'end', values=(
-                        product_id, product_name, status, 
+                        "⚙️ 변경", "🔍 조회", product_id, product_name, status, 
                         f"{sale_price:,}", f"{discount_amount:,}", f"{actual_price:,}",
                         stock, origin_product_id
                     ))
@@ -246,14 +267,14 @@ class ProductsTab(BaseTab):
                         stock = channel_product.get('stockQuantity', 0)
                         
                         self.products_tree.insert('', 'end', values=(
-                            product_id, product_name, status, 
+                            "⚙️ 변경", "🔍 조회", product_id, product_name, status, 
                             f"{sale_price:,}", f"{discount_amount:,}", f"{actual_price:,}",
                             stock, origin_product_id
                         ))
                     else:
                         # 채널 상품이 없는 경우
                         self.products_tree.insert('', 'end', values=(
-                            'N/A', 'N/A', 'N/A', '0', '0', '0', '0', origin_product_id
+                            "⚙️ 변경", "🔍 조회", 'N/A', 'N/A', 'N/A', '0', '0', '0', '0', origin_product_id
                         ))
     
     def on_product_double_click(self, event):
@@ -272,21 +293,81 @@ class ProductsTab(BaseTab):
         except Exception as e:
             print(f"상품 더블클릭 처리 오류: {e}")
     
-    def on_product_click(self, event):
-        """상품 클릭 이벤트"""
+    def on_product_button_release(self, event):
+        """상품 버튼 릴리즈 이벤트 (변경/조회 기능)"""
         try:
-            selection = self.products_tree.selection()
-            if not selection:
+            # 클릭한 위치 확인
+            region = self.products_tree.identify_region(event.x, event.y)
+            if region != "cell":
                 return
                 
-            item = selection[0]
-            values = self.products_tree.item(item, 'values')
-            if values:
-                product_id = values[0]
-                print(f"상품 클릭: {product_id}")
-                # 향후 가격 수정, 상태 변경 등 로직 구현 예정
+            # 클릭한 컬럼 확인
+            column = self.products_tree.identify_column(event.x)
+            print(f"클릭한 컬럼: {column}")
+            
+            item = self.products_tree.identify_row(event.y)
+            if item:
+                values = self.products_tree.item(item, 'values')
+                print(f"선택된 항목 값: {values}")
+                
+                if column == "#1":  # 첫 번째 컬럼 (변경)
+                    if values and len(values) > 9:
+                        origin_product_id = values[9]  # 원상품ID
+                        product_name = values[3]  # 상품명
+                        print(f"원상품 ID: {origin_product_id}")
+                        
+                        if origin_product_id != 'N/A':
+                            self.open_product_edit(origin_product_id, product_name)
+                        else:
+                            print("유효하지 않은 원상품 ID")
+                            
+                elif column == "#2":  # 두 번째 컬럼 (조회)
+                    if values and len(values) > 2:
+                        product_id = values[2]  # 상품ID
+                        product_name = values[3]  # 상품명
+                        print(f"상품 ID: {product_id}")
+                        
+                        if product_id != 'N/A':
+                            self.open_product_view(product_id, product_name)
+                        else:
+                            print("유효하지 않은 상품 ID")
+                            
         except Exception as e:
-            print(f"상품 클릭 처리 오류: {e}")
+            print(f"상품 버튼 릴리즈 처리 오류: {e}")
+
+    def open_product_edit(self, origin_product_id, product_name=""):
+        """스마트스토어 상품 수정 페이지 열기 (원상품ID 사용)"""
+        try:
+            # 스마트스토어 상품 수정 URL (원상품ID 포함)
+            url = f"https://sell.smartstore.naver.com/#/products/edit/{origin_product_id}"
+            webbrowser.open(url)
+            print(f"상품 수정 페이지 열기: 원상품ID {origin_product_id} ({product_name})")
+            
+            # 상태 메시지 업데이트
+            if hasattr(self, 'products_status_var'):
+                self.products_status_var.set(f"상품 수정 페이지를 브라우저에서 열었습니다: {product_name}")
+                
+        except Exception as e:
+            print(f"상품 수정 페이지 열기 오류: {e}")
+            if hasattr(self, 'products_status_var'):
+                self.products_status_var.set(f"페이지 열기 오류: {str(e)}")
+    
+    def open_product_view(self, product_id, product_name=""):
+        """스마트스토어 상품 조회 페이지 열기 (상품ID 사용)"""
+        try:
+            # 스마트스토어 상품 조회 URL (상품ID 포함)
+            url = f"https://smartstore.naver.com/us-shop/products/{product_id}"
+            webbrowser.open(url)
+            print(f"상품 조회 페이지 열기: 상품ID {product_id} ({product_name})")
+            
+            # 상태 메시지 업데이트
+            if hasattr(self, 'products_status_var'):
+                self.products_status_var.set(f"상품 조회 페이지를 브라우저에서 열었습니다: {product_name}")
+                
+        except Exception as e:
+            print(f"상품 조회 페이지 열기 오류: {e}")
+            if hasattr(self, 'products_status_var'):
+                self.products_status_var.set(f"페이지 열기 오류: {str(e)}")
     
     def load_cached_products_on_init(self):
         """초기화 시 캐시된 상품 데이터 로드"""

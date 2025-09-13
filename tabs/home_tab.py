@@ -56,9 +56,13 @@ class HomeTab(BaseTab):
             btn = tk.Button(btn_frame, text=f"{status}\n0건", 
                           command=lambda s=status: self.show_orders_by_status(s),
                           height=3,  # 버튼 높이를 3줄로 설정
-                          font=("맑은 고딕", 9),
+                          font=("맑은 고딕", 14, "bold"),  # 폰트 크기 더 확대
                           relief="raised",
-                          borderwidth=1)
+                          borderwidth=2,  # 테두리 두께 증가
+                          bg="white",  # 배경색 흰색
+                          fg="black",  # 글자색 검정
+                          activebackground="#f0f0f0",  # 클릭시 배경색
+                          activeforeground="black")
             btn.pack(fill="both", expand=True, pady=2)
             self.status_buttons[status] = btn
         

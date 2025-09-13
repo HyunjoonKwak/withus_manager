@@ -5,7 +5,10 @@
       "Bash(brew install:*)",
       "Bash(source:*)",
       "Bash(python:*)",
-      "Bash(pip install:*)"
+      "Bash(pip install:*)",
+      "Bash(defaults read:*)",
+      "WebFetch(domain:apicenter.commerce.commerce.naver.com)",
+      "Bash(sed:*)"
     ],
     "deny": [],
     "ask": []
