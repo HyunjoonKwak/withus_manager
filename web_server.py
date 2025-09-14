@@ -499,8 +499,10 @@ async def get_orders(
             end_date_str = end_date
 
         # 네이버 API에서 주문 조회 후 데이터베이스에 저장
+        logger.info(f"API 조건 확인: naver_api={bool(order_manager.naver_api)}, order_status='{order_status}'")
+
         if order_manager.naver_api and order_status:
-            logger.info(f"네이버 API 조회 시작: {start_date_str} ~ {end_date_str}, 상태: {order_status}")
+            logger.info(f"🚀 네이버 API 조회 시작: {start_date_str} ~ {end_date_str}, 상태: {order_status}")
             api_response = order_manager.naver_api.get_orders(
                 start_date=start_date_str,
                 end_date=end_date_str,
@@ -508,7 +510,11 @@ async def get_orders(
                 limit=limit
             )
             if api_response:
-                logger.info(f"네이버 API 조회 완료: {api_response.get('message', '결과 없음')}")
+                logger.info(f"✅ 네이버 API 조회 완료: {api_response.get('message', '결과 없음')}")
+            else:
+                logger.warning("❌ 네이버 API 응답 없음")
+        else:
+            logger.warning(f"⚠️  네이버 API 호출 조건 불충족: api={bool(order_manager.naver_api)}, status='{order_status}'")
 
         # 로컬 DB에서 필터링하여 조회 (API 조회 후에도 DB에서 최신 데이터 가져옴)
         orders = order_manager.db_manager.get_all_orders()
