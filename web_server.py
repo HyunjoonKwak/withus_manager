@@ -57,28 +57,36 @@ class LightweightOrderManager:
             client_id = config.get('NAVER_CLIENT_ID')
             client_secret = config.get('NAVER_CLIENT_SECRET')
 
+            logger.info(f"🔍 네이버 API 초기화 시도")
+            logger.info(f"   - client_id: {client_id[:4] + '****' if client_id else 'None'}")
+            logger.info(f"   - client_secret 길이: {len(client_secret) if client_secret else 0}")
+            logger.info(f"   - .env 파일 존재: {os.path.exists('.env')}")
+
             # 만약 마스킹된 값이 반환되면 직접 .env 파일에서 읽기
             if client_secret == "****" or (client_secret and len(client_secret) <= 4):
+                logger.info("🔧 마스킹된 값 감지, .env 파일에서 직접 로드 시도")
                 try:
                     with open('.env', 'r', encoding='utf-8') as f:
                         for line in f:
                             line = line.strip()
                             if line.startswith('NAVER_CLIENT_SECRET='):
                                 client_secret = line.split('=', 1)[1].strip()
-                                logger.info("마스킹 우회: .env에서 직접 client_secret 로드")
+                                logger.info(f"✅ .env에서 직접 client_secret 로드 (길이: {len(client_secret)})")
                                 break
                             elif line.startswith('NAVER_CLIENT_ID='):
                                 if client_id == "****" or (client_id and len(client_id) <= 4):
                                     client_id = line.split('=', 1)[1].strip()
-                                    logger.info("마스킹 우회: .env에서 직접 client_id 로드")
+                                    logger.info(f"✅ .env에서 직접 client_id 로드")
                 except Exception as e:
-                    logger.error(f"환경 변수 직접 로드 실패: {e}")
+                    logger.error(f"❌ 환경 변수 직접 로드 실패: {e}")
 
             if client_id and client_secret and client_secret != "****":
+                logger.info(f"🚀 NaverShoppingAPI 생성 시도...")
                 self.naver_api = NaverShoppingAPI(client_id, client_secret)
-                logger.info("네이버 API 초기화 완료")
+                logger.info("✅ 네이버 API 초기화 완료")
             else:
-                logger.warning("네이버 API 설정이 없습니다")
+                logger.warning(f"⚠️  네이버 API 설정 불충족: id={bool(client_id)}, secret={bool(client_secret and client_secret != '****')}")
+                self.naver_api = None
 
             discord_webhook = config.get('DISCORD_WEBHOOK_URL')
             if discord_webhook:
@@ -868,6 +876,24 @@ async def save_settings(settings_data: dict):
         import traceback
         logger.error(f"📋 상세 오류 트레이스:\n{traceback.format_exc()}")
         return {"success": False, "error": str(e), "error_type": type(e).__name__}
+
+@app.get("/api/debug-init")
+async def debug_initialization():
+    """서버 초기화 상태 디버깅"""
+    try:
+        return {
+            "success": True,
+            "debug_info": {
+                "naver_api_initialized": bool(order_manager.naver_api),
+                "client_id": config.get('NAVER_CLIENT_ID')[:4] + "****" if config.get('NAVER_CLIENT_ID') else None,
+                "client_secret_length": len(config.get('NAVER_CLIENT_SECRET', '')),
+                "notification_manager": bool(order_manager.notification_manager),
+                "discord_webhook_set": bool(config.get('DISCORD_WEBHOOK_URL')),
+                "env_file_exists": os.path.exists('.env')
+            }
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
 
 @app.get("/api/test-api")
 async def test_api():
