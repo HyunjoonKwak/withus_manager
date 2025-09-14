@@ -31,7 +31,7 @@ class CancelTab(BaseTab):
         desc_frame = ttk.Frame(self.frame)
         desc_frame.pack(fill="x", padx=5, pady=5)
         desc_label = ttk.Label(desc_frame,
-                              text="주문확인후 발송처리 이전에 구매자가 취소 요청한 건입니다. 상품발송전에 취소건을 확인하시기 바랍니다. *취소승인 버튼을 클릭하면 취소처리 됩니다.",
+                              text="주문확인후 발송처리 이전에 구매자가 취소 요청한 건입니다. 상품발송전에 취소건을 확인하시기 바랍니다. [취소승인] 버튼을 클릭하면 취소처리 됩니다.",
                               font=("맑은 고딕", 14, "bold"),
                               foreground="#666666",
                               wraplength=800)
