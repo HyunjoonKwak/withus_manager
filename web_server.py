@@ -742,6 +742,7 @@ async def get_period_setting(page_type: str):
             'shipping-completed': 'SHIPPING_COMPLETED_DEFAULT_DAYS',
             'purchase-decided': 'PURCHASE_DECIDED_DEFAULT_DAYS',
             'cancel': 'CANCEL_DEFAULT_DAYS',
+            'cancel_orders': 'CANCEL_DEFAULT_DAYS',  # 취소주문 페이지 별칭
             'return-exchange': 'RETURN_EXCHANGE_DEFAULT_DAYS',
             'cancel-return-exchange': 'CANCEL_RETURN_EXCHANGE_DEFAULT_DAYS'
         }
@@ -750,12 +751,13 @@ async def get_period_setting(page_type: str):
         default_values = {
             'new-orders': 3,
             'shipping-pending': 3,
-            'shipping-in-progress': 30,
-            'shipping-completed': 7,
+            'shipping-in-progress': 3,
+            'shipping-completed': 3,
             'purchase-decided': 3,
-            'cancel': 30,
-            'return-exchange': 15,
-            'cancel-return-exchange': 7
+            'cancel': 3,
+            'cancel_orders': 3,  # 취소주문 페이지 별칭
+            'return-exchange': 3,
+            'cancel-return-exchange': 3
         }
 
         if page_type not in period_mapping:
@@ -789,6 +791,7 @@ async def save_period_setting(page_type: str, request_data: dict):
             'shipping-completed': 'SHIPPING_COMPLETED_DEFAULT_DAYS',
             'purchase-decided': 'PURCHASE_DECIDED_DEFAULT_DAYS',
             'cancel': 'CANCEL_DEFAULT_DAYS',
+            'cancel_orders': 'CANCEL_DEFAULT_DAYS',  # 취소주문 페이지 별칭
             'return-exchange': 'RETURN_EXCHANGE_DEFAULT_DAYS',
             'cancel-return-exchange': 'CANCEL_RETURN_EXCHANGE_DEFAULT_DAYS'
         }
