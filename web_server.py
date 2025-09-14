@@ -525,18 +525,20 @@ async def get_orders(
                 chunks_processed = api_response.get('chunks_processed', 0)
                 logger.info(f"📥 네이버 API 조회 완료: {chunks_processed}개 청크, 총 {total_orders}건")
 
-                # 2단계: 조회된 데이터를 데이터베이스에 저장 (주문이 있든 없든 항상 실행)
-                logger.info("💾 데이터베이스 저장 시작...")
-                try:
-                    saved_count = order_manager.naver_api.sync_orders_to_database(
-                        order_manager.db_manager,
-                        start_date=start_date_str,
-                        end_date=end_date_str
-                    )
-                    logger.info(f"✅ 데이터베이스 저장 완료: {saved_count}건 저장")
-                except Exception as sync_error:
-                    logger.error(f"❌ 데이터베이스 저장 실패: {sync_error}")
-                    # 저장 실패해도 계속 진행
+                # 2단계: 조회된 데이터를 데이터베이스에 저장 (중복 API 호출 방지)
+                if total_orders > 0:
+                    logger.info("💾 데이터베이스 저장 시작...")
+                    try:
+                        orders_data = api_response.get('data', {}).get('data', [])
+                        saved_count = order_manager.naver_api.save_orders_to_database(
+                            order_manager.db_manager, orders_data
+                        )
+                        logger.info(f"✅ 데이터베이스 저장 완료: {saved_count}건 저장")
+                    except Exception as sync_error:
+                        logger.error(f"❌ 데이터베이스 저장 실패: {sync_error}")
+                        # 저장 실패해도 계속 진행
+                else:
+                    logger.info("📝 조회된 주문이 없어 저장 생략")
             else:
                 logger.warning("❌ 네이버 API 응답 없음")
         else:
@@ -725,6 +727,53 @@ async def get_settings():
             settings["discord_webhook"] = "****"
 
         return {"success": True, "data": settings}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+@app.get("/api/settings/period/{page_type}")
+async def get_period_setting(page_type: str):
+    """페이지 타입별 기본 기간 설정 반환"""
+    try:
+        # 페이지 타입에 따른 환경변수 키 매핑
+        period_mapping = {
+            'new-orders': 'NEW_ORDER_DEFAULT_DAYS',
+            'shipping-pending': 'SHIPPING_PENDING_DEFAULT_DAYS',
+            'shipping-in-progress': 'SHIPPING_IN_PROGRESS_DEFAULT_DAYS',
+            'shipping-completed': 'SHIPPING_COMPLETED_DEFAULT_DAYS',
+            'purchase-decided': 'PURCHASE_DECIDED_DEFAULT_DAYS',
+            'cancel': 'CANCEL_DEFAULT_DAYS',
+            'return-exchange': 'RETURN_EXCHANGE_DEFAULT_DAYS',
+            'cancel-return-exchange': 'CANCEL_RETURN_EXCHANGE_DEFAULT_DAYS'
+        }
+
+        # 기본값 매핑
+        default_values = {
+            'new-orders': 3,
+            'shipping-pending': 3,
+            'shipping-in-progress': 30,
+            'shipping-completed': 7,
+            'purchase-decided': 3,
+            'cancel': 30,
+            'return-exchange': 15,
+            'cancel-return-exchange': 7
+        }
+
+        if page_type not in period_mapping:
+            return {"success": False, "error": f"지원하지 않는 페이지 타입: {page_type}"}
+
+        env_key = period_mapping[page_type]
+        default_days = default_values[page_type]
+
+        days = config.get_int(env_key, default_days)
+
+        return {
+            "success": True,
+            "data": {
+                "page_type": page_type,
+                "days": days,
+                "env_key": env_key
+            }
+        }
     except Exception as e:
         return {"success": False, "error": str(e)}
 

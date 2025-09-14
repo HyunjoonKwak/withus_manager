@@ -218,25 +218,64 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
-// 날짜 초기화 (기본 7일)
-function initializeDates() {
+// 날짜 초기화 (페이지 타입에 따른 기본 기간 적용)
+async function initializeDates() {
     console.log('initializeDates 함수 호출');
+    console.log('현재 페이지 타입:', currentPageType);
 
-    const today = new Date();
-    const weekAgo = new Date(today.getTime() - (7 * 24 * 60 * 60 * 1000));
+    try {
+        // 페이지 타입별 기본 기간 설정 가져오기
+        const response = await fetch(`/api/settings/period/${currentPageType}`);
+        const result = await response.json();
 
-    const startDateValue = weekAgo.toISOString().split('T')[0];
-    const endDateValue = today.toISOString().split('T')[0];
+        let defaultDays = 7; // 기본값
 
-    console.log('설정할 시작일:', startDateValue);
-    console.log('설정할 종료일:', endDateValue);
+        if (result.success && result.data) {
+            defaultDays = result.data.days;
+            console.log(`${currentPageType} 페이지의 기본 기간: ${defaultDays}일 (설정: ${result.data.env_key})`);
+        } else {
+            console.warn(`페이지 타입별 기간 설정 실패, 기본값 ${defaultDays}일 사용:`, result.error);
+        }
 
-    document.getElementById('startDate').value = startDateValue;
-    document.getElementById('endDate').value = endDateValue;
-    document.getElementById('periodSelect').value = '7';
+        // 날짜 설정
+        const today = new Date();
+        const startDate = new Date(today.getTime() - (defaultDays * 24 * 60 * 60 * 1000));
 
-    console.log('실제 설정된 시작일:', document.getElementById('startDate').value);
-    console.log('실제 설정된 종료일:', document.getElementById('endDate').value);
+        const startDateValue = startDate.toISOString().split('T')[0];
+        const endDateValue = today.toISOString().split('T')[0];
+
+        console.log('설정할 시작일:', startDateValue);
+        console.log('설정할 종료일:', endDateValue);
+        console.log('설정할 기간:', defaultDays + '일');
+
+        document.getElementById('startDate').value = startDateValue;
+        document.getElementById('endDate').value = endDateValue;
+
+        // 기간 선택 드롭다운에 해당 값이 있으면 설정
+        const periodSelect = document.getElementById('periodSelect');
+        const availableOptions = Array.from(periodSelect.options).map(opt => opt.value);
+        if (availableOptions.includes(defaultDays.toString())) {
+            periodSelect.value = defaultDays.toString();
+        } else {
+            periodSelect.value = ''; // "직접 선택"으로 설정
+            console.log(`기간 ${defaultDays}일은 선택 옵션에 없음, "직접 선택"으로 설정`);
+        }
+
+        console.log('실제 설정된 시작일:', document.getElementById('startDate').value);
+        console.log('실제 설정된 종료일:', document.getElementById('endDate').value);
+        console.log('실제 설정된 기간 옵션:', periodSelect.value);
+
+    } catch (error) {
+        console.error('기본 기간 설정 로드 실패:', error);
+
+        // 오류 발생 시 기본 7일로 설정
+        const today = new Date();
+        const weekAgo = new Date(today.getTime() - (7 * 24 * 60 * 60 * 1000));
+
+        document.getElementById('startDate').value = weekAgo.toISOString().split('T')[0];
+        document.getElementById('endDate').value = today.toISOString().split('T')[0];
+        document.getElementById('periodSelect').value = '7';
+    }
 }
 
 // 기간 설정

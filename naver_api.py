@@ -717,14 +717,44 @@ class NaverShoppingAPI:
                 'memo': ''  # 기본값
             }
 
-            print(f"[DEBUG] 수정된 order_data: {order_data}")
-            print(f"[DEBUG] order_id: '{order_data['order_id']}', status: '{order_data['status']}'")
-
             if db_manager.add_order(order_data):
                 synced_count += 1
         
         return synced_count
-    
+
+    def save_orders_to_database(self, db_manager, orders_data) -> int:
+        """이미 조회된 주문 데이터를 데이터베이스에 저장 (중복 API 호출 방지)"""
+        synced_count = 0
+
+        # orders_data는 get_orders 응답에서 data.data 부분
+        if not orders_data:
+            return synced_count
+
+        for order in orders_data:
+            # 네이버 API 응답은 { productOrderId, content: { order: {...}, productOrder: {...} } } 구조
+            content = order.get('content', {})
+            order_info = content.get('order', {})
+            product_info = content.get('productOrder', {})
+
+            order_data = {
+                'order_id': order_info.get('orderId'),  # content.order.orderId
+                'order_date': order_info.get('orderDate'),  # content.order.orderDate
+                'customer_name': order_info.get('ordererName'),  # content.order.ordererName
+                'customer_phone': order_info.get('ordererTel'),  # content.order.ordererTel
+                'product_name': product_info.get('productName'),  # content.productOrder.productName
+                'quantity': product_info.get('quantity', 1),  # content.productOrder.quantity
+                'price': product_info.get('totalPaymentAmount', 0),  # content.productOrder.totalPaymentAmount
+                'status': self._map_naver_status_to_local(product_info.get('productOrderStatus')),  # content.productOrder.productOrderStatus
+                'shipping_company': product_info.get('expectedDeliveryCompany'),  # content.productOrder.expectedDeliveryCompany
+                'tracking_number': '',  # 추후 배송 조회 API에서 가져와야 함
+                'memo': ''  # 기본값
+            }
+
+            if db_manager.add_order(order_data):
+                synced_count += 1
+
+        return synced_count
+
     def _map_naver_status_to_local(self, naver_status: str) -> str:
         """네이버 API 상태를 로컬 상태로 매핑"""
         status_mapping = {
