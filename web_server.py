@@ -683,17 +683,46 @@ async def save_settings(settings_data: dict):
         else:
             logger.warning(f"⚠️  .env 파일이 존재하지 않음: {env_file_path}")
 
-        # 변경 전 값들 기록
+        # 웹 폼 필드명을 환경변수명에 매핑
+        field_mapping = {
+            'client_id': 'NAVER_CLIENT_ID',
+            'client_secret': 'NAVER_CLIENT_SECRET',
+            'discord_webhook': 'DISCORD_WEBHOOK_URL',
+            'discord_enabled': 'DISCORD_ENABLED',
+            'check_interval': 'CHECK_INTERVAL',
+            'refresh_interval': 'REFRESH_INTERVAL',
+            'auto_refresh': 'AUTO_REFRESH',
+            'dashboard_period': 'DASHBOARD_PERIOD_DAYS',
+            'quick_period': 'QUICK_PERIOD_SETTING',
+            'allowed_ips': 'ALLOWED_IPS',
+            'new_order_days': 'NEW_ORDER_DEFAULT_DAYS',
+            'shipping_pending_days': 'SHIPPING_PENDING_DEFAULT_DAYS',
+            'shipping_in_progress_days': 'SHIPPING_IN_PROGRESS_DEFAULT_DAYS',
+            'shipping_completed_days': 'SHIPPING_COMPLETED_DEFAULT_DAYS',
+            'purchase_decided_days': 'PURCHASE_DECIDED_DEFAULT_DAYS',
+            'cancel_days': 'CANCEL_DEFAULT_DAYS',
+            'return_exchange_days': 'RETURN_EXCHANGE_DEFAULT_DAYS',
+            'cancel_return_exchange_days': 'CANCEL_RETURN_EXCHANGE_DEFAULT_DAYS',
+            'order_status_types': 'ORDER_STATUS_TYPES',
+            'product_status_types': 'PRODUCT_STATUS_TYPES',
+            'order_columns': 'ORDER_COLUMNS'
+        }
+
+        # 변경 전 값들 기록 (실제 환경변수명으로)
         original_values = {}
-        for key in settings_data.keys():
-            original_values[key] = config.get(key)
+        for web_key, env_key in field_mapping.items():
+            if web_key in settings_data:
+                original_values[web_key] = config.get(env_key)
         logger.info(f"🔍 변경 전 원본 값들: {original_values}")
 
         # 각 설정값을 환경 변수에 설정
         saved_settings = {}
         logger.info("🔄 환경 변수 설정 시작...")
 
-        for key, value in settings_data.items():
+        for web_key, value in settings_data.items():
+            # 웹 필드명을 환경변수명으로 변환
+            env_key = field_mapping.get(web_key, web_key.upper())
+
             # 값 타입에 따른 변환
             if isinstance(value, bool):
                 str_value = 'true' if value else 'false'
@@ -702,10 +731,10 @@ async def save_settings(settings_data: dict):
             else:
                 str_value = str(value) if value is not None else ''
 
-            # 환경 변수에 설정
-            logger.info(f"   🏷️  {key}: '{original_values.get(key, 'None')}' → '{str_value}'")
-            config.set(key, str_value)
-            saved_settings[key] = str_value
+            # 환경 변수에 설정 (실제 환경변수명으로)
+            logger.info(f"   🏷️  {web_key}({env_key}): '{original_values.get(web_key, 'None')}' → '{str_value}'")
+            config.set(env_key, str_value)
+            saved_settings[env_key] = str_value
 
         logger.info(f"✅ 환경 변수 설정 완료 - {len(saved_settings)}개 항목")
 
