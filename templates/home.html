@@ -92,14 +92,14 @@
                 <div class="period-controls">
                     <label for="period-select" class="form-label mb-0 text-sm">기간 변경:</label>
                     <select id="period-select" class="form-select form-select-sm" style="max-width: 120px;" onchange="changeDashboardPeriod()">
-                        <option value="1" {{ 'selected' if dashboard_data.period.days == 1 else '' }}>1일</option>
-                        <option value="3" {{ 'selected' if dashboard_data.period.days == 3 else '' }}>3일</option>
-                        <option value="5" {{ 'selected' if dashboard_data.period.days == 5 else '' }}>5일</option>
-                        <option value="7" {{ 'selected' if dashboard_data.period.days == 7 else '' }}>7일</option>
-                        <option value="10" {{ 'selected' if dashboard_data.period.days == 10 else '' }}>10일</option>
-                        <option value="14" {{ 'selected' if dashboard_data.period.days == 14 else '' }}>14일</option>
-                        <option value="30" {{ 'selected' if dashboard_data.period.days == 30 else '' }}>30일</option>
-                        <option value="90" {{ 'selected' if dashboard_data.period.days == 90 else '' }}>90일</option>
+                        <option value="1" {% if dashboard_data.period.days == 1 %}selected{% endif %}>1일</option>
+                        <option value="3" {% if dashboard_data.period.days == 3 %}selected{% endif %}>3일</option>
+                        <option value="5" {% if dashboard_data.period.days == 5 %}selected{% endif %}>5일</option>
+                        <option value="7" {% if dashboard_data.period.days == 7 %}selected{% endif %}>7일</option>
+                        <option value="10" {% if dashboard_data.period.days == 10 %}selected{% endif %}>10일</option>
+                        <option value="14" {% if dashboard_data.period.days == 14 %}selected{% endif %}>14일</option>
+                        <option value="30" {% if dashboard_data.period.days == 30 %}selected{% endif %}>30일</option>
+                        <option value="90" {% if dashboard_data.period.days == 90 %}selected{% endif %}>90일</option>
                     </select>
                 </div>
             </div>
