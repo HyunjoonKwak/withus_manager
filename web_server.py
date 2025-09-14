@@ -831,6 +831,21 @@ async def test_api():
         client_id = config.get('NAVER_CLIENT_ID')
         client_secret = config.get('NAVER_CLIENT_SECRET')
 
+        print(f"[DEBUG] 웹에서 가져온 client_id: {client_id}")
+        print(f"[DEBUG] 웹에서 가져온 client_secret: {client_secret}")
+        print(f"[DEBUG] client_secret 길이: {len(client_secret) if client_secret else 0}")
+
+        # 직접 .env 파일에서 읽어서 비교
+        import os
+        direct_secret = os.environ.get('NAVER_CLIENT_SECRET', '')
+        print(f"[DEBUG] os.environ에서 가져온 client_secret: {direct_secret}")
+        print(f"[DEBUG] os.environ secret 길이: {len(direct_secret)}")
+
+        # 만약 config.get()이 마스킹된 값을 반환한다면, 직접 환경변수 사용
+        if client_secret == "****" or len(client_secret) <= 4:
+            print(f"[DEBUG] 마스킹된 값 감지! os.environ 사용")
+            client_secret = direct_secret
+
         if not client_id or not client_secret:
             return {"success": False, "error": "API 키가 설정되지 않았습니다"}
 
