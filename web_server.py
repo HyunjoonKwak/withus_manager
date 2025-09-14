@@ -882,6 +882,37 @@ async def get_products():
         logger.error(f"상품 조회 API 오류: {e}")
         return {"success": False, "error": str(e)}
 
+@app.post("/api/products/filter-settings")
+async def save_product_filter_settings(request: Request):
+    """상품 필터 설정 저장"""
+    try:
+        data = await request.json()
+        selected_statuses = data.get('selectedStatuses', [])
+
+        # 환경 설정에 저장
+        config.set('PRODUCT_FILTER_STATUSES', ','.join(selected_statuses))
+        config.save_to_env_file()
+
+        return {"success": True, "message": "필터 설정이 저장되었습니다."}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+@app.get("/api/products/filter-settings")
+async def get_product_filter_settings():
+    """상품 필터 설정 조회"""
+    try:
+        saved_statuses = config.get('PRODUCT_FILTER_STATUSES', '')
+        selected_statuses = saved_statuses.split(',') if saved_statuses else []
+
+        return {
+            "success": True,
+            "settings": {
+                "selectedStatuses": selected_statuses
+            }
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
 @app.post("/api/products/refresh")
 async def refresh_products_from_api():
     """상품 목록 갱신 API - 네이버 API에서 상품 데이터 새로고침"""
