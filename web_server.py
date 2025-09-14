@@ -303,11 +303,24 @@ async def home(request: Request):
         # 대시보드 데이터 조회
         dashboard_data = order_manager._get_dashboard_data()
 
+        # 기간 정보 생성
+        from datetime import datetime, timedelta
+        period_days = config.get_int('DASHBOARD_PERIOD_DAYS', 10)
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=period_days)
+
+        period_info = {
+            "days": period_days,
+            "start_date": start_date.strftime('%Y-%m-%d'),
+            "end_date": end_date.strftime('%Y-%m-%d')
+        }
+
         context = {
             "request": request,
             "title": get_full_title(),
             "version_info": get_detailed_version_info(),
             "order_counts": dashboard_data,
+            "dashboard_data": {"period": period_info},
             "last_check": order_manager.last_check_time.strftime('%Y-%m-%d %H:%M:%S') if order_manager.last_check_time else "미확인",
             "monitoring_active": order_manager.monitoring_active,
             "total_orders": sum(dashboard_data.values())
