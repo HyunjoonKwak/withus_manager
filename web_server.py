@@ -57,7 +57,24 @@ class LightweightOrderManager:
             client_id = config.get('NAVER_CLIENT_ID')
             client_secret = config.get('NAVER_CLIENT_SECRET')
 
-            if client_id and client_secret:
+            # 만약 마스킹된 값이 반환되면 직접 .env 파일에서 읽기
+            if client_secret == "****" or (client_secret and len(client_secret) <= 4):
+                try:
+                    with open('.env', 'r', encoding='utf-8') as f:
+                        for line in f:
+                            line = line.strip()
+                            if line.startswith('NAVER_CLIENT_SECRET='):
+                                client_secret = line.split('=', 1)[1].strip()
+                                logger.info("마스킹 우회: .env에서 직접 client_secret 로드")
+                                break
+                            elif line.startswith('NAVER_CLIENT_ID='):
+                                if client_id == "****" or (client_id and len(client_id) <= 4):
+                                    client_id = line.split('=', 1)[1].strip()
+                                    logger.info("마스킹 우회: .env에서 직접 client_id 로드")
+                except Exception as e:
+                    logger.error(f"환경 변수 직접 로드 실패: {e}")
+
+            if client_id and client_secret and client_secret != "****":
                 self.naver_api = NaverShoppingAPI(client_id, client_secret)
                 logger.info("네이버 API 초기화 완료")
             else:
@@ -837,13 +854,29 @@ async def test_api():
 
         # 직접 .env 파일에서 읽어서 비교
         import os
-        direct_secret = os.environ.get('NAVER_CLIENT_SECRET', '')
-        print(f"[DEBUG] os.environ에서 가져온 client_secret: {direct_secret}")
-        print(f"[DEBUG] os.environ secret 길이: {len(direct_secret)}")
+        try:
+            with open('.env', 'r', encoding='utf-8') as f:
+                for line in f:
+                    line = line.strip()
+                    if line.startswith('NAVER_CLIENT_SECRET='):
+                        direct_secret = line.split('=', 1)[1].strip()
+                        print(f"[DEBUG] .env 파일에서 직접 읽은 client_secret: {direct_secret}")
+                        print(f"[DEBUG] .env 파일 secret 길이: {len(direct_secret)}")
+                        break
+                    elif line.startswith('NAVER_CLIENT_ID='):
+                        direct_id = line.split('=', 1)[1].strip()
+                        if client_id == "****" or len(client_id) <= 4:
+                            print(f"[DEBUG] .env 파일에서 직접 읽은 client_id: {direct_id}")
+                            client_id = direct_id
+                else:
+                    direct_secret = ''
+        except Exception as e:
+            print(f"[DEBUG] .env 파일 직접 읽기 실패: {e}")
+            direct_secret = ''
 
-        # 만약 config.get()이 마스킹된 값을 반환한다면, 직접 환경변수 사용
+        # 만약 config.get()이 마스킹된 값을 반환한다면, 직접 파일에서 읽은 값 사용
         if client_secret == "****" or len(client_secret) <= 4:
-            print(f"[DEBUG] 마스킹된 값 감지! os.environ 사용")
+            print(f"[DEBUG] 마스킹된 값 감지! .env 파일에서 직접 읽은 값 사용")
             client_secret = direct_secret
 
         if not client_id or not client_secret:
