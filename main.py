@@ -1,5 +1,5 @@
 """
-쇼핑몰 주문관리시스템 v1.0.0 - 메인 애플리케이션
+쇼핑몰 주문관리시스템 - 메인 애플리케이션 (동적 버전 관리)
 """
 import tkinter as tk
 from tkinter import ttk, messagebox
@@ -22,12 +22,12 @@ class TeeOutput:
             self.log_path = log_path  # 로그 경로 저장
             # 시작 시점 기록
             self.log_file.write(f"\n{'='*50}\n")
-            self.log_file.write(f"쇼핑몰 주문관리시스템 v1.0.0 시작: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+            self.log_file.write(f"{get_detailed_version_info()} 시작: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
             self.log_file.write(f"로그 파일 경로: {log_path}\n")
             self.log_file.write(f"{'='*50}\n")
 
             # 터미널에도 로그 파일 위치 출력
-            startup_msg = f"💾 로그 파일 위치: {log_path}\n🚀 쇼핑몰 주문관리시스템 v1.0.0 시작 중...\n"
+            startup_msg = f"💾 로그 파일 위치: {log_path}\n🚀 {get_detailed_version_info()} 시작 중...\n"
             print(startup_msg)
 
         except Exception as e:
@@ -83,26 +83,38 @@ class TeeOutput:
 # stdout 및 stderr 리다이렉트 임시 비활성화 (무한 루프 방지)
 # sys.stdout = TeeOutput()
 # sys.stderr = TeeOutput()
-print("💾 쇼핑몰 주문관리시스템 v1.0.0 - 로그 시스템 임시 비활성화")
+# 동적 버전 정보를 위해 import 추가
+from version_utils import get_detailed_version_info as get_version_for_log
+
+try:
+    version_info = get_version_for_log()
+    print(f"💾 {version_info} - 로그 시스템 임시 비활성화")
+except:
+    print("💾 쇼핑몰 주문관리시스템 - 로그 시스템 임시 비활성화")
 
 from database import DatabaseManager
 from naver_api import NaverShoppingAPI
 from notification_manager import NotificationManager
 from env_config import config
 from ui_utils import enable_context_menu
+from version_utils import get_full_title, get_detailed_version_info
 from tabs import HomeTab, APITestTab, BasicSettingsTab, ConditionSettingsTab, OrdersTab, NewOrderTab, ProductsTab, HelpTab, ShippingPendingTab, ShippingInProgressTab, ShippingCompletedTab, PurchaseDecidedTab, CancelTab, ReturnExchangeTab
 
 
 class WithUsOrderManager:
-    """쇼핑몰 주문관리시스템 v1.0.0 메인 클래스"""
+    """쇼핑몰 주문관리시스템 메인 클래스 - 동적 버전 관리"""
     
     def __init__(self):
         import time
         app_start_time = time.time()
-        print(f"=== 쇼핑몰 주문관리시스템 v1.0.0 시작 ===")
+        # 동적 버전 정보 가져오기
+        app_title = get_full_title()
+        detailed_info = get_detailed_version_info()
+
+        print(f"=== {detailed_info} 시작 ===")
 
         self.root = tk.Tk()
-        self.root.title("쇼핑몰 주문관리시스템 (v1.0.0)")
+        self.root.title(app_title)
         self.root.geometry("1400x900")
         print(f"Tkinter 루트 윈도우 생성: {time.time() - app_start_time:.3f}초")
         

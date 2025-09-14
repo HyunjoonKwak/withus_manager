@@ -84,6 +84,8 @@ class EnvConfig:
     def save_to_env_file(self):
         """환경 변수를 .env 파일에 저장"""
         env_vars = {
+            'APP_VERSION': self.get('APP_VERSION', '1.0.0'),
+            'APP_BUILD_DATE': self.get('APP_BUILD_DATE', '2025-09-14'),
             'NAVER_CLIENT_ID': self.get('NAVER_CLIENT_ID'),
             'NAVER_CLIENT_SECRET': self.get('NAVER_CLIENT_SECRET'),
             'DATABASE_PATH': self.get('DATABASE_PATH', 'orders.db'),
@@ -110,7 +112,10 @@ class EnvConfig:
         }
         
         with open('.env', 'w', encoding='utf-8') as f:
-            f.write("# 네이버 API 설정\n")
+            f.write("# 애플리케이션 버전 정보\n")
+            f.write(f"APP_VERSION={env_vars['APP_VERSION']}\n")
+            f.write(f"APP_BUILD_DATE={env_vars['APP_BUILD_DATE']}\n")
+            f.write("\n# 네이버 API 설정\n")
             f.write(f"NAVER_CLIENT_ID={env_vars['NAVER_CLIENT_ID']}\n")
             f.write(f"NAVER_CLIENT_SECRET={env_vars['NAVER_CLIENT_SECRET']}\n")
             f.write("\n# 데이터베이스 설정\n")
