@@ -8,22 +8,103 @@ import time
 from datetime import datetime, timedelta
 import json
 import os
+import sys
+
+# 로깅 설정 - 콘솔과 파일에 모두 출력
+class TeeOutput:
+    def __init__(self):
+        self.terminal = sys.stdout
+        self.log_file = None
+        try:
+            # 로그 파일을 현재 디렉토리에 생성
+            log_path = os.path.join(os.getcwd(), 'withus_app.log')
+            self.log_file = open(log_path, 'a', encoding='utf-8', buffering=1)  # 라인 버퍼링
+            self.log_path = log_path  # 로그 경로 저장
+            # 시작 시점 기록
+            self.log_file.write(f"\n{'='*50}\n")
+            self.log_file.write(f"WithUs 앱 시작: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+            self.log_file.write(f"로그 파일 경로: {log_path}\n")
+            self.log_file.write(f"{'='*50}\n")
+
+            # 터미널에도 로그 파일 위치 출력
+            startup_msg = f"💾 로그 파일 위치: {log_path}\n🚀 WithUs 주문관리 시스템 시작 중...\n"
+            print(startup_msg)
+
+        except Exception as e:
+            error_msg = f"로그 파일 생성 실패: {e}"
+            print(error_msg)
+
+    def write(self, message):
+        # 터미널에 출력 (강제로 시도)
+        try:
+            # print 함수 직접 사용하여 터미널 출력 강제
+            import sys
+            import os
+
+            # stderr로도 출력하여 확실히 보이도록
+            if hasattr(sys, 'stderr') and sys.stderr:
+                sys.stderr.write(message)
+                sys.stderr.flush()
+
+            # stdout으로도 출력
+            if hasattr(sys, '__stdout__') and sys.__stdout__:
+                sys.__stdout__.write(message)
+                sys.__stdout__.flush()
+
+            # macOS에서 Console.app으로 출력
+            if os.name == 'posix':  # macOS/Linux
+                try:
+                    os.system(f'echo "{message.strip()}" > /dev/console')
+                except:
+                    pass
+
+        except Exception as e:
+            pass
+
+        # 파일에 출력
+        if self.log_file:
+            try:
+                self.log_file.write(message)
+                self.log_file.flush()
+            except:
+                pass
+
+    def flush(self):
+        try:
+            self.terminal.flush()
+        except:
+            pass
+        if self.log_file:
+            try:
+                self.log_file.flush()
+            except:
+                pass
+
+# stdout 및 stderr 리다이렉트 임시 비활성화 (무한 루프 방지)
+# sys.stdout = TeeOutput()
+# sys.stderr = TeeOutput()
+print("💾 로그 시스템 임시 비활성화 - 직접 출력 모드")
 
 from database import DatabaseManager
 from naver_api import NaverShoppingAPI
 from notification_manager import NotificationManager
 from env_config import config
 from ui_utils import enable_context_menu
-from tabs import HomeTab, APITestTab, BasicSettingsTab, ConditionSettingsTab, OrdersTab, ShippingTab, ProductsTab, HelpTab
+from tabs import HomeTab, APITestTab, BasicSettingsTab, ConditionSettingsTab, OrdersTab, NewOrderTab, ProductsTab, HelpTab, ShippingPendingTab, ShippingInProgressTab, ShippingCompletedTab, PurchaseDecidedTab, CancelTab, ReturnExchangeTab
 
 
 class WithUsOrderManager:
     """WithUs 주문 관리 시스템 메인 클래스"""
     
     def __init__(self):
+        import time
+        app_start_time = time.time()
+        print(f"=== WithUs 주문 관리 시스템 시작 ===")
+
         self.root = tk.Tk()
         self.root.title("WithUs 주문 관리 시스템")
         self.root.geometry("1400x900")
+        print(f"Tkinter 루트 윈도우 생성: {time.time() - app_start_time:.3f}초")
         
         # 라이트모드 강제 설정 (다크모드 비활성화)
         self.root.configure(bg='white')
@@ -115,13 +196,31 @@ class WithUsOrderManager:
         
         self.orders_tab = OrdersTab(self.notebook, self)
         self.notebook.add(self.orders_tab.frame, text="주문관리")
-        
+
+        self.new_order_tab = NewOrderTab(self.notebook, self)
+        self.notebook.add(self.new_order_tab.frame, text="신규주문")
+
+        self.shipping_pending_tab = ShippingPendingTab(self.notebook, self)
+        self.notebook.add(self.shipping_pending_tab.frame, text="발송대기")
+
+        self.shipping_in_progress_tab = ShippingInProgressTab(self.notebook, self)
+        self.notebook.add(self.shipping_in_progress_tab.frame, text="배송중")
+
+        self.shipping_completed_tab = ShippingCompletedTab(self.notebook, self)
+        self.notebook.add(self.shipping_completed_tab.frame, text="배송완료")
+
+        self.purchase_decided_tab = PurchaseDecidedTab(self.notebook, self)
+        self.notebook.add(self.purchase_decided_tab.frame, text="구매확정")
+
+        self.cancel_tab = CancelTab(self.notebook, self)
+        self.notebook.add(self.cancel_tab.frame, text="취소")
+
+        self.return_exchange_tab = ReturnExchangeTab(self.notebook, self)
+        self.notebook.add(self.return_exchange_tab.frame, text="반품교환")
+
         self.products_tab = ProductsTab(self.notebook, self)
         self.notebook.add(self.products_tab.frame, text="상품관리")
-        
-        self.shipping_tab = ShippingTab(self.notebook, self)
-        self.notebook.add(self.shipping_tab.frame, text="배송관리")
-        
+
         self.api_test_tab = APITestTab(self.notebook, self)
         self.notebook.add(self.api_test_tab.frame, text="API 테스트")
         
@@ -144,12 +243,21 @@ class WithUsOrderManager:
         status_bar.pack(side="bottom", fill="x")
     
     def on_tab_changed(self, event):
-        """탭 변경 이벤트 핸들러"""
+        """탭 변경 이벤트 핸들러 - 성능 최적화"""
         try:
+            import time
+            start_time = time.time()
+
+            # 즉시 화면 업데이트 강제 (탭 변경 시각적 피드백)
+            self.root.update_idletasks()
+
             # 현재 선택된 탭 가져오기
             selected_tab = self.notebook.select()
             tab_index = self.notebook.index(selected_tab)
-            
+            tab_text = self.notebook.tab(selected_tab, "text")
+
+            print(f"탭 변경 시작: '{tab_text}' (인덱스 {tab_index})")
+
             # 주문수집 탭 (인덱스 1)이 선택된 경우
             if tab_index == 1:  # 주문수집 탭
                 if hasattr(self.orders_tab, 'is_first_load') and not self.orders_tab.is_first_load:
@@ -158,9 +266,30 @@ class WithUsOrderManager:
                 elif hasattr(self.orders_tab, 'is_first_load') and self.orders_tab.is_first_load:
                     # 첫 로드인 경우 자동으로 주문 조회
                     self.orders_tab.query_orders_from_api()
-                    
+
+            # 기본설정/조건설정/도움말 탭의 점진적 로딩 트리거
+            elif tab_index == 10:  # 기본설정 탭
+                if hasattr(self.basic_settings_tab, 'create_detailed_ui') and not hasattr(self.basic_settings_tab, 'detailed_ui_created'):
+                    # 비동기 UI 생성 시작 (블로킹 방지)
+                    self.root.after(1, self.basic_settings_tab.create_detailed_ui)
+            elif tab_index == 11:  # 조건설정 탭
+                if hasattr(self.condition_settings_tab, 'create_detailed_ui') and not hasattr(self.condition_settings_tab, 'detailed_ui_created'):
+                    # 비동기 UI 생성 시작 (블로킹 방지)
+                    self.root.after(1, self.condition_settings_tab.create_detailed_ui)
+            elif tab_index == 12:  # 도움말 탭
+                if hasattr(self.help_tab, 'create_detailed_ui') and not hasattr(self.help_tab, 'detailed_ui_created'):
+                    # 비동기 UI 생성 시작 (블로킹 방지)
+                    self.root.after(1, self.help_tab.create_detailed_ui)
+
+            # 최종적으로 전체 화면 강제 업데이트
+            self.root.update()  # update_idletasks() 대신 강력한 update() 사용
+
+            print(f"탭 변경 처리 완료: {time.time() - start_time:.3f}초")
+
         except Exception as e:
             print(f"탭 변경 이벤트 오류: {e}")
+            import traceback
+            traceback.print_exc()
     
     def initialize_api(self):
         """API 초기화"""
@@ -184,10 +313,26 @@ class WithUsOrderManager:
     def initialize_notifications(self):
         """알림 매니저 초기화"""
         try:
-            self.notification_manager = NotificationManager()
-            print("알림 매니저 초기화 완료")
+            # 환경 설정에서 디스코드 웹훅 URL 가져오기
+            discord_webhook_url = config.get('DISCORD_WEBHOOK_URL', '')
+
+            # NotificationManager 초기화
+            self.notification_manager = NotificationManager(discord_webhook_url)
+
+            # 알림 설정 로드
+            desktop_enabled = config.get('DESKTOP_NOTIFICATIONS', 'true').lower() == 'true'
+            discord_enabled = config.get('DISCORD_ENABLED', 'false').lower() == 'true'
+
+            # 알림 타입별 활성화/비활성화 설정
+            self.notification_manager.enable_notification('desktop', desktop_enabled)
+            self.notification_manager.enable_notification('discord', discord_enabled and bool(discord_webhook_url))
+
+            print(f"알림 매니저 초기화 완료 - 데스크탑: {desktop_enabled}, 디스코드: {discord_enabled and bool(discord_webhook_url)}")
+
         except Exception as e:
             print(f"알림 매니저 초기화 오류: {e}")
+            # 실패 시 기본 알림 매니저 생성
+            self.notification_manager = NotificationManager()
     
     def auto_load_products(self):
         """저장된 상품 자동 로드"""

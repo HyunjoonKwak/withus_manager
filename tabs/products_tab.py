@@ -106,7 +106,7 @@ class ProductsTab(BaseTab):
                         "네이버 커머스 API가 설정되지 않았습니다.\n설정 탭에서 API 정보를 입력해주세요."
                     )
                     # 기본설정 탭으로 이동
-                    self.app.notebook.select(5)
+                    self.app.notebook.select(8)  # 기본설정 탭
                 
                 self.app.root.after(0, show_api_error)
                 return

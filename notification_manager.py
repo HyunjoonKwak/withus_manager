@@ -141,18 +141,40 @@ class NotificationManager:
         except Exception as e:
             print(f"디스코드 알림 전송 오류: {e}")
     
-    def send_new_order_notification(self, order_data: Dict):
-        """신규 주문 알림 - 데스크탑 알림만 (알림음 포함)"""
+    def send_new_order_desktop_notification(self, order_data: Dict):
+        """신규 주문 데스크탑 알림 (알림음 포함)"""
         title = "🛒 신규 주문 알림"
         message = f"주문번호: {order_data.get('order_id', 'N/A')}\n"
         message += f"고객명: {order_data.get('customer_name', 'N/A')}\n"
         message += f"상품명: {order_data.get('product_name', 'N/A')}\n"
         message += f"금액: {order_data.get('price', 0):,}원"
-        
-        # 데스크탑 알림만 (알림음 포함)
+
+        # 데스크탑 알림 (알림음 포함)
         self.send_desktop_notification_with_sound(title, message)
-        
-        # 디스코드 알림은 별도로 전송하지 않음 (상태변화 알림에서 처리)
+
+    def send_new_order_discord_notification(self, order_data: Dict):
+        """신규 주문 디스코드 알림"""
+        title = "🛒 신규 주문 알림"
+
+        discord_message = f"**새로운 주문이 접수되었습니다!**\n\n"
+        discord_message += f"📋 주문번호: {order_data.get('order_id', 'N/A')}\n"
+        discord_message += f"👤 고객명: {order_data.get('customer_name', 'N/A')}\n"
+        discord_message += f"🛍️ 상품명: {order_data.get('product_name', 'N/A')}\n"
+        discord_message += f"📦 수량: {order_data.get('quantity', 1)}개\n"
+        discord_message += f"💰 금액: {order_data.get('price', 0):,}원\n"
+        discord_message += f"📅 주문일시: {order_data.get('order_date', 'N/A')}"
+
+        self.send_discord_notification(title, discord_message, 0x00ff00)
+
+    def send_new_order_notification(self, order_data: Dict):
+        """신규 주문 알림 (데스크탑 + 디스코드)"""
+        # 데스크탑 알림 전송
+        if self.enabled_notifications['desktop']:
+            self.send_new_order_desktop_notification(order_data)
+
+        # 디스코드 알림 전송
+        if self.enabled_notifications['discord']:
+            self.send_new_order_discord_notification(order_data)
     
     def send_status_change_notification(self, order_id: str, old_status: str, new_status: str):
         """주문 상태 변경 알림"""

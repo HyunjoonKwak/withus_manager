@@ -16,27 +16,144 @@ class BasicSettingsTab(BaseTab):
     """기본설정 탭 클래스"""
     
     def __init__(self, parent, app):
+        import time
+        start_time = time.time()
+
         super().__init__(parent, app)
+        print(f"기본설정 탭 - BaseTab 초기화: {time.time() - start_time:.3f}초")
+
         self.setup_styles()
+        print(f"기본설정 탭 - 스타일 설정: {time.time() - start_time:.3f}초")
+
+        # 최소한의 UI만 먼저 생성
+        self.create_basic_ui_skeleton()
+        print(f"기본설정 탭 - 기본 스켈레톤: {time.time() - start_time:.3f}초")
+
+        # 나머지는 사용자가 탭을 클릭할 때까지 지연 (메모리 절약)
+        # 지연 로딩은 on_tab_changed에서 처리
+
+        print(f"기본설정 탭 - 전체 초기화: {time.time() - start_time:.3f}초")
+
+    def create_basic_ui_skeleton(self):
+        """기본 UI 스켈레톤만 먼저 생성"""
+        # 간단한 로딩 UI만 생성 (스크롤 프레임 생성 지연)
+        self.temp_loading_frame = ttk.Frame(self.frame)
+        self.temp_loading_frame.pack(fill="both", expand=True)
+
+        # 중앙 정렬을 위한 컨테이너
+        center_frame = ttk.Frame(self.temp_loading_frame)
+        center_frame.pack(expand=True)
+
+        self.loading_label = ttk.Label(center_frame, text="⚙️ 설정 로딩 중...", font=("", 14))
+        self.loading_label.pack(pady=50)
+
+    def create_detailed_ui(self):
+        """상세 UI 요소들을 점진적 렌더링으로 생성"""
+        try:
+            # 이미 생성되었는지 체크
+            if hasattr(self, 'detailed_ui_created'):
+                return
+
+            import time
+            detail_start = time.time()
+
+            # 임시 로딩 프레임 제거
+            if hasattr(self, 'temp_loading_frame'):
+                self.temp_loading_frame.destroy()
+
+            print(f"기본설정 탭 - 로딩 프레임 제거: {time.time() - detail_start:.3f}초")
+
+            # 점진적 UI 렌더링 시작
+            self._render_ui_progressively(detail_start)
+
+        except Exception as e:
+            print(f"상세 UI 생성 오류: {e}")
+            import traceback
+            traceback.print_exc()
+
+    def _render_ui_progressively(self, start_time):
+        """UI를 단계적으로 렌더링하여 반응성 개선"""
+        import time
+
+        # 1단계: 스크롤 프레임 생성 (즉시)
+        self.app.root.after(1, lambda: self._render_step_1(start_time))
+
+    def _render_step_1(self, start_time):
+        """1단계: 스크롤 프레임 생성"""
+        import time
+        self.setup_scrollable_frame()
+
+        # 강제 UI 업데이트 및 화면에 즉시 표시
+        self.app.root.update()
+        print(f"기본설정 탭 - 스크롤 프레임 생성: {time.time() - start_time:.3f}초")
+
+        # 2단계 예약 (10ms 후)
+        self.app.root.after(10, lambda: self._render_step_2(start_time))
+
+    def _render_step_2(self, start_time):
+        """2단계: 메인 UI 생성"""
+        import time
         self.create_basic_settings_tab()
-        self.setup_copy_paste_bindings()
+
+        # 강제 UI 업데이트
+        self.app.root.update()
+        print(f"기본설정 탭 - 메인 UI 생성: {time.time() - start_time:.3f}초")
+
+        # 3단계 예약 (10ms 후)
+        self.app.root.after(10, lambda: self._render_step_3(start_time))
+
+    def _render_step_3(self, start_time):
+        """3단계: 설정 로딩 및 바인딩"""
+        import time
         self.load_settings()
-        self.refresh_current_ip()
+        self.setup_copy_paste_bindings()
+        self.setup_keyboard_shortcuts()
+
+        # 강제 UI 업데이트
+        self.app.root.update()
+        print(f"기본설정 탭 - 설정/바인딩: {time.time() - start_time:.3f}초")
+
+        # 4단계 예약 (10ms 후)
+        self.app.root.after(10, lambda: self._render_step_4(start_time))
+
+    def _render_step_4(self, start_time):
+        """4단계: 최종 렌더링 완료"""
+        import time
+
+        # 최종 강제 업데이트
+        self.app.root.update()
+        if hasattr(self, 'canvas'):
+            self.canvas.update()
+
+        # IP 확인은 백그라운드에서 (1초 후)
+        self.app.root.after(1000, self.refresh_current_ip)
+
+        # 완료 플래그
+        self.detailed_ui_created = True
+
+        print(f"기본설정 탭 - 렌더링 완료 (총 {time.time() - start_time:.3f}초)")
+
+        # 사용자에게 완료 피드백
+        if hasattr(self, 'loading_label'):
+            try:
+                self.loading_label.destroy()
+            except:
+                pass
     
     def setup_styles(self):
         """스타일 설정"""
         try:
             style = ttk.Style()
-            
+
             # 섹션 라벨프레임 스타일
-            style.configure("Section.TLabelframe", 
-                          borderwidth=2, 
+            style.configure("Section.TLabelframe",
+                          borderwidth=2,
                           relief="solid",
                           background="#f0f0f0")
-            style.configure("Section.TLabelframe.Label", 
+            style.configure("Section.TLabelframe.Label",
                           font=("", 10, "bold"),
                           foreground="#2c3e50")
-                          
+
         except Exception as e:
             print(f"스타일 설정 오류: {e}")
     
@@ -49,48 +166,64 @@ class BasicSettingsTab(BaseTab):
         separator.pack(fill="x")
     
     def setup_scrollable_frame(self):
-        """스크롤 가능한 프레임 설정"""
-        # 캔버스와 스크롤바 생성
-        self.canvas = tk.Canvas(self.frame, highlightthickness=0)
-        self.scrollbar = ttk.Scrollbar(self.frame, orient="vertical", command=self.canvas.yview)
-        
-        # 스크롤 가능한 내용을 담을 프레임
-        self.scrollable_frame = ttk.Frame(self.canvas)
-        
-        # 스크롤 영역 설정
-        self.scrollable_frame.bind(
-            "<Configure>",
-            lambda e: self.canvas.configure(scrollregion=self.canvas.bbox("all"))
-        )
-        
-        # 캔버스에 프레임 추가
-        self.canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
-        self.canvas.configure(yscrollcommand=self.scrollbar.set)
-        
-        # 캔버스와 스크롤바 배치
-        self.canvas.pack(side="left", fill="both", expand=True)
-        self.scrollbar.pack(side="right", fill="y")
-        
-        # 마우스 휠 스크롤 지원
-        def on_mousewheel(event):
-            self.canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
-        
-        self.canvas.bind("<MouseWheel>", on_mousewheel)  # Windows
-        self.canvas.bind("<Button-4>", lambda e: self.canvas.yview_scroll(-1, "units"))  # Linux
-        self.canvas.bind("<Button-5>", lambda e: self.canvas.yview_scroll(1, "units"))   # Linux
-        
-        # 캔버스 크기 조정 시 스크롤 프레임 너비 맞추기
-        def configure_scroll_region(event):
-            canvas_width = event.width
-            self.canvas.itemconfig(self.canvas.find_all()[0], width=canvas_width)
-        
-        self.canvas.bind("<Configure>", configure_scroll_region)
+        """스크롤 가능한 프레임 설정 - 안전한 레이아웃"""
+        try:
+            # 캔버스와 스크롤바 생성 (흰색 배경)
+            self.canvas = tk.Canvas(self.frame, highlightthickness=0, bd=0, bg='white')
+            self.scrollbar = ttk.Scrollbar(self.frame, orient="vertical", command=self.canvas.yview)
+
+            # 스크롤 가능한 내용을 담을 프레임
+            self.scrollable_frame = ttk.Frame(self.canvas)
+
+            # 캔버스와 스크롤바 배치
+            self.scrollbar.pack(side="right", fill="y")
+            self.canvas.pack(side="left", fill="both", expand=True)
+
+            # 캔버스에 프레임 추가
+            self.canvas_window = self.canvas.create_window(0, 0, window=self.scrollable_frame, anchor="nw")
+            self.canvas.configure(yscrollcommand=self.scrollbar.set)
+
+            # 바인딩 설정
+            self.app.root.after(50, self._setup_scroll_bindings)
+
+        except Exception as e:
+            print(f"스크롤 프레임 설정 오류: {e}")
+
+    def _setup_scroll_bindings(self):
+        """스크롤 바인딩 설정 - 지연 로딩"""
+        try:
+            # 스크롤 영역 설정
+            def configure_scroll_region(event=None):
+                self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+
+            self.scrollable_frame.bind("<Configure>", configure_scroll_region)
+
+            # 마우스 휠 스크롤 지원
+            def on_mousewheel(event):
+                self.canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+
+            self.canvas.bind("<MouseWheel>", on_mousewheel)  # Windows
+            self.canvas.bind("<Button-4>", lambda e: self.canvas.yview_scroll(-1, "units"))  # Linux
+            self.canvas.bind("<Button-5>", lambda e: self.canvas.yview_scroll(1, "units"))   # Linux
+
+            # 캔버스 크기 조정 시 스크롤 프레임 너비 맞추기
+            def configure_canvas_width(event):
+                canvas_width = event.width
+                # 스크롤바 너비를 제외한 캔버스 너비 설정
+                self.canvas.itemconfig(self.canvas_window, width=canvas_width)
+
+            self.canvas.bind("<Configure>", configure_canvas_width)
+
+            # 초기 스크롤 영역 설정
+            configure_scroll_region()
+
+        except Exception as e:
+            print(f"스크롤 바인딩 설정 오류: {e}")
     
     def create_basic_settings_tab(self):
         """기본설정 탭 UI 생성"""
-        # 스크롤 가능한 프레임 설정
-        self.setup_scrollable_frame()
-        
+        # 스크롤 프레임은 이미 _render_step_1에서 설정됨
+
         # API 설정
         api_frame = ttk.LabelFrame(self.scrollable_frame, text="🔑 API 설정", style="Section.TLabelframe")
         api_frame.pack(fill="x", padx=5, pady=(5, 10))
@@ -165,7 +298,8 @@ class BasicSettingsTab(BaseTab):
         notification_buttons_frame.pack(fill="x", padx=5, pady=5)
         
         ttk.Button(notification_buttons_frame, text="알림 설정 저장", command=self.save_notification_settings).pack(side="left", padx=5)
-        ttk.Button(notification_buttons_frame, text="알림 테스트", command=self.test_notifications).pack(side="left", padx=5)
+        ttk.Button(notification_buttons_frame, text="데스크탑 알림 테스트", command=self.test_desktop_notification).pack(side="left", padx=5)
+        ttk.Button(notification_buttons_frame, text="디스코드 알림 테스트", command=self.test_discord_notification).pack(side="left", padx=5)
         
         # 구분선 추가
         self.add_separator()
@@ -215,15 +349,15 @@ class BasicSettingsTab(BaseTab):
         current_ip_frame = ttk.Frame(ip_management_frame)
         current_ip_frame.pack(fill="x", padx=5, pady=3)
         
-        ttk.Label(current_ip_frame, text="현재 공인 IP:").pack(side="left", padx=5)
+        ttk.Label(current_ip_frame, text="현재 공인 IP:", font=("맑은 고딕", 12, "bold")).pack(side="left", padx=5)
         self.current_ip_var = tk.StringVar()
         self.current_ip_var.set("확인 중...")
-        self.current_ip_label = ttk.Label(current_ip_frame, textvariable=self.current_ip_var, foreground="blue", font=("", 9, "bold"))
+        self.current_ip_label = ttk.Label(current_ip_frame, textvariable=self.current_ip_var, foreground="#d2691e", font=("맑은 고딕", 12, "bold"))
         self.current_ip_label.pack(side="left", padx=5)
         
         self.ip_status_var = tk.StringVar()
         self.ip_status_var.set("")
-        self.ip_status_label = ttk.Label(current_ip_frame, textvariable=self.ip_status_var, font=("", 9, "bold"))
+        self.ip_status_label = ttk.Label(current_ip_frame, textvariable=self.ip_status_var, font=("맑은 고딕", 11, "bold"))
         self.ip_status_label.pack(side="left", padx=5)
         
         ttk.Button(current_ip_frame, text="새로고침", command=self.refresh_current_ip).pack(side="right", padx=2)
@@ -236,8 +370,8 @@ class BasicSettingsTab(BaseTab):
         ip_list_container = ttk.Frame(ip_manage_frame)
         ip_list_container.pack(side="left", fill="both", expand=True, padx=(0, 10))
         
-        ttk.Label(ip_list_container, text="허가된 IP 목록 (최대 5개):").pack(anchor="w")
-        self.ip_listbox = tk.Listbox(ip_list_container, height=5, font=("Consolas", 9), width=25)
+        ttk.Label(ip_list_container, text="허가된 IP 목록 (최대 5개):", font=("맑은 고딕", 12, "bold")).pack(anchor="w")
+        self.ip_listbox = tk.Listbox(ip_list_container, height=5, font=("Consolas", 11), width=25)
         self.ip_listbox.pack(anchor="w", pady=(2, 5))
         
         # IP 관리 컨트롤 (우측)
@@ -269,6 +403,81 @@ class BasicSettingsTab(BaseTab):
         enable_context_menu(self.client_secret_entry)
         enable_context_menu(self.discord_webhook_entry)
         enable_context_menu(self.new_ip_entry)
+        enable_context_menu(self.refresh_interval_entry)
+    
+    def setup_keyboard_shortcuts(self):
+        """키보드 단축키 설정"""
+        try:
+            entry_widgets = [
+                self.client_id_entry,
+                self.client_secret_entry,
+                self.discord_webhook_entry,
+                self.new_ip_entry,
+                self.refresh_interval_entry
+            ]
+            
+            for widget in entry_widgets:
+                # 복사 (Ctrl+C)
+                widget.bind('<Control-c>', lambda e, w=widget: self.copy_text(w))
+                # 붙여넣기 (Ctrl+V)
+                widget.bind('<Control-v>', lambda e, w=widget: self.paste_text(w))
+                # 잘라내기 (Ctrl+X)
+                widget.bind('<Control-x>', lambda e, w=widget: self.cut_text(w))
+                # 전체 선택 (Ctrl+A)
+                widget.bind('<Control-a>', lambda e, w=widget: self.select_all(w))
+                # macOS 지원
+                widget.bind('<Command-c>', lambda e, w=widget: self.copy_text(w))
+                widget.bind('<Command-v>', lambda e, w=widget: self.paste_text(w))
+                widget.bind('<Command-x>', lambda e, w=widget: self.cut_text(w))
+                widget.bind('<Command-a>', lambda e, w=widget: self.select_all(w))
+                
+        except Exception as e:
+            print(f"키보드 단축키 설정 오류: {e}")
+    
+    def copy_text(self, widget):
+        """텍스트 복사"""
+        try:
+            if hasattr(widget, 'selection_present') and widget.selection_present():
+                widget.clipboard_clear()
+                widget.clipboard_append(widget.selection_get())
+            return "break"
+        except Exception as e:
+            print(f"복사 오류: {e}")
+            return "break"
+    
+    def paste_text(self, widget):
+        """텍스트 붙여넣기"""
+        try:
+            clipboard_text = widget.clipboard_get()
+            if hasattr(widget, 'selection_present') and widget.selection_present():
+                widget.delete(tk.SEL_FIRST, tk.SEL_LAST)
+            widget.insert(tk.INSERT, clipboard_text)
+            return "break"
+        except Exception as e:
+            print(f"붙여넣기 오류: {e}")
+            return "break"
+    
+    def cut_text(self, widget):
+        """텍스트 잘라내기"""
+        try:
+            if hasattr(widget, 'selection_present') and widget.selection_present():
+                widget.clipboard_clear()
+                widget.clipboard_append(widget.selection_get())
+                widget.delete(tk.SEL_FIRST, tk.SEL_LAST)
+            return "break"
+        except Exception as e:
+            print(f"잘라내기 오류: {e}")
+            return "break"
+    
+    def select_all(self, widget):
+        """전체 선택"""
+        try:
+            widget.select_range(0, tk.END)
+            widget.icursor(tk.END)
+            return "break"
+        except Exception as e:
+            print(f"전체 선택 오류: {e}")
+            return "break"
     
     def load_settings(self):
         """설정 로드"""
@@ -323,7 +532,7 @@ class BasicSettingsTab(BaseTab):
                 return
             
             # API 연결 테스트
-            response = self.app.naver_api.get_seller_account()
+            response = self.app.naver_api.get_store_info()
             
             if response and response.get('success'):
                 messagebox.showinfo("성공", "API 연결 테스트 성공!")
@@ -349,37 +558,89 @@ class BasicSettingsTab(BaseTab):
             
             # 알림 매니저 재초기화
             self.app.initialize_notifications()
+
+            # 현재 설정된 상태 출력 (디버깅용)
+            print(f"알림 설정 저장 완료:")
+            print(f"  - 데스크탑 알림: {desktop_enabled}")
+            print(f"  - 디스코드 알림: {discord_enabled}")
+            print(f"  - 웹훅 URL: {'설정됨' if webhook_url else '설정되지 않음'}")
+            if self.app.notification_manager:
+                print(f"  - 알림 매니저 상태: {self.app.notification_manager.enabled_notifications}")
             
             messagebox.showinfo("성공", "알림 설정이 저장되었습니다.")
             
         except Exception as e:
             messagebox.showerror("오류", f"알림 설정 저장 실패: {str(e)}")
     
-    def test_notifications(self):
-        """알림 테스트"""
+    def test_desktop_notification(self):
+        """데스크탑 알림 테스트"""
         try:
+            if not self.desktop_notifications_var.get():
+                messagebox.showwarning("설정 필요", "데스크탑 알림이 비활성화되어 있습니다.\n먼저 데스크탑 알림을 활성화해주세요.")
+                return
+
+            # 알림 매니저 상태 확인
+            if not self.app.notification_manager:
+                messagebox.showerror("오류", "알림 매니저가 초기화되지 않았습니다.")
+                return
+
+            print(f"데스크탑 알림 테스트 시작 - 매니저 상태: {self.app.notification_manager.enabled_notifications}")
+
             # 테스트 주문 데이터
             test_order = {
-                'order_id': 'TEST_ORDER_001',
-                'customer_name': '테스트 고객',
-                'product_name': '테스트 상품',
+                'order_id': 'TEST_DESKTOP_001',
+                'customer_name': '데스크탑 테스트 고객',
+                'product_name': '데스크탑 테스트 상품',
                 'quantity': 1,
                 'price': 10000,
                 'order_date': '2024-01-01 12:00:00'
             }
-            
+
             # 데스크탑 알림 테스트
-            if self.desktop_notifications_var.get():
-                self.app.notification_manager.show_desktop_notification("테스트 알림", "테스트 메시지입니다.")
-            
-            # Discord 알림 테스트
-            if self.discord_enabled_var.get():
-                self.app.notification_manager.send_new_order_notification(test_order)
-            
-            messagebox.showinfo("성공", "알림 테스트가 완료되었습니다.")
-            
+            self.app.notification_manager.send_new_order_desktop_notification(test_order)
+            messagebox.showinfo("성공", "데스크탑 알림 테스트가 완료되었습니다.\n알림을 확인해주세요.")
+
         except Exception as e:
-            messagebox.showerror("오류", f"알림 테스트 실패: {str(e)}")
+            print(f"데스크탑 알림 테스트 오류: {e}")
+            messagebox.showerror("오류", f"데스크탑 알림 테스트 실패: {str(e)}")
+
+    def test_discord_notification(self):
+        """디스코드 알림 테스트"""
+        try:
+            if not self.discord_enabled_var.get():
+                messagebox.showwarning("설정 필요", "디스코드 알림이 비활성화되어 있습니다.\n먼저 디스코드 알림을 활성화해주세요.")
+                return
+
+            webhook_url = self.discord_webhook_var.get().strip()
+            if not webhook_url:
+                messagebox.showwarning("설정 필요", "디스코드 웹훅 URL이 설정되지 않았습니다.\n웹훅 URL을 먼저 입력해주세요.")
+                return
+
+            # 알림 매니저 상태 확인
+            if not self.app.notification_manager:
+                messagebox.showerror("오류", "알림 매니저가 초기화되지 않았습니다.")
+                return
+
+            print(f"디스코드 알림 테스트 시작 - 매니저 상태: {self.app.notification_manager.enabled_notifications}")
+            print(f"웹훅 URL: {webhook_url[:50]}...")
+
+            # 테스트 주문 데이터
+            test_order = {
+                'order_id': 'TEST_DISCORD_001',
+                'customer_name': '디스코드 테스트 고객',
+                'product_name': '디스코드 테스트 상품',
+                'quantity': 1,
+                'price': 15000,
+                'order_date': '2024-01-01 12:00:00'
+            }
+
+            # 디스코드 알림 테스트
+            self.app.notification_manager.send_new_order_discord_notification(test_order)
+            messagebox.showinfo("성공", "디스코드 알림 테스트가 완료되었습니다.\n디스코드 채널을 확인해주세요.")
+
+        except Exception as e:
+            print(f"디스코드 알림 테스트 오류: {e}")
+            messagebox.showerror("오류", f"디스코드 알림 테스트 실패: {str(e)}")
     
     # IP 관리 메서드들
     def load_ip_settings(self):

@@ -12,26 +12,127 @@ class ConditionSettingsTab(BaseTab):
     """조건설정 탭 클래스"""
     
     def __init__(self, parent, app):
+        import time
+        start_time = time.time()
+
         super().__init__(parent, app)
+        print(f"조건설정 탭 - BaseTab 초기화: {time.time() - start_time:.3f}초")
+
         self.setup_styles()
+        print(f"조건설정 탭 - 스타일 설정: {time.time() - start_time:.3f}초")
+
+        # 최소한의 UI만 먼저 생성
+        self.create_basic_ui_skeleton()
+        print(f"조건설정 탭 - 기본 스켈레톤: {time.time() - start_time:.3f}초")
+
+        # 나머지는 사용자가 탭을 클릭할 때까지 지연 (메모리 절약)
+        # 지연 로딩은 on_tab_changed에서 처리
+
+        print(f"조건설정 탭 - 전체 초기화: {time.time() - start_time:.3f}초")
+
+    def create_basic_ui_skeleton(self):
+        """기본 UI 스켈레톤만 먼저 생성"""
+        # 간단한 로딩 UI만 생성 (스크롤 프레임 생성 지연)
+        self.temp_loading_frame = ttk.Frame(self.frame)
+        self.temp_loading_frame.pack(fill="both", expand=True)
+
+        # 중앙 정렬을 위한 컨테이너
+        center_frame = ttk.Frame(self.temp_loading_frame)
+        center_frame.pack(expand=True)
+
+        self.loading_label = ttk.Label(center_frame, text="⚙️ 조건 설정 로딩 중...", font=("", 14))
+        self.loading_label.pack(pady=50)
+
+    def create_detailed_ui(self):
+        """상세 UI 요소들을 점진적 렌더링으로 생성"""
+        try:
+            # 이미 생성되었는지 체크
+            if hasattr(self, 'detailed_ui_created'):
+                return
+
+            import time
+            detail_start = time.time()
+
+            # 임시 로딩 프레임 제거
+            if hasattr(self, 'temp_loading_frame'):
+                self.temp_loading_frame.destroy()
+
+            print(f"조건설정 탭 - 로딩 프레임 제거: {time.time() - detail_start:.3f}초")
+
+            # 점진적 UI 렌더링 시작
+            self._render_ui_progressively(detail_start)
+
+        except Exception as e:
+            print(f"상세 UI 생성 오류: {e}")
+            import traceback
+            traceback.print_exc()
+
+    def _render_ui_progressively(self, start_time):
+        """UI를 단계적으로 렌더링하여 반응성 개선"""
+        # 1단계: 스크롤 프레임 생성 (즉시)
+        self.app.root.after(1, lambda: self._render_condition_step_1(start_time))
+
+    def _render_condition_step_1(self, start_time):
+        """1단계: 스크롤 프레임 생성"""
+        import time
+        self.setup_scrollable_frame()
+
+        # 강제 UI 업데이트 및 화면에 즉시 표시
+        self.app.root.update()
+        print(f"조건설정 탭 - 스크롤 프레임 생성: {time.time() - start_time:.3f}초")
+
+        # 2단계 예약 (10ms 후)
+        self.app.root.after(10, lambda: self._render_condition_step_2(start_time))
+
+    def _render_condition_step_2(self, start_time):
+        """2단계: 메인 UI 생성"""
+        import time
         self.create_condition_settings_tab()
-        self.setup_copy_paste_bindings()
+
+        # 강제 UI 업데이트
+        self.app.root.update()
+        print(f"조건설정 탭 - 메인 UI 생성: {time.time() - start_time:.3f}초")
+
+        # 3단계 예약 (10ms 후)
+        self.app.root.after(10, lambda: self._render_condition_step_3(start_time))
+
+    def _render_condition_step_3(self, start_time):
+        """3단계: 설정 로딩 및 바인딩 완료"""
+        import time
         self.load_settings()
+        self.setup_copy_paste_bindings()
+
+        # 최종 강제 업데이트
+        self.app.root.update()
+        if hasattr(self, 'canvas'):
+            self.canvas.update()
+
+        # 완료 플래그
+        self.detailed_ui_created = True
+
+        print(f"조건설정 탭 - 렌더링 완료 (총 {time.time() - start_time:.3f}초)")
+
+        # 사용자에게 완료 피드백
+        if hasattr(self, 'loading_label'):
+            try:
+                self.loading_label.destroy()
+            except:
+                pass
     
     def setup_styles(self):
         """스타일 설정"""
         try:
             style = ttk.Style()
-            
+
             # 섹션 라벨프레임 스타일
-            style.configure("Section.TLabelframe", 
-                          borderwidth=2, 
+            style.configure("Section.TLabelframe",
+                          borderwidth=2,
                           relief="solid",
                           background="#f0f0f0")
-            style.configure("Section.TLabelframe.Label", 
+            style.configure("Section.TLabelframe.Label",
                           font=("", 10, "bold"),
                           foreground="#2c3e50")
-                          
+
         except Exception as e:
             print(f"스타일 설정 오류: {e}")
     
@@ -44,48 +145,63 @@ class ConditionSettingsTab(BaseTab):
         separator.pack(fill="x")
     
     def setup_scrollable_frame(self):
-        """스크롤 가능한 프레임 설정"""
-        # 캔버스와 스크롤바 생성
-        self.canvas = tk.Canvas(self.frame, highlightthickness=0)
-        self.scrollbar = ttk.Scrollbar(self.frame, orient="vertical", command=self.canvas.yview)
-        
-        # 스크롤 가능한 내용을 담을 프레임
-        self.scrollable_frame = ttk.Frame(self.canvas)
-        
-        # 스크롤 영역 설정
-        self.scrollable_frame.bind(
-            "<Configure>",
-            lambda e: self.canvas.configure(scrollregion=self.canvas.bbox("all"))
-        )
-        
-        # 캔버스에 프레임 추가
-        self.canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
-        self.canvas.configure(yscrollcommand=self.scrollbar.set)
-        
-        # 캔버스와 스크롤바 배치
-        self.canvas.pack(side="left", fill="both", expand=True)
-        self.scrollbar.pack(side="right", fill="y")
-        
-        # 마우스 휠 스크롤 지원
-        def on_mousewheel(event):
-            self.canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
-        
-        self.canvas.bind("<MouseWheel>", on_mousewheel)  # Windows
-        self.canvas.bind("<Button-4>", lambda e: self.canvas.yview_scroll(-1, "units"))  # Linux
-        self.canvas.bind("<Button-5>", lambda e: self.canvas.yview_scroll(1, "units"))   # Linux
-        
-        # 캔버스 크기 조정 시 스크롤 프레임 너비 맞추기
-        def configure_scroll_region(event):
-            canvas_width = event.width
-            self.canvas.itemconfig(self.canvas.find_all()[0], width=canvas_width)
-        
-        self.canvas.bind("<Configure>", configure_scroll_region)
+        """스크롤 가능한 프레임 설정 - 안전한 레이아웃"""
+        try:
+            # 캔버스와 스크롤바 생성 (흰색 배경)
+            self.canvas = tk.Canvas(self.frame, highlightthickness=0, bd=0, bg='white')
+            self.scrollbar = ttk.Scrollbar(self.frame, orient="vertical", command=self.canvas.yview)
+
+            # 스크롤 가능한 내용을 담을 프레임
+            self.scrollable_frame = ttk.Frame(self.canvas)
+
+            # 캔버스와 스크롤바 배치
+            self.scrollbar.pack(side="right", fill="y")
+            self.canvas.pack(side="left", fill="both", expand=True)
+
+            # 캔버스에 프레임 추가
+            self.canvas_window = self.canvas.create_window(0, 0, window=self.scrollable_frame, anchor="nw")
+            self.canvas.configure(yscrollcommand=self.scrollbar.set)
+
+            # 바인딩 설정
+            self.app.root.after(50, self._setup_scroll_bindings)
+
+        except Exception as e:
+            print(f"스크롤 프레임 설정 오류: {e}")
+
+    def _setup_scroll_bindings(self):
+        """스크롤 바인딩 설정 - 지연 로딩"""
+        try:
+            # 스크롤 영역 설정
+            def configure_scroll_region(event=None):
+                self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+
+            self.scrollable_frame.bind("<Configure>", configure_scroll_region)
+
+            # 마우스 휠 스크롤 지원
+            def on_mousewheel(event):
+                self.canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+
+            self.canvas.bind("<MouseWheel>", on_mousewheel)  # Windows
+            self.canvas.bind("<Button-4>", lambda e: self.canvas.yview_scroll(-1, "units"))  # Linux
+            self.canvas.bind("<Button-5>", lambda e: self.canvas.yview_scroll(1, "units"))   # Linux
+
+            # 캔버스 크기 조정 시 스크롤 프레임 너비 맞추기
+            def configure_canvas_width(event):
+                canvas_width = event.width
+                self.canvas.itemconfig(self.canvas_window, width=canvas_width)
+
+            self.canvas.bind("<Configure>", configure_canvas_width)
+
+            # 초기 스크롤 영역 설정
+            configure_scroll_region()
+
+        except Exception as e:
+            print(f"스크롤 바인딩 설정 오류: {e}")
     
     def create_condition_settings_tab(self):
         """조건설정 탭 UI 생성"""
-        # 스크롤 가능한 프레임 설정
-        self.setup_scrollable_frame()
-        
+        # 스크롤 프레임은 이미 _render_condition_step_1에서 설정됨
+
         # 대시보드 기간 설정
         dashboard_frame = ttk.LabelFrame(self.scrollable_frame, text="📊 대시보드 설정", style="Section.TLabelframe")
         dashboard_frame.pack(fill="x", padx=5, pady=(5, 10))

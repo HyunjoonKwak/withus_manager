@@ -27,6 +27,16 @@ class OrdersTab(BaseTab):
     
     def create_orders_tab(self):
         """주문 탭 UI 생성"""
+        # 설명 라벨 추가
+        desc_frame = ttk.Frame(self.frame)
+        desc_frame.pack(fill="x", padx=5, pady=5)
+        desc_label = ttk.Label(desc_frame,
+                              text="구매자가 결제완료후, 판매자 주문확인 전 주문건입니다. (주문확인) 또는 (발송지연안내), (판매취소)를 할수 있습니다.",
+                              font=("맑은 고딕", 14, "bold"),
+                              foreground="#666666",
+                              wraplength=800)
+        desc_label.pack(anchor="w", padx=10)
+
         # 주문 관리 섹션
         collection_frame = ttk.LabelFrame(self.frame, text="주문 관리")
         collection_frame.pack(fill="x", padx=5, pady=5)
@@ -76,15 +86,15 @@ class OrdersTab(BaseTab):
         status_display_frame = ttk.Frame(collection_frame)
         status_display_frame.pack(fill="x", padx=5, pady=2)
         
-        ttk.Label(status_display_frame, text="현재 주문 상태 필터:", font=("맑은 고딕", 9, "bold")).pack(side="left", padx=5)
+        ttk.Label(status_display_frame, text="현재 주문 상태 필터:", font=("맑은 고딕", 14, "bold")).pack(side="left", padx=5)
         self.order_status_display_var = tk.StringVar()
         self.order_status_display_var.set("로딩 중...")
         self.order_status_display_label = ttk.Label(status_display_frame, textvariable=self.order_status_display_var, 
-                                                   foreground="blue", font=("맑은 고딕", 9))
+                                                   foreground="#d2691e", font=("맑은 고딕", 13, "bold"))
         self.order_status_display_label.pack(side="left", padx=5)
         
-        ttk.Button(status_display_frame, text="조건설정에서 변경", 
-                  command=lambda: self.app.notebook.select(6)).pack(side="right", padx=5)  # 조건설정 탭으로 이동
+        ttk.Button(status_display_frame, text="필터조건변경", 
+                  command=lambda: self.app.notebook.select(9)).pack(side="right", padx=5)  # 조건설정 탭으로 이동
         
         # 주문 목록
         orders_frame = ttk.LabelFrame(self.frame, text="주문 목록")
@@ -243,10 +253,13 @@ class OrdersTab(BaseTab):
     def _query_orders_from_api_thread(self):
         """API에서 주문 조회 스레드"""
         try:
+            # 먼저 상태 표시 업데이트
+            self.app.root.after(0, self.update_order_status_display)
+
             if not self.app.naver_api:
                 def show_api_error():
                     result = messagebox.showwarning(
-                        "API 설정 필요", 
+                        "API 설정 필요",
                         "네이버 커머스 API가 설정되지 않았습니다.\n\n"
                         "설정 탭에서 다음 정보를 입력해주세요:\n"
                         "- Client ID\n"
@@ -254,8 +267,8 @@ class OrdersTab(BaseTab):
                         "설정 탭으로 이동하시겠습니까?"
                     )
                     # 기본설정 탭으로 이동
-                    self.app.notebook.select(5)  # 기본설정 탭 (인덱스 5)
-                
+                    self.app.notebook.select(8)  # 기본설정 탭 (인덱스 8)
+
                 self.app.root.after(0, show_api_error)
                 return
             
@@ -267,8 +280,9 @@ class OrdersTab(BaseTab):
             
             self.app.root.after(0, lambda: self.orders_status_var.set("API에서 주문 조회 중..."))
             
-            # 설정에서 선택된 주문 상태들 가져오기
+            # 설정에서 선택된 주문 상태들 가져오기 (강제 새로고침)
             from env_config import config
+            config.reload()  # 설정 새로고침
             order_statuses = config.get('ORDER_STATUS_TYPES', 'PAYMENT_WAITING,PAYED,DELIVERING,DELIVERED,PURCHASE_DECIDED,EXCHANGED,CANCELED,RETURNED,CANCELED_BY_NOPAYMENT')
             status_list = [status.strip() for status in order_statuses.split(',')]
             
@@ -320,24 +334,32 @@ class OrdersTab(BaseTab):
                                     if not full_address:
                                         full_address = 'N/A'
                                     
-                                    order_data = {
-                                        'orderId': order_info.get('orderId'),
-                                        'productOrderId': item.get('productOrderId'),
-                                        'ordererName': order_info.get('ordererName'),
-                                        'orderDate': order_info.get('orderDate'),
-                                        'orderStatus': product_order.get('productOrderStatus', 'UNKNOWN'),
-                                        'productName': product_order.get('productName', 'N/A'),
-                                        'totalAmount': product_order.get('totalPaymentAmount', 0),
-                                        'productOption': product_order.get('productOption', 'N/A'),
-                                        'sellerProductCode': product_order.get('sellerProductCode', 'N/A'),
-                                        'quantity': product_order.get('quantity', 1),
-                                        'unitPrice': product_order.get('unitPrice', 0),
-                                        'discountAmount': product_order.get('productDiscountAmount', 0),
-                                        'paymentMeans': order_info.get('paymentMeans', 'N/A'),
-                                        'shippingAddress': full_address,
-                                        'shippingDueDate': shipping_due_date
-                                    }
-                                    all_processed_orders.append(order_data)
+                                    # 상품 주문 상태 확인
+                                    product_order_status = product_order.get('productOrderStatus', 'UNKNOWN')
+
+                                    # 설정된 상태 필터와 일치하는지 확인
+                                    if product_order_status in status_list:
+                                        order_data = {
+                                            'orderId': order_info.get('orderId'),
+                                            'productOrderId': item.get('productOrderId'),
+                                            'ordererName': order_info.get('ordererName'),
+                                            'orderDate': order_info.get('orderDate'),
+                                            'orderStatus': product_order_status,
+                                            'productName': product_order.get('productName', 'N/A'),
+                                            'totalAmount': product_order.get('totalPaymentAmount', 0),
+                                            'productOption': product_order.get('productOption', 'N/A'),
+                                            'sellerProductCode': product_order.get('sellerProductCode', 'N/A'),
+                                            'quantity': product_order.get('quantity', 1),
+                                            'unitPrice': product_order.get('unitPrice', 0),
+                                            'discountAmount': product_order.get('productDiscountAmount', 0),
+                                            'paymentMeans': order_info.get('paymentMeans', 'N/A'),
+                                            'shippingAddress': full_address,
+                                            'shippingDueDate': shipping_due_date
+                                        }
+                                        all_processed_orders.append(order_data)
+                                        print(f"주문관리 탭 - {product_order_status} 상태 주문 포함: {order_data.get('productName', 'N/A')}")
+                                    else:
+                                        print(f"주문관리 탭 - {product_order_status} 상태 주문 필터링 제외 (허용 상태: {status_list})")
                             elif 'orderId' in item:
                                 all_processed_orders.append(item)
             else:
@@ -444,44 +466,78 @@ class OrdersTab(BaseTab):
             # UI 업데이트
             self.app.root.after(0, self._update_orders_tree, unique_orders)
             self.app.root.after(0, lambda: self.update_refresh_status_message(len(unique_orders), is_from_api=True))
-            
+
             if not unique_orders:
                 self.app.root.after(0, lambda: self.orders_status_var.set("해당 기간과 상태 조건에 맞는 주문이 없습니다."))
                 
         except Exception as e:
+            error_msg = f"조회 오류: {str(e)}"
             print(f"API 주문 조회 오류: {e}")
-            self.app.root.after(0, lambda: self.orders_status_var.set(f"조회 오류: {str(e)}"))
+            self.app.root.after(0, lambda msg=error_msg: self.orders_status_var.set(msg))
     
     def query_orders_from_db(self):
         """데이터베이스에서 주문 조회"""
         try:
+            # 먼저 상태 표시 업데이트
+            self.update_order_status_display()
+
             start_date = self.start_date_entry.get_date()
             end_date = self.end_date_entry.get_date()
-            
+
             # 데이터베이스에서 주문 조회
             start_date_str = start_date.strftime('%Y-%m-%d')
             end_date_str = end_date.strftime('%Y-%m-%d')
             print(f"DB 조회 기간: {start_date_str} ~ {end_date_str}")
-            
+
             orders = self.app.db_manager.get_orders_by_date_range(start_date_str, end_date_str)
             print(f"DB에서 조회된 주문 수: {len(orders)}")
-            
+
+            # 설정에서 선택된 주문 상태들 가져오기 (강제 새로고침)
+            from env_config import config
+            config.reload()  # 설정 새로고침
+            order_statuses = config.get('ORDER_STATUS_TYPES', 'PAYMENT_WAITING,PAYED,DELIVERING,DELIVERED,PURCHASE_DECIDED,EXCHANGED,CANCELED,RETURNED,CANCELED_BY_NOPAYMENT')
+            status_list = [status.strip() for status in order_statuses.split(',')]
+            print(f"DB 조회 - 설정 새로고침 후 적용할 상태 필터: {status_list}")
+
             if orders:
                 # 조회된 주문 정보 출력
                 for i, order in enumerate(orders[:3]):  # 처음 3건만 출력
                     print(f"DB 주문 {i+1}: ID={order.get('order_id')}, 상태={order.get('status')}, 고객={order.get('customer_name')}")
-                
-                # DB 데이터를 API 형식으로 변환하여 UI에 표시
-                api_format_orders = self._convert_db_orders_to_api_format(orders)
-                self._update_orders_tree(api_format_orders)
-                self.update_refresh_status_message(len(orders), is_from_api=False)
+
+                # 상태 필터링 적용
+                filtered_orders = []
+                for order in orders:
+                    order_status = order.get('status', 'UNKNOWN')
+                    if order_status in status_list:
+                        filtered_orders.append(order)
+                        print(f"DB 조회 - {order_status} 상태 주문 포함: {order.get('customer_name', 'N/A')}")
+                    else:
+                        print(f"DB 조회 - {order_status} 상태 주문 필터링 제외 (허용 상태: {status_list})")
+
+                print(f"DB 조회 - 필터링 후 주문 수: {len(filtered_orders)}")
+
+                if filtered_orders:
+                    # DB 데이터를 API 형식으로 변환하여 UI에 표시
+                    api_format_orders = self._convert_db_orders_to_api_format(filtered_orders)
+                    self._update_orders_tree(api_format_orders)
+                    self.update_refresh_status_message(len(filtered_orders), is_from_api=False)
+                else:
+                    print("필터링 후 해당 상태의 주문이 없습니다.")
+                    # 기존 주문 목록 지우기
+                    for item in self.orders_tree.get_children():
+                        self.orders_tree.delete(item)
+                    self.orders_status_var.set("해당 상태의 주문이 없습니다.")
             else:
                 print("해당 기간의 주문이 데이터베이스에 없습니다.")
+                # 기존 주문 목록 지우기
+                for item in self.orders_tree.get_children():
+                    self.orders_tree.delete(item)
                 self.orders_status_var.set("해당 기간의 주문이 없습니다.")
-                
+
         except Exception as e:
+            error_msg = f"조회 오류: {str(e)}"
             print(f"DB 주문 조회 오류: {e}")
-            self.orders_status_var.set(f"조회 오류: {str(e)}")
+            self.orders_status_var.set(error_msg)
     
     def show_cached_orders(self):
         """캐시된 주문 데이터 표시 (API 호출 없이)"""
@@ -1134,8 +1190,9 @@ class OrdersTab(BaseTab):
         """현재 적용된 주문 상태 필터 표시 업데이트"""
         try:
             from env_config import config
-            
-            # 현재 설정된 주문 상태들 가져오기
+
+            # 설정 새로고침 후 현재 설정된 주문 상태들 가져오기
+            config.reload()
             order_statuses = config.get('ORDER_STATUS_TYPES', 'PAYMENT_WAITING,PAYED,DELIVERING,DELIVERED,PURCHASE_DECIDED,EXCHANGED,CANCELED,RETURNED,CANCELED_BY_NOPAYMENT')
             status_list = [status.strip() for status in order_statuses.split(',')]
             

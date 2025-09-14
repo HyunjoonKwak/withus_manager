@@ -20,6 +20,16 @@ class ShippingTab(BaseTab):
     
     def create_shipping_tab(self):
         """배송 탭 UI 생성"""
+        # 설명 라벨 추가
+        desc_frame = ttk.Frame(self.frame)
+        desc_frame.pack(fill="x", padx=5, pady=5)
+        desc_label = ttk.Label(desc_frame,
+                              text="배송중- 발송처리 이후 배송중인 주문을 조회하실수 있습니다. *[송장수정모드 켜기]를 클릭하면 배송중 주문의 송장번호를 수정할수 있습니다.\n배송완료 - 발송처리 이후 구매확정 대기중인 주문을 조회할수 있습니다.",
+                              font=("맑은 고딕", 14, "bold"),
+                              foreground="#666666",
+                              wraplength=800)
+        desc_label.pack(anchor="w", padx=10)
+
         # 배송 관리 섹션
         shipping_frame = ttk.LabelFrame(self.frame, text="배송 관리")
         shipping_frame.pack(fill="x", padx=5, pady=5)

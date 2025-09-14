@@ -6,41 +6,76 @@ import os
 from typing import Optional
 
 class EnvConfig:
-    """환경 변수 설정 클래스"""
-    
+    """환경 변수 설정 클래스 - 성능 최적화된 캐싱 버전"""
+
     def __init__(self):
+        self._cache = {}  # 설정값 캐시
+        self._file_mtime = 0  # 파일 수정 시간 캐시
+        self._loaded = False
+        self.load_env_file()
+
+    def load_env_file(self):
+        """환경 변수 파일 로드 - 파일 변경 시에만 다시 로드"""
+        env_file_path = '.env'
+
+        try:
+            if os.path.exists(env_file_path):
+                current_mtime = os.path.getmtime(env_file_path)
+
+                # 파일이 변경되지 않았으면 캐시 사용
+                if self._loaded and current_mtime == self._file_mtime:
+                    return
+
+                # 파일 읽기 및 캐싱
+                self._cache.clear()
+                with open(env_file_path, 'r', encoding='utf-8') as f:
+                    for line in f:
+                        line = line.strip()
+                        if line and not line.startswith('#') and '=' in line:
+                            key, value = line.split('=', 1)
+                            key = key.strip()
+                            value = value.strip()
+                            self._cache[key] = value
+                            os.environ[key] = value
+
+                self._file_mtime = current_mtime
+                self._loaded = True
+                print(f"env 파일 로드 완료: {len(self._cache)}개 설정")
+
+        except Exception as e:
+            print(f"env 파일 로드 오류: {e}")
+            self._loaded = True  # 오류가 있어도 다시 시도하지 않음
+
+    def reload(self):
+        """강제로 환경 변수 파일 다시 로드"""
+        self._loaded = False
+        self._file_mtime = 0
         self.load_env_file()
     
-    def load_env_file(self):
-        """환경 변수 파일 로드"""
-        env_file_path = '.env'
-        if os.path.exists(env_file_path):
-            with open(env_file_path, 'r', encoding='utf-8') as f:
-                for line in f:
-                    line = line.strip()
-                    if line and not line.startswith('#') and '=' in line:
-                        key, value = line.split('=', 1)
-                        os.environ[key.strip()] = value.strip()
-    
     def get(self, key: str, default: str = '') -> str:
-        """환경 변수 값 가져오기"""
+        """환경 변수 값 가져오기 - 캐시 우선 사용"""
+        # 캐시에서 먼저 찾기
+        if key in self._cache:
+            return self._cache[key]
+        # os.environ에서 찾기
         return os.environ.get(key, default)
-    
+
     def get_bool(self, key: str, default: bool = False) -> bool:
-        """불린 환경 변수 값 가져오기"""
-        value = os.environ.get(key, '').lower()
+        """불린 환경 변수 값 가져오기 - 캐시 우선 사용"""
+        value = self.get(key, '').lower()
         return value in ('true', '1', 'yes', 'on')
-    
+
     def get_int(self, key: str, default: int = 0) -> int:
-        """정수 환경 변수 값 가져오기"""
+        """정수 환경 변수 값 가져오기 - 캐시 우선 사용"""
         try:
-            return int(os.environ.get(key, str(default)))
-        except ValueError:
+            return int(self.get(key, str(default)))
+        except (ValueError, TypeError):
             return default
     
     def set(self, key: str, value: str):
-        """환경 변수 설정"""
+        """환경 변수 설정 - 캐시도 함께 업데이트"""
         os.environ[key] = value
+        self._cache[key] = value
     
     def save(self):
         """환경 변수를 파일에 저장 (save_to_env_file의 별칭)"""
@@ -63,7 +98,15 @@ class EnvConfig:
             'ALLOWED_IPS': self.get('ALLOWED_IPS', '121.190.40.153,175.125.204.97'),
             'QUICK_PERIOD_SETTING': str(self.get_int('QUICK_PERIOD_SETTING', 7)),
             'ORDER_STATUS_TYPES': self.get('ORDER_STATUS_TYPES', 'PAYMENT_WAITING,PAYED,DELIVERING,DELIVERED,PURCHASE_DECIDED,EXCHANGED,CANCELED,RETURNED,CANCELED_BY_NOPAYMENT'),
-            'DASHBOARD_PERIOD_DAYS': str(self.get_int('DASHBOARD_PERIOD_DAYS', 1))
+            'DASHBOARD_PERIOD_DAYS': str(self.get_int('DASHBOARD_PERIOD_DAYS', 1)),
+            'NEW_ORDER_DEFAULT_DAYS': str(self.get_int('NEW_ORDER_DEFAULT_DAYS', 7)),
+            'SHIPPING_PENDING_DEFAULT_DAYS': str(self.get_int('SHIPPING_PENDING_DEFAULT_DAYS', 7)),
+            'SHIPPING_IN_PROGRESS_DEFAULT_DAYS': str(self.get_int('SHIPPING_IN_PROGRESS_DEFAULT_DAYS', 7)),
+            'SHIPPING_COMPLETED_DEFAULT_DAYS': str(self.get_int('SHIPPING_COMPLETED_DEFAULT_DAYS', 7)),
+            'PURCHASE_DECIDED_DEFAULT_DAYS': str(self.get_int('PURCHASE_DECIDED_DEFAULT_DAYS', 30)),
+            'CANCEL_DEFAULT_DAYS': str(self.get_int('CANCEL_DEFAULT_DAYS', 30)),
+            'RETURN_EXCHANGE_DEFAULT_DAYS': str(self.get_int('RETURN_EXCHANGE_DEFAULT_DAYS', 30)),
+            'CANCEL_RETURN_EXCHANGE_DEFAULT_DAYS': str(self.get_int('CANCEL_RETURN_EXCHANGE_DEFAULT_DAYS', 30))
         }
         
         with open('.env', 'w', encoding='utf-8') as f:
@@ -93,6 +136,33 @@ class EnvConfig:
             f.write(f"ORDER_STATUS_TYPES={env_vars['ORDER_STATUS_TYPES']}\n")
             f.write("\n# 대시보드 설정\n")
             f.write(f"DASHBOARD_PERIOD_DAYS={env_vars['DASHBOARD_PERIOD_DAYS']}\n")
+            f.write("\n# 신규 탭 기본 기간 설정\n")
+            f.write(f"NEW_ORDER_DEFAULT_DAYS={env_vars['NEW_ORDER_DEFAULT_DAYS']}\n")
+            f.write(f"SHIPPING_PENDING_DEFAULT_DAYS={env_vars['SHIPPING_PENDING_DEFAULT_DAYS']}\n")
+            f.write(f"SHIPPING_IN_PROGRESS_DEFAULT_DAYS={env_vars['SHIPPING_IN_PROGRESS_DEFAULT_DAYS']}\n")
+            f.write(f"SHIPPING_COMPLETED_DEFAULT_DAYS={env_vars['SHIPPING_COMPLETED_DEFAULT_DAYS']}\n")
+            f.write(f"PURCHASE_DECIDED_DEFAULT_DAYS={env_vars['PURCHASE_DECIDED_DEFAULT_DAYS']}\n")
+            f.write(f"CANCEL_DEFAULT_DAYS={env_vars['CANCEL_DEFAULT_DAYS']}\n")
+            f.write(f"RETURN_EXCHANGE_DEFAULT_DAYS={env_vars['RETURN_EXCHANGE_DEFAULT_DAYS']}\n")
+            f.write(f"CANCEL_RETURN_EXCHANGE_DEFAULT_DAYS={env_vars['CANCEL_RETURN_EXCHANGE_DEFAULT_DAYS']}\n")
 
-# 전역 설정 인스턴스
-config = EnvConfig()
+# 전역 설정 인스턴스 (지연 로딩)
+_global_config = None
+
+def get_config():
+    """전역 설정 인스턴스 반환 (싱글톤 패턴)"""
+    global _global_config
+    if _global_config is None:
+        _global_config = EnvConfig()
+    return _global_config
+
+# 프록시 클래스를 통한 지연 로딩
+class _ConfigProxy:
+    def __getattr__(self, name):
+        return getattr(get_config(), name)
+
+    def __call__(self, *args, **kwargs):
+        return get_config()(*args, **kwargs)
+
+# 하위 호환성을 위한 프록시
+config = _ConfigProxy()

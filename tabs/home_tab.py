@@ -24,6 +24,10 @@ class HomeTab(BaseTab):
         self.last_refresh_time = None
         self.refresh_interval = 60  # 기본값
         self.countdown_job = None
+
+        # 주문 상태 변화 감지를 위한 변수들
+        self.previous_order_counts = {}  # 이전 새로고침 시점의 주문 상태별 개수
+        self.is_first_refresh = True     # 첫 번째 새로고침 여부 (알림 방지)
         
         self.create_home_tab()
         self.setup_copy_paste_bindings()
@@ -52,17 +56,21 @@ class HomeTab(BaseTab):
             btn_frame = ttk.Frame(status_frame)
             btn_frame.pack(side="left", padx=2, fill="both", expand=True)
             
-            # 일반 tk.Button 사용하여 높이 제어
-            btn = tk.Button(btn_frame, text=f"{status}\n0건", 
-                          command=lambda s=status: self.show_orders_by_status(s),
-                          height=3,  # 버튼 높이를 3줄로 설정
-                          font=("맑은 고딕", 14, "bold"),  # 폰트 크기 더 확대
-                          relief="raised",
-                          borderwidth=2,  # 테두리 두께 증가
-                          bg="white",  # 배경색 흰색
+            # Label을 버튼처럼 사용 (macOS에서 배경색 완전 제어)
+            btn = tk.Label(btn_frame, text=f"{status}\n0건",
+                          font=("맑은 고딕", 15, "normal"),  # 15pt 글자 크기
+                          relief="flat",  # 초기에는 평면 효과
+                          borderwidth=1,  # 초기에는 얇은 테두리
+                          bg="SystemButtonFace",  # 시스템 기본색
                           fg="black",  # 글자색 검정
-                          activebackground="#f0f0f0",  # 클릭시 배경색
-                          activeforeground="black")
+                          height=3,  # 라벨 높이
+                          cursor="arrow")  # 초기에는 일반 커서
+
+            # 클릭 이벤트 바인딩
+            btn.bind("<Button-1>", lambda e, s=status: self.show_orders_by_status(s))
+            btn.bind("<Enter>", lambda e: e.widget.config(relief="sunken"))  # 마우스 오버 효과
+            btn.bind("<Leave>", lambda e: e.widget.config(relief="raised"))  # 마우스 아웃 효과
+
             btn.pack(fill="both", expand=True, pady=2)
             self.status_buttons[status] = btn
         
@@ -115,11 +123,12 @@ class HomeTab(BaseTab):
         
         self.status_display_var = tk.StringVar()
         self.status_display_var.set("설정에서 상품 상태를 설정해주세요")
-        self.status_display_label = ttk.Label(filter_frame, textvariable=self.status_display_var, foreground="blue")
+        self.status_display_label = ttk.Label(filter_frame, textvariable=self.status_display_var, 
+                                             foreground="#d2691e", font=("맑은 고딕", 12, "bold"))
         self.status_display_label.pack(side="left", padx=10)
         
         # 설정으로 이동 버튼
-        ttk.Button(filter_frame, text="설정에서 상품상태 변경", 
+        ttk.Button(filter_frame, text="필터조건변경",
                   command=self.go_to_settings).pack(side="right", padx=5)
         
         # 상품 목록 트리뷰
@@ -359,15 +368,9 @@ class HomeTab(BaseTab):
                         else:
                             print(f"매핑되지 않은 상태: {status} -> {korean_name}")
                     
-                    # 버튼 텍스트 업데이트
-                    for button_name, total_count in button_counts.items():
-                        if button_name in self.status_buttons:
-                            new_text = f"{button_name}\n{total_count:,}건"
-                            self.status_buttons[button_name].config(text=new_text)
-                            print(f"버튼 업데이트: {button_name} -> {total_count:,}건")
-                        else:
-                            print(f"버튼을 찾을 수 없음: {button_name}")
-                    
+                    # _update_dashboard_ui 함수 호출로 버튼 업데이트 (배경색 포함)
+                    self._update_dashboard_ui(button_counts, [], len(order_counts))
+
                     print(f"사용 가능한 버튼들: {list(self.status_buttons.keys())}")
                     print(f"최종 버튼 집계: {button_counts}")
                             
@@ -401,22 +404,145 @@ class HomeTab(BaseTab):
             print(f"기간 변경 오류: {e}")
     
     def _update_dashboard_ui(self, order_counts, all_orders, total_chunks):
-        """대시보드 UI 업데이트"""
+        """대시보드 UI 업데이트 및 상태 변화 감지"""
         try:
-            # 주문 상태 버튼 업데이트 (중앙 정렬된 텍스트)
+            # 첫 번째 새로고침이 아닌 경우에만 상태 변화 감지
+            if not self.is_first_refresh and self.previous_order_counts:
+                self._detect_and_notify_status_changes(order_counts)
+
+            # 주문 상태 버튼 업데이트 (중앙 정렬된 텍스트 + 배경색)
             for status, count in order_counts.items():
                 if status in self.status_buttons:
                     # 버튼 텍스트를 중앙 정렬된 형태로 구성
                     button_text = f"{status}\n{count:,}건"  # 천단위 콤마 추가
-                    self.status_buttons[status].config(text=button_text)
-            
+
+                    # 0건 이상인 경우 시각적 강조, 0건인 경우 기본 스타일
+                    if count > 0:
+                        # 진한 주황색 배경 및 강조 효과
+                        bg_color = "#ff6600"  # 진한 주황색
+                        active_bg_color = "#ff6600"  # 포커스 시에도 동일한 주황색 유지
+                        relief_style = "raised"  # 버튼을 돌출되게 표현
+                        border_width = 2  # 테두리를 두껍게
+                        font_weight = "bold"  # 글씨를 굵게
+                        print(f"[DEBUG] {status}: {count}건 -> 주황색 배경 + 강조 효과 설정")
+                    else:
+                        bg_color = "SystemButtonFace"  # 시스템 기본색
+                        active_bg_color = "SystemButtonFace"  # 포커스 시에도 동일한 색상 유지
+                        relief_style = "flat"  # 평면 효과
+                        border_width = 1  # 얇은 테두리
+                        font_weight = "normal"  # 일반 글씨
+                        print(f"[DEBUG] {status}: {count}건 -> 기본 스타일 설정")
+
+                    # 버튼 설정 적용 - 15pt 글자 크기 고정
+                    current_font = self.status_buttons[status]['font']
+                    if isinstance(current_font, tuple) and len(current_font) >= 2:
+                        font_family, font_size = current_font[0], current_font[1]
+                    else:
+                        font_family, font_size = "맑은 고딕", 15
+
+                    # 글자 크기를 15pt로 고정
+                    font_size = 15
+
+                    # 글자 크기는 현재 크기를 유지하고, weight만 변경
+                    new_font = (font_family, font_size, font_weight)
+
+                    # Label 전용 설정 (macOS에서 완전 제어 가능)
+                    fg_color = "white" if count > 0 else "black"  # 글자색
+
+                    self.status_buttons[status].config(
+                        text=button_text,
+                        bg=bg_color,
+                        fg=fg_color,  # 글자색 설정
+                        relief=relief_style,
+                        bd=border_width,
+                        font=new_font,
+                        cursor="hand2" if count > 0 else "arrow"  # 마우스 커서 변경
+                    )
+
+            # 현재 상태를 이전 상태로 저장 (다음 새로고침을 위해)
+            self.previous_order_counts = order_counts.copy()
+
+            # 첫 번째 새로고침 플래그 해제
+            if self.is_first_refresh:
+                self.is_first_refresh = False
+                print("첫 번째 대시보드 새로고침 완료 - 다음 새로고침부터 상태 변화 감지 활성화")
+
             # 전체 주문 저장
             self.app.all_orders = all_orders
-            
+
             print(f"전체 조회 완료: 총 {total_chunks}개 청크 처리")
-            
+
         except Exception as e:
             print(f"UI 업데이트 오류: {e}")
+
+    def _detect_and_notify_status_changes(self, current_counts):
+        """주문 상태 변화 감지 및 디스코드 알림 전송"""
+        try:
+            status_changes = {}
+
+            # 각 상태별로 변화량 계산
+            for status in ['신규주문', '발송대기', '배송중', '배송완료', '구매확정', '취소주문', '반품주문', '교환주문']:
+                previous_count = self.previous_order_counts.get(status, 0)
+                current_count = current_counts.get(status, 0)
+                change = current_count - previous_count
+
+                if change != 0:
+                    status_changes[status] = change
+                    print(f"상태 변화 감지: {status} {previous_count}건 → {current_count}건 ({change:+d})")
+
+            # 변화가 있는 경우에만 디스코드 알림 전송
+            if status_changes and self.app.notification_manager:
+                print(f"상태 변화 알림 전송: {status_changes}")
+                self._send_status_change_notification(status_changes)
+
+        except Exception as e:
+            print(f"상태 변화 감지 오류: {e}")
+
+    def _send_status_change_notification(self, status_changes):
+        """상태 변화에 대한 디스코드 알림 전송"""
+        try:
+            if not self.app.notification_manager.enabled_notifications.get('discord'):
+                print("디스코드 알림이 비활성화되어 있어 알림을 전송하지 않습니다")
+                return
+
+            title = "📊 주문 상태 변화 알림"
+
+            # 현재 시간
+            now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+            discord_message = f"**주문 상태가 변화했습니다**\n\n"
+            discord_message += f"🕐 확인 시간: {now}\n\n"
+
+            # 상태별 이모지 매핑
+            emoji_map = {
+                '신규주문': '🆕',
+                '발송대기': '📦',
+                '배송중': '🚚',
+                '배송완료': '✅',
+                '구매확정': '🎉',
+                '취소주문': '❌',
+                '반품주문': '🔄',
+                '교환주문': '🔄'
+            }
+
+            # 변화된 상태들을 메시지에 추가
+            for status, change in status_changes.items():
+                emoji = emoji_map.get(status, '📋')
+                change_text = f"+{change}" if change > 0 else str(change)
+                discord_message += f"{emoji} **{status}**: {change_text}건\n"
+
+            # 색상 결정 (신규주문이 증가하면 초록색, 취소/반품이 증가하면 빨간색, 기타는 파란색)
+            color = 0x0099ff  # 기본 파란색
+            if status_changes.get('신규주문', 0) > 0:
+                color = 0x00ff00  # 초록색
+            elif status_changes.get('취소주문', 0) > 0 or status_changes.get('반품주문', 0) > 0:
+                color = 0xff4444  # 빨간색
+
+            self.app.notification_manager.send_discord_notification(title, discord_message, color)
+            print("상태 변화 디스코드 알림 전송 완료")
+
+        except Exception as e:
+            print(f"상태 변화 알림 전송 오류: {e}")
     
     
     def _query_new_orders_thread(self):
@@ -569,7 +695,7 @@ class HomeTab(BaseTab):
                         "설정 탭에서 API 정보를 입력해주세요."
                     )
                     # 기본설정 탭으로 이동
-                    self.app.notebook.select(5)  # 기본설정 탭 (인덱스 5)
+                    self.app.notebook.select(8)  # 기본설정 탭 (인덱스 8)
                 
                 self.app.root.after(0, show_api_error)
                 return
@@ -720,7 +846,7 @@ class HomeTab(BaseTab):
         """설정 탭으로 이동"""
         try:
             # 탭 컨트롤에서 설정 탭 선택
-            self.app.notebook.select(6)  # 조건설정 탭 (인덱스 6)
+            self.app.notebook.select(9)  # 조건설정 탭 (인덱스 9)
         except Exception as e:
             print(f"설정 탭 이동 오류: {e}")
             messagebox.showinfo("안내", "설정 탭에서 상품 상태를 변경해주세요.")
@@ -789,14 +915,36 @@ class HomeTab(BaseTab):
         self.load_saved_products()
     
     def show_orders_by_status(self, status):
-        """특정 상태의 주문 조회"""
+        """특정 상태의 주문 조회 - 팝업창 없이 탭 이동만"""
         try:
-            # 주문관리 탭으로 이동
-            self.app.notebook.select(1)  # 주문관리 탭은 2번째 탭 (인덱스 1)
-            messagebox.showinfo("안내", f"{status} 주문을 조회합니다.\n주문관리 탭에서 해당 상태로 필터링하여 조회해주세요.")
+            # 각 버튼별로 해당하는 전용 탭으로 이동
+            if status == '신규주문':
+                self.app.notebook.select(2)  # 신규주문 탭 (인덱스 2)
+                print(f"{status} 버튼 클릭 - 신규주문 탭으로 이동")
+            elif status == '발송대기':
+                self.app.notebook.select(3)  # 발송대기 탭 (인덱스 3)
+                print(f"{status} 버튼 클릭 - 발송대기 탭으로 이동")
+            elif status == '배송중':
+                self.app.notebook.select(4)  # 배송중 탭 (인덱스 4)
+                print(f"{status} 버튼 클릭 - 배송중 탭으로 이동")
+            elif status == '배송완료':
+                self.app.notebook.select(5)  # 배송완료 탭 (인덱스 5)
+                print(f"{status} 버튼 클릭 - 배송완료 탭으로 이동")
+            elif status == '구매확정':
+                self.app.notebook.select(6)  # 구매확정 탭 (인덱스 6)
+                print(f"{status} 버튼 클릭 - 구매확정 탭으로 이동")
+            elif status in ['취소주문']:
+                self.app.notebook.select(7)  # 취소 탭 (인덱스 7)
+                print(f"{status} 버튼 클릭 - 취소 탭으로 이동")
+            elif status in ['반품주문', '교환주문']:
+                self.app.notebook.select(8)  # 반품교환 탭 (인덱스 8)
+                print(f"{status} 버튼 클릭 - 반품교환 탭으로 이동")
+            else:
+                # 나머지 버튼들은 주문관리 탭으로 이동
+                self.app.notebook.select(1)  # 주문관리 탭 (인덱스 1)
+                print(f"{status} 버튼 클릭 - 주문관리 탭으로 이동")
         except Exception as e:
             print(f"주문 상태별 조회 오류: {e}")
-            messagebox.showinfo("안내", f"{status} 주문 조회 기능은 주문관리 탭에서 이용해주세요.")
     
     def start_countdown(self):
         """리프레시 카운트다운 시작"""
