@@ -391,7 +391,7 @@ class DatabaseManager:
         try:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
-            
+
             cursor.execute('''
                 SELECT channel_product_no, origin_product_no, product_name, status_type,
                        sale_price, discounted_price, stock_quantity, category_id, category_name,
@@ -402,17 +402,17 @@ class DatabaseManager:
                 FROM products
                 ORDER BY updated_at DESC
             ''')
-            
+
             columns = [description[0] for description in cursor.description]
             products = []
-            
+
             for row in cursor.fetchall():
                 product = dict(zip(columns, row))
                 products.append(product)
-            
+
             conn.close()
             return products
-            
+
         except Exception as e:
             print(f"상품 조회 오류: {e}")
             return []
