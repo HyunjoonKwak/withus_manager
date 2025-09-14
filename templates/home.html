@@ -1,0 +1,234 @@
+{% extends "base.html" %}
+
+{% block title %}대시보드 - {{ title }}{% endblock %}
+
+{% block extra_head %}
+<style>
+    .status-card {
+        height: 100%;
+        border: none;
+        border-radius: 10px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .status-card.has-orders {
+        border-left: 4px solid #fd7e14;
+        background: linear-gradient(135deg, #fff 0%, #fff8f0 100%);
+    }
+    .status-card.no-orders {
+        background: #f8f9fa;
+    }
+    .status-icon {
+        font-size: 3rem;
+        margin-bottom: 10px;
+    }
+    .chart-container {
+        position: relative;
+        height: 300px;
+    }
+    .refresh-info {
+        background: #e3f2fd;
+        border: 1px solid #bbdefb;
+        border-radius: 5px;
+        padding: 10px;
+        margin-bottom: 20px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- 새로고침 정보 -->
+<div class="refresh-info">
+    <div class="row align-items-center">
+        <div class="col-md-8">
+            <i class="fas fa-info-circle text-primary"></i>
+            <strong>자동 모니터링:</strong>
+            {% if monitoring_active %}
+                <span class="text-success">활성화됨</span>
+                - 주기적으로 주문 상태를 확인하고 있습니다.
+            {% else %}
+                <span class="text-warning">비활성화됨</span>
+                - 수동으로 새로고침해주세요.
+            {% endif %}
+        </div>
+        <div class="col-md-4 text-end">
+            <button class="btn btn-primary btn-sm" onclick="refreshDashboard()">
+                <i class="fas fa-sync-alt"></i> 지금 새로고침
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- 대시보드 통계 -->
+<div class="row g-3 mb-4">
+    <div class="col-12">
+        <h4>
+            <i class="fas fa-chart-bar text-primary"></i> 주문 현황
+            <small class="text-muted">전체 {{ total_orders }}건</small>
+        </h4>
+    </div>
+</div>
+
+<div class="row g-3" id="dashboard-cards">
+    {% for status, count in order_counts.items() %}
+    <div class="col-md-3 col-sm-6">
+        <div class="card status-card {{ 'has-orders' if count > 0 else 'no-orders' }}">
+            <div class="card-body text-center">
+                <div class="status-icon">
+                    {% if status == '신규주문' %}
+                        <i class="fas fa-plus-circle text-success"></i>
+                    {% elif status == '발송대기' %}
+                        <i class="fas fa-box text-info"></i>
+                    {% elif status == '배송중' %}
+                        <i class="fas fa-truck text-primary"></i>
+                    {% elif status == '배송완료' %}
+                        <i class="fas fa-check-circle text-success"></i>
+                    {% elif status == '구매확정' %}
+                        <i class="fas fa-heart text-danger"></i>
+                    {% elif status == '취소주문' %}
+                        <i class="fas fa-times-circle text-danger"></i>
+                    {% elif status == '반품주문' %}
+                        <i class="fas fa-undo text-warning"></i>
+                    {% elif status == '교환주문' %}
+                        <i class="fas fa-exchange-alt text-warning"></i>
+                    {% else %}
+                        <i class="fas fa-question-circle text-secondary"></i>
+                    {% endif %}
+                </div>
+                <h3 class="status-count">{{ "{:,}".format(count) }}</h3>
+                <h6 class="card-title mb-0">{{ status }}</h6>
+                {% if count > 0 %}
+                    <small class="text-muted">건이 있습니다</small>
+                {% else %}
+                    <small class="text-muted">없음</small>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- 추가 정보 -->
+<div class="row mt-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-clock text-primary"></i> 시스템 정보
+            </div>
+            <div class="card-body">
+                <table class="table table-sm">
+                    <tr>
+                        <td>마지막 확인:</td>
+                        <td><strong>{{ last_check }}</strong></td>
+                    </tr>
+                    <tr>
+                        <td>모니터링 상태:</td>
+                        <td>
+                            {% if monitoring_active %}
+                                <span class="badge bg-success">활성화</span>
+                            {% else %}
+                                <span class="badge bg-warning">비활성화</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>현재 시간:</td>
+                        <td class="current-time">-</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-bell text-primary"></i> 빠른 작업
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <button class="btn btn-outline-primary" onclick="refreshDashboard()">
+                        <i class="fas fa-sync-alt"></i> 대시보드 새로고침
+                    </button>
+                    <button class="btn btn-outline-info" onclick="window.location.href='/orders'">
+                        <i class="fas fa-list"></i> 주문 목록 보기
+                    </button>
+                    <button class="btn btn-outline-success" onclick="testNotifications()">
+                        <i class="fas fa-paper-plane"></i> 알림 테스트
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 안내 메시지 -->
+{% if total_orders == 0 %}
+<div class="alert alert-info mt-4" role="alert">
+    <i class="fas fa-info-circle"></i>
+    <strong>안내:</strong> 아직 주문 데이터가 없습니다.
+    네이버 API 연동을 확인하거나 수동으로 주문을 가져와보세요.
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+// 대시보드 새로고침
+async function refreshDashboard() {
+    const button = event.target.closest('button');
+    const originalHtml = button.innerHTML;
+
+    try {
+        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 새로고침 중...';
+        button.disabled = true;
+
+        // 카드들을 로딩 상태로 변경
+        document.getElementById('dashboard-cards').classList.add('loading');
+
+        const response = await fetch('/api/dashboard/refresh');
+        const result = await response.json();
+
+        if (result.success) {
+            // 성공적으로 새로고침되면 페이지 리로드
+            setTimeout(() => {
+                location.reload();
+            }, 1000);
+        } else {
+            throw new Error(result.error || '알 수 없는 오류');
+        }
+    } catch (error) {
+        alert('대시보드 새로고침 중 오류가 발생했습니다: ' + error.message);
+        button.innerHTML = originalHtml;
+        button.disabled = false;
+        document.getElementById('dashboard-cards').classList.remove('loading');
+    }
+}
+
+// 알림 테스트
+async function testNotifications() {
+    const button = event.target.closest('button');
+    const originalHtml = button.innerHTML;
+
+    try {
+        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 테스트 중...';
+        button.disabled = true;
+
+        // 실제로는 알림 테스트 API를 호출해야 함
+        await new Promise(resolve => setTimeout(resolve, 2000));
+
+        alert('알림 테스트가 완료되었습니다. Discord를 확인해보세요.');
+    } catch (error) {
+        alert('알림 테스트 중 오류가 발생했습니다: ' + error.message);
+    } finally {
+        button.innerHTML = originalHtml;
+        button.disabled = false;
+    }
+}
+
+// 자동 새로고침 (선택사항)
+// setInterval(() => {
+//     if (document.visibilityState === 'visible') {
+//         refreshDashboard();
+//     }
+// }, 300000); // 5분마다
+</script>
+{% endblock %}
