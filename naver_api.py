@@ -698,20 +698,28 @@ class NaverShoppingAPI:
             orders = []
 
         for order in orders:
+            # 네이버 API 응답은 { productOrderId, content: { order: {...}, productOrder: {...} } } 구조
+            content = order.get('content', {})
+            order_info = content.get('order', {})
+            product_info = content.get('productOrder', {})
+
             order_data = {
-                'order_id': order.get('orderId'),
-                'order_date': order.get('orderDate'),
-                'customer_name': order.get('customerName'),
-                'customer_phone': order.get('customerPhone'),
-                'product_name': order.get('productName'),
-                'quantity': order.get('quantity', 1),
-                'price': order.get('price', 0),
-                'status': self._map_naver_status_to_local(order.get('status')),
-                'shipping_company': order.get('shippingCompany'),
-                'tracking_number': order.get('trackingNumber'),
-                'memo': order.get('memo', '')
+                'order_id': order_info.get('orderId'),  # content.order.orderId
+                'order_date': order_info.get('orderDate'),  # content.order.orderDate
+                'customer_name': order_info.get('ordererName'),  # content.order.ordererName
+                'customer_phone': order_info.get('ordererTel'),  # content.order.ordererTel
+                'product_name': product_info.get('productName'),  # content.productOrder.productName
+                'quantity': product_info.get('quantity', 1),  # content.productOrder.quantity
+                'price': product_info.get('totalPaymentAmount', 0),  # content.productOrder.totalPaymentAmount
+                'status': self._map_naver_status_to_local(product_info.get('productOrderStatus')),  # content.productOrder.productOrderStatus
+                'shipping_company': product_info.get('expectedDeliveryCompany'),  # content.productOrder.expectedDeliveryCompany
+                'tracking_number': '',  # 추후 배송 조회 API에서 가져와야 함
+                'memo': ''  # 기본값
             }
-            
+
+            print(f"[DEBUG] 수정된 order_data: {order_data}")
+            print(f"[DEBUG] order_id: '{order_data['order_id']}', status: '{order_data['status']}'")
+
             if db_manager.add_order(order_data):
                 synced_count += 1
         
@@ -726,7 +734,8 @@ class NaverShoppingAPI:
             'SHIPPED': '배송중',
             'DELIVERED': '배송완료',
             'CONFIRMED': '구매확정',
-            'CANCELLED': '취소주문',
+            'CANCELED': 'CANCELED',  # 네이버 API에서는 CANCELED 사용
+            'CANCELLED': 'CANCELED',  # 혹시 CANCELLED도 있을 수 있음
             'RETURNED': '반품주문',
             'EXCHANGED': '교환주문'
         }
