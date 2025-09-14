@@ -826,7 +826,7 @@ async def save_settings(settings_data: dict):
 
 @app.get("/api/test-api")
 async def test_api():
-    """네이버 API 연결 테스트"""
+    """네이버 API 실제 토큰 발급 테스트"""
     try:
         client_id = config.get('NAVER_CLIENT_ID')
         client_secret = config.get('NAVER_CLIENT_SECRET')
@@ -834,7 +834,23 @@ async def test_api():
         if not client_id or not client_secret:
             return {"success": False, "error": "API 키가 설정되지 않았습니다"}
 
-        return {"success": True, "message": "API 설정이 확인되었습니다"}
+        # 실제 네이버 API 토큰 발급 테스트
+        api = NaverShoppingAPI(client_id, client_secret)
+        token_success = api.get_access_token()
+
+        if token_success:
+            return {
+                "success": True,
+                "message": "네이버 API 토큰 발급 성공",
+                "token_available": True
+            }
+        else:
+            return {
+                "success": False,
+                "error": "네이버 API 토큰 발급 실패",
+                "token_available": False
+            }
+
     except Exception as e:
         return {"success": False, "error": str(e)}
 
