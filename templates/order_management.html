@@ -93,14 +93,25 @@
             </div>
             <div class="col-md-3">
                 <label class="form-label">기간 설정</label>
-                <select class="form-select" id="periodSelect">
-                    <option value="">직접 선택</option>
-                    <option value="1">1일</option>
-                    <option value="3">3일</option>
-                    <option value="7">7일</option>
-                    <option value="15">15일</option>
-                    <option value="30">30일</option>
-                </select>
+                <div class="input-group">
+                    <select class="form-select" id="periodSelect">
+                        <option value="">직접 선택</option>
+                        <option value="1">1일</option>
+                        <option value="3">3일</option>
+                        <option value="7">7일</option>
+                        <option value="15">15일</option>
+                        <option value="30">30일</option>
+                    </select>
+                    <button class="btn btn-outline-success btn-sm" type="button" onclick="savePeriodSetting()" title="현재 선택된 기간을 이 페이지의 기본값으로 저장">
+                        <i class="fas fa-save"></i>
+                    </button>
+                </div>
+                <div class="form-text">
+                    <span id="currentDefaultPeriod">기본: -일</span>
+                    <button class="btn btn-link btn-sm p-0 ms-2" onclick="showPeriodHelp()" title="기간 설정 도움말">
+                        <i class="fas fa-question-circle"></i>
+                    </button>
+                </div>
             </div>
             <div class="col-md-3 d-flex align-items-end gap-2">
                 <button type="submit" class="btn btn-primary">
@@ -233,8 +244,12 @@ async function initializeDates() {
         if (result.success && result.data) {
             defaultDays = result.data.days;
             console.log(`${currentPageType} 페이지의 기본 기간: ${defaultDays}일 (설정: ${result.data.env_key})`);
+
+            // 현재 기본 기간 표시 업데이트
+            document.getElementById('currentDefaultPeriod').textContent = `기본: ${defaultDays}일`;
         } else {
             console.warn(`페이지 타입별 기간 설정 실패, 기본값 ${defaultDays}일 사용:`, result.error);
+            document.getElementById('currentDefaultPeriod').textContent = `기본: ${defaultDays}일`;
         }
 
         // 날짜 설정
@@ -540,6 +555,83 @@ function updateOrderCount(count) {
 function showLoading(show) {
     const overlay = document.getElementById('loadingOverlay');
     overlay.style.display = show ? 'flex' : 'none';
+}
+
+// 페이지별 기간 설정 저장
+async function savePeriodSetting() {
+    const periodSelect = document.getElementById('periodSelect');
+    const selectedDays = periodSelect.value;
+
+    if (!selectedDays) {
+        alert('기간을 선택해주세요.');
+        return;
+    }
+
+    if (confirm(`이 페이지(${currentPageType})의 기본 조회 기간을 ${selectedDays}일로 설정하시겠습니까?`)) {
+        try {
+            console.log(`기간 설정 저장: ${currentPageType} -> ${selectedDays}일`);
+
+            const response = await fetch(`/api/settings/period/${currentPageType}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ days: parseInt(selectedDays) })
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                alert(result.data.message);
+
+                // 현재 기본 기간 표시 업데이트
+                document.getElementById('currentDefaultPeriod').textContent = `기본: ${selectedDays}일`;
+
+                console.log(`기간 설정 저장 성공: ${result.data.env_key} = ${selectedDays}일`);
+            } else {
+                throw new Error(result.error || '저장 실패');
+            }
+        } catch (error) {
+            console.error('기간 설정 저장 오류:', error);
+            alert('기간 설정 저장 중 오류가 발생했습니다: ' + error.message);
+        }
+    }
+}
+
+// 기간 설정 도움말
+function showPeriodHelp() {
+    const pageTypeNames = {
+        'new-orders': '신규주문',
+        'shipping-pending': '발송대기',
+        'shipping-in-progress': '배송중',
+        'shipping-completed': '배송완료',
+        'purchase-decided': '구매확정',
+        'cancel': '취소주문',
+        'return-exchange': '반품/교환',
+        'cancel-return-exchange': '취소/반품/교환'
+    };
+
+    const currentPageName = pageTypeNames[currentPageType] || currentPageType;
+
+    const helpText = `📅 ${currentPageName} 페이지 기간 설정 도움말
+
+🔹 기본 기간 설정
+  - 이 페이지를 열 때마다 자동으로 적용되는 조회 기간입니다
+  - 설정 > 조건설정 탭에서도 변경할 수 있습니다
+
+🔹 기간 저장 방법
+  1. 드롭다운에서 원하는 기간을 선택
+  2. 💾 버튼을 클릭하여 저장
+  3. 다음에 이 페이지를 열면 저장한 기간이 자동 적용됩니다
+
+🔹 주의사항
+  - 1일~365일까지 설정 가능합니다
+  - "직접 선택"인 경우 저장할 수 없습니다
+  - 저장된 설정은 .env 파일에 영구 저장됩니다
+
+💡 팁: 자주 사용하는 기간을 저장해두면 매번 설정할 필요가 없어 편리합니다!`;
+
+    alert(helpText);
 }
 </script>
 {% endblock %}

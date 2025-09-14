@@ -777,6 +777,57 @@ async def get_period_setting(page_type: str):
     except Exception as e:
         return {"success": False, "error": str(e)}
 
+@app.post("/api/settings/period/{page_type}")
+async def save_period_setting(page_type: str, request_data: dict):
+    """페이지 타입별 기본 기간 설정 저장"""
+    try:
+        # 페이지 타입에 따른 환경변수 키 매핑
+        period_mapping = {
+            'new-orders': 'NEW_ORDER_DEFAULT_DAYS',
+            'shipping-pending': 'SHIPPING_PENDING_DEFAULT_DAYS',
+            'shipping-in-progress': 'SHIPPING_IN_PROGRESS_DEFAULT_DAYS',
+            'shipping-completed': 'SHIPPING_COMPLETED_DEFAULT_DAYS',
+            'purchase-decided': 'PURCHASE_DECIDED_DEFAULT_DAYS',
+            'cancel': 'CANCEL_DEFAULT_DAYS',
+            'return-exchange': 'RETURN_EXCHANGE_DEFAULT_DAYS',
+            'cancel-return-exchange': 'CANCEL_RETURN_EXCHANGE_DEFAULT_DAYS'
+        }
+
+        if page_type not in period_mapping:
+            return {"success": False, "error": f"지원하지 않는 페이지 타입: {page_type}"}
+
+        if 'days' not in request_data:
+            return {"success": False, "error": "days 값이 필요합니다"}
+
+        days = int(request_data['days'])
+        if days < 1 or days > 365:
+            return {"success": False, "error": "기간은 1일에서 365일 사이여야 합니다"}
+
+        env_key = period_mapping[page_type]
+
+        # 환경 설정에 저장
+        config.set(env_key, str(days))
+
+        # .env 파일에 저장
+        config.save()
+
+        logger.info(f"페이지별 기간 설정 저장: {page_type} -> {days}일 ({env_key})")
+
+        return {
+            "success": True,
+            "data": {
+                "page_type": page_type,
+                "days": days,
+                "env_key": env_key,
+                "message": f"{page_type} 페이지의 기본 기간이 {days}일로 저장되었습니다"
+            }
+        }
+    except ValueError:
+        return {"success": False, "error": "올바른 숫자를 입력해주세요"}
+    except Exception as e:
+        logger.error(f"기간 설정 저장 실패: {e}")
+        return {"success": False, "error": str(e)}
+
 @app.post("/api/settings")
 async def save_settings(settings_data: dict):
     """설정 저장 - 실제로 .env 파일에 저장 (상세 로깅 포함)"""
