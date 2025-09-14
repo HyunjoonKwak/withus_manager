@@ -1,0 +1,314 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="fas fa-cog text-primary"></i> 설정</h2>
+                <button class="btn btn-success" onclick="saveSettings()">
+                    <i class="fas fa-save"></i> 설정 저장
+                </button>
+            </div>
+
+            <!-- API 설정 -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5><i class="fas fa-plug text-warning"></i> 네이버 API 설정</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <label for="clientId" class="form-label">클라이언트 ID</label>
+                            <input type="text" class="form-control" id="clientId" placeholder="네이버 클라이언트 ID">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="clientSecret" class="form-label">클라이언트 시크릿</label>
+                            <div class="input-group">
+                                <input type="password" class="form-control" id="clientSecret" placeholder="네이버 클라이언트 시크릿">
+                                <button class="btn btn-outline-secondary" type="button" onclick="togglePassword('clientSecret')">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <button class="btn btn-primary" onclick="testApiConnection()">
+                            <i class="fas fa-flask"></i> API 연결 테스트
+                        </button>
+                        <span id="apiTestResult" class="ms-3"></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 알림 설정 -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5><i class="fas fa-bell text-info"></i> 알림 설정</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <label for="discordWebhook" class="form-label">Discord 웹훅 URL</label>
+                            <div class="input-group">
+                                <input type="password" class="form-control" id="discordWebhook" placeholder="Discord 웹훅 URL">
+                                <button class="btn btn-outline-secondary" type="button" onclick="togglePassword('discordWebhook')">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Discord 알림 활성화</label>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="discordEnabled">
+                                <label class="form-check-label" for="discordEnabled">
+                                    Discord 알림 사용
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <button class="btn btn-primary" onclick="testDiscordNotification()">
+                            <i class="fab fa-discord"></i> Discord 알림 테스트
+                        </button>
+                        <span id="discordTestResult" class="ms-3"></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 모니터링 설정 -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5><i class="fas fa-monitor-heart-rate text-success"></i> 모니터링 설정</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <label for="checkInterval" class="form-label">체크 간격 (초)</label>
+                            <input type="number" class="form-control" id="checkInterval" min="60" max="3600" value="300">
+                            <div class="form-text">권장값: 300초 (5분)</div>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="dashboardPeriod" class="form-label">대시보드 조회 기간 (일)</label>
+                            <input type="number" class="form-control" id="dashboardPeriod" min="1" max="30" value="5">
+                            <div class="form-text">최근 며칠의 데이터를 표시할지 설정</div>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">자동 새로고침</label>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="autoRefresh">
+                                <label class="form-check-label" for="autoRefresh">
+                                    자동 새로고침 사용
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 시스템 정보 -->
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-info-circle text-secondary"></i> 시스템 정보</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>버전:</strong> <span id="systemVersion">{{ version_info.app_version }}</span></p>
+                            <p><strong>빌드 날짜:</strong> <span id="buildDate">{{ version_info.build_date }}</span></p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>모니터링 상태:</strong> <span id="monitoringStatus" class="badge bg-secondary">확인 중...</span></p>
+                            <p><strong>마지막 체크:</strong> <span id="lastCheck">확인 중...</span></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+async function loadSettings() {
+    try {
+        const response = await fetch('/api/settings');
+        const settings = await response.json();
+
+        if (settings.success) {
+            // API 설정 로드 (보안상 실제 값은 마스킹)
+            document.getElementById('clientId').value = settings.data.client_id ? '****' + settings.data.client_id.slice(-4) : '';
+            document.getElementById('clientSecret').value = settings.data.client_secret ? '****' : '';
+
+            // 알림 설정 로드
+            document.getElementById('discordWebhook').value = settings.data.discord_webhook ? '****' : '';
+            document.getElementById('discordEnabled').checked = settings.data.discord_enabled || false;
+
+            // 모니터링 설정 로드
+            document.getElementById('checkInterval').value = settings.data.check_interval || 300;
+            document.getElementById('dashboardPeriod').value = settings.data.dashboard_period || 5;
+            document.getElementById('autoRefresh').checked = settings.data.auto_refresh || false;
+        }
+    } catch (error) {
+        showNotification('설정 로드 중 오류 발생: ' + error.message, 'error');
+    }
+}
+
+async function saveSettings() {
+    try {
+        const settings = {
+            client_id: document.getElementById('clientId').value,
+            client_secret: document.getElementById('clientSecret').value,
+            discord_webhook: document.getElementById('discordWebhook').value,
+            discord_enabled: document.getElementById('discordEnabled').checked,
+            check_interval: parseInt(document.getElementById('checkInterval').value),
+            dashboard_period: parseInt(document.getElementById('dashboardPeriod').value),
+            auto_refresh: document.getElementById('autoRefresh').checked
+        };
+
+        const response = await fetch('/api/settings', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(settings)
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            showNotification('설정이 저장되었습니다.', 'success');
+        } else {
+            showNotification('설정 저장 실패: ' + result.error, 'error');
+        }
+    } catch (error) {
+        showNotification('설정 저장 중 오류 발생: ' + error.message, 'error');
+    }
+}
+
+async function testApiConnection() {
+    const button = event.target;
+    const resultSpan = document.getElementById('apiTestResult');
+
+    button.disabled = true;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 테스트 중...';
+    resultSpan.innerHTML = '';
+
+    try {
+        const response = await fetch('/api/test-api');
+        const result = await response.json();
+
+        if (result.success) {
+            resultSpan.innerHTML = '<span class="text-success"><i class="fas fa-check"></i> API 연결 성공</span>';
+        } else {
+            resultSpan.innerHTML = '<span class="text-danger"><i class="fas fa-times"></i> API 연결 실패: ' + result.error + '</span>';
+        }
+    } catch (error) {
+        resultSpan.innerHTML = '<span class="text-danger"><i class="fas fa-times"></i> 테스트 중 오류: ' + error.message + '</span>';
+    } finally {
+        button.disabled = false;
+        button.innerHTML = '<i class="fas fa-flask"></i> API 연결 테스트';
+    }
+}
+
+async function testDiscordNotification() {
+    const button = event.target;
+    const resultSpan = document.getElementById('discordTestResult');
+
+    button.disabled = true;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 테스트 중...';
+    resultSpan.innerHTML = '';
+
+    try {
+        const response = await fetch('/api/test-discord', {
+            method: 'POST'
+        });
+        const result = await response.json();
+
+        if (result.success) {
+            resultSpan.innerHTML = '<span class="text-success"><i class="fas fa-check"></i> Discord 알림 전송 성공</span>';
+        } else {
+            resultSpan.innerHTML = '<span class="text-danger"><i class="fas fa-times"></i> Discord 알림 실패: ' + result.error + '</span>';
+        }
+    } catch (error) {
+        resultSpan.innerHTML = '<span class="text-danger"><i class="fas fa-times"></i> 테스트 중 오류: ' + error.message + '</span>';
+    } finally {
+        button.disabled = false;
+        button.innerHTML = '<i class="fab fa-discord"></i> Discord 알림 테스트';
+    }
+}
+
+function togglePassword(inputId) {
+    const input = document.getElementById(inputId);
+    const icon = event.target.querySelector('i');
+
+    if (input.type === 'password') {
+        input.type = 'text';
+        icon.classList.remove('fa-eye');
+        icon.classList.add('fa-eye-slash');
+    } else {
+        input.type = 'password';
+        icon.classList.remove('fa-eye-slash');
+        icon.classList.add('fa-eye');
+    }
+}
+
+function showNotification(message, type = 'info') {
+    // 간단한 알림 표시
+    const alertClass = type === 'success' ? 'alert-success' :
+                      type === 'error' ? 'alert-danger' : 'alert-info';
+
+    const alert = document.createElement('div');
+    alert.className = `alert ${alertClass} alert-dismissible fade show position-fixed`;
+    alert.style.top = '20px';
+    alert.style.right = '20px';
+    alert.style.zIndex = '9999';
+    alert.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+
+    document.body.appendChild(alert);
+
+    // 3초 후 자동 제거
+    setTimeout(() => {
+        if (alert.parentNode) {
+            alert.parentNode.removeChild(alert);
+        }
+    }, 3000);
+}
+
+// 시스템 상태 업데이트
+async function updateSystemStatus() {
+    try {
+        const response = await fetch('/api/monitoring/status');
+        const status = await response.json();
+
+        if (status.success) {
+            const monitoringBadge = document.getElementById('monitoringStatus');
+            const lastCheckSpan = document.getElementById('lastCheck');
+
+            if (status.monitoring_active) {
+                monitoringBadge.className = 'badge bg-success';
+                monitoringBadge.textContent = '활성화';
+            } else {
+                monitoringBadge.className = 'badge bg-warning';
+                monitoringBadge.textContent = '비활성화';
+            }
+
+            lastCheckSpan.textContent = status.last_check || '미확인';
+        }
+    } catch (error) {
+        console.error('시스템 상태 업데이트 오류:', error);
+    }
+}
+
+// 페이지 로드 시 실행
+document.addEventListener('DOMContentLoaded', function() {
+    loadSettings();
+    updateSystemStatus();
+
+    // 10초마다 시스템 상태 업데이트
+    setInterval(updateSystemStatus, 10000);
+});
+</script>
+{% endblock %}

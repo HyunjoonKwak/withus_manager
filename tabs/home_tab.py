@@ -1,20 +1,26 @@
 """
 홈 탭 관련 UI 및 로직
 """
-import tkinter as tk
-from tkinter import ttk, messagebox
-from tkcalendar import DateEntry
+# 웹서버에서는 tkinter 불필요
+try:
+    import tkinter as tk
+    from tkinter import ttk, messagebox
+    from tkcalendar import DateEntry
+    from ui_utils import BaseTab, run_in_thread, enable_context_menu
+    GUI_AVAILABLE = True
+except ImportError:
+    GUI_AVAILABLE = False
+
 from datetime import datetime, timedelta, timezone
 import json
 import threading
 import socket
 import requests
 
-from ui_utils import BaseTab, run_in_thread, enable_context_menu
 from env_config import config
 
 
-class HomeTab(BaseTab):
+class HomeTab(BaseTab if GUI_AVAILABLE else object):
     """홈 탭 클래스"""
     
     def __init__(self, parent, app):

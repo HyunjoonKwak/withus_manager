@@ -96,7 +96,7 @@ pip install -r requirements_light.txt
 
 # 5. 환경 변수 템플릿 생성
 log "환경 변수 템플릿 생성 중..."
-cat > .env.template << 'EOL'
+cat > .env.example << 'EOL'
 # 애플리케이션 버전 정보
 APP_VERSION=1.0.0
 APP_BUILD_DATE=2025-09-14
@@ -206,7 +206,7 @@ echo "     * env_config.py, version_utils.py"
 echo "     * templates/ 디렉토리"
 echo ""
 echo "2. 환경 설정:"
-echo "   cp .env.template .env"
+echo "   cp .env.example .env"
 echo "   vi .env  # 실제 API 키 등 설정"
 echo ""
 echo "3. 서비스 시작:"

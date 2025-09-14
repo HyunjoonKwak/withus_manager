@@ -54,20 +54,31 @@ python web_server.py
 
 > 💡 **추천**: 로컬에서는 GUI 앱으로 작업하고, EC2 등 서버에서는 웹 서버로 운영
 
-### EC2 배포 (원클릭)
+### EC2 배포
 
+**간단 테스트 (5분)**:
 ```bash
-# EC2 인스턴스에서 실행
-# 1. 저장소 클론 후 배포 스크립트 실행
+# 1. 소스코드 클론
 git clone <your-repository-url>
 cd withus_manager
+
+# 2. 환경 설정
+cp .env.example .env
+nano .env  # API 키 설정
+
+# 3. 실행
+pip3 install -r requirements.txt
+python3 web_server.py
+```
+> 📖 자세한 내용: `EC2_SIMPLE_GUIDE.md` 참조
+
+**프로덕션 배포** (systemd 서비스):
+```bash
+# deploy.sh 스크립트 사용 (고급)
 chmod +x deploy.sh
 sudo ./deploy.sh
-
-# 2. 코드 배포 후 서비스 시작
-sudo systemctl start withus-order
-sudo systemctl enable withus-order
 ```
+> 📖 자세한 내용: `EC2_DEPLOYMENT_GUIDE.md` 참조
 
 ## 📋 시스템 구성
 

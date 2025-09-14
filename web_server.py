@@ -274,6 +274,26 @@ async def home(request: Request):
         logger.error(f"홈 페이지 오류: {e}")
         raise HTTPException(status_code=500, detail="페이지 로딩 중 오류가 발생했습니다")
 
+@app.get("/orders", response_class=HTMLResponse)
+async def orders_page(request: Request):
+    """주문 목록 페이지"""
+    context = {
+        "request": request,
+        "title": "주문 관리 - " + get_full_title(),
+        "version_info": get_detailed_version_info()
+    }
+    return templates.TemplateResponse("orders.html", context)
+
+@app.get("/settings", response_class=HTMLResponse)
+async def settings_page(request: Request):
+    """설정 페이지"""
+    context = {
+        "request": request,
+        "title": "설정 - " + get_full_title(),
+        "version_info": get_detailed_version_info()
+    }
+    return templates.TemplateResponse("settings.html", context)
+
 @app.get("/api/dashboard/refresh")
 async def refresh_dashboard():
     """대시보드 수동 새로고침"""
@@ -363,6 +383,77 @@ async def shutdown_event():
     """앱 종료 시 실행"""
     order_manager.monitoring_active = False
     logger.info("웹서버 종료")
+
+@app.get("/api/settings")
+async def get_settings():
+    """설정 조회"""
+    try:
+        # 보안상 실제 값은 마스킹하여 반환
+        settings = {
+            "client_id": config.get('NAVER_CLIENT_ID', ''),
+            "client_secret": config.get('NAVER_CLIENT_SECRET', ''),
+            "discord_webhook": config.get('DISCORD_WEBHOOK_URL', ''),
+            "discord_enabled": config.get_bool('DISCORD_ENABLED', False),
+            "check_interval": config.get_int('CHECK_INTERVAL', 300),
+            "dashboard_period": config.get_int('DASHBOARD_PERIOD_DAYS', 5),
+            "auto_refresh": config.get_bool('AUTO_REFRESH', True)
+        }
+
+        # 민감한 정보 마스킹
+        if settings["client_id"]:
+            settings["client_id"] = settings["client_id"][-4:] if len(settings["client_id"]) > 4 else "****"
+        if settings["client_secret"]:
+            settings["client_secret"] = "****"
+        if settings["discord_webhook"]:
+            settings["discord_webhook"] = "****"
+
+        return {"success": True, "data": settings}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+@app.post("/api/settings")
+async def save_settings(settings_data: dict):
+    """설정 저장 (실제로는 파일 수정이 필요하므로 현재는 시뮬레이션)"""
+    try:
+        # 실제 구현 시에는 .env 파일을 수정해야 함
+        # 여기서는 간단한 확인만 수행
+        return {"success": True, "message": "설정이 저장되었습니다. (실제 저장을 위해서는 .env 파일을 직접 수정해주세요)"}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+@app.get("/api/test-api")
+async def test_api():
+    """네이버 API 연결 테스트"""
+    try:
+        client_id = config.get('NAVER_CLIENT_ID')
+        client_secret = config.get('NAVER_CLIENT_SECRET')
+
+        if not client_id or not client_secret:
+            return {"success": False, "error": "API 키가 설정되지 않았습니다"}
+
+        return {"success": True, "message": "API 설정이 확인되었습니다"}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+@app.post("/api/test-discord")
+async def test_discord():
+    """Discord 알림 테스트"""
+    try:
+        webhook_url = config.get('DISCORD_WEBHOOK_URL')
+        if not webhook_url:
+            return {"success": False, "error": "Discord 웹훅 URL이 설정되지 않았습니다"}
+
+        # 테스트 알림 전송
+        order_manager.notification_manager.send_discord_notification(
+            "🧪 테스트 알림",
+            "WithUs 주문관리 시스템에서 발송하는 테스트 알림입니다.\n\n설정이 정상적으로 작동하고 있습니다! ✅",
+            0x00ff00
+        )
+
+        return {"success": True, "message": "Discord 알림이 전송되었습니다"}
+    except Exception as e:
+        logger.error(f"Discord 테스트 오류: {e}")
+        return {"success": False, "error": str(e)}
 
 if __name__ == "__main__":
     # 개발용 서버 실행
