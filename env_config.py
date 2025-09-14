@@ -89,12 +89,6 @@ class EnvConfig:
         print(f"[ENV_CONFIG] .env 파일 저장 시작...")
 
         # 추가된 설정들도 포함하여 저장
-        # 디버깅: 중요한 설정값들의 캐시 상태 확인
-        print(f"[ENV_CONFIG] 중요 설정값 캐시 상태 확인:")
-        print(f"[ENV_CONFIG]   ORDER_STATUS_TYPES 캐시값: {self._cache.get('ORDER_STATUS_TYPES', '캐시없음')}")
-        print(f"[ENV_CONFIG]   PRODUCT_STATUS_TYPES 캐시값: {self._cache.get('PRODUCT_STATUS_TYPES', '캐시없음')}")
-        print(f"[ENV_CONFIG]   ORDER_COLUMNS 캐시값: {self._cache.get('ORDER_COLUMNS', '캐시없음')}")
-
         env_vars = {
             'APP_VERSION': self.get('APP_VERSION', '1.0.0'),
             'APP_BUILD_DATE': self.get('APP_BUILD_DATE', '2025-09-14'),
@@ -182,7 +176,6 @@ class EnvConfig:
                 f.write(f"QUICK_PERIOD_SETTING={env_vars['QUICK_PERIOD_SETTING']}\n")
 
                 f.write("\n# 주문 상태 조회 설정\n")
-                print(f"[ENV_CONFIG] ORDER_STATUS_TYPES 파일에 쓰는 값: {env_vars['ORDER_STATUS_TYPES']}")
                 f.write(f"ORDER_STATUS_TYPES={env_vars['ORDER_STATUS_TYPES']}\n")
 
                 f.write("\n# 대시보드 설정\n")
