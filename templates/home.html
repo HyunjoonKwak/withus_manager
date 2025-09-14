@@ -120,7 +120,7 @@
 <div class="row g-3" id="dashboard-cards">
     {% for status, count in order_counts.items() %}
     <div class="col-md-3 col-sm-6">
-        <div class="card status-card {{ 'has-orders' if count > 0 else 'no-orders' }}">
+        <div class="card status-card {% if count > 0 %}has-orders{% else %}no-orders{% endif %}">
             <div class="card-body text-center">
                 <div class="status-icon">
                     {% if status == '신규주문' %}
