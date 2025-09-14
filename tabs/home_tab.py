@@ -41,6 +41,7 @@ class HomeTab(BaseTab):
         # 주문 현황 대시보드
         dashboard_frame = ttk.LabelFrame(self.frame, text="주문 현황")
         dashboard_frame.pack(fill="x", padx=5, pady=5)
+
         
         # 주문 상태 버튼들 (한 줄로 배치)
         status_frame = ttk.Frame(dashboard_frame)
@@ -80,26 +81,29 @@ class HomeTab(BaseTab):
         
         ttk.Button(refresh_frame, text="대시보드 새로고침", command=self.refresh_dashboard).pack(side="left", padx=2)
         ttk.Button(refresh_frame, text="수동 주문 조회", command=self.manual_order_query).pack(side="left", padx=2)
-        
+
         # 대시보드 기간 설정
         ttk.Label(refresh_frame, text="조회 기간:").pack(side="left", padx=(10, 2))
-        
+
         from env_config import config
         self.dashboard_period_var = tk.StringVar()
-        current_period = config.get_int('DASHBOARD_PERIOD_DAYS', 1)
+        current_period = config.get_int('DASHBOARD_PERIOD_DAYS', 3)
         self.dashboard_period_var.set(str(current_period))
-        
-        period_combo = ttk.Combobox(refresh_frame, textvariable=self.dashboard_period_var, 
-                                   values=['1', '3', '7'], width=5, state="readonly")
+
+        period_combo = ttk.Combobox(refresh_frame, textvariable=self.dashboard_period_var,
+                                   values=['1', '2', '3', '5', '7', '15', '30'], width=5, state="readonly")
         period_combo.pack(side="left", padx=2)
-        period_combo.bind('<<ComboboxSelected>>', self.on_period_changed)
+
+        ttk.Label(refresh_frame, text="일").pack(side="left", padx=(0, 2))
+
+        # 기간 적용 버튼 추가
+        ttk.Button(refresh_frame, text="적용", command=self.apply_period_setting).pack(side="left", padx=2)
         
-        ttk.Label(refresh_frame, text="일").pack(side="left", padx=(0, 5))
         
         
         # 상태 표시
         self.home_status_var = tk.StringVar()
-        self.home_status_var.set("대기 중...")
+        self.home_status_var.set("초기화 중... (3초 후 자동 조회)")
         status_label = ttk.Label(dashboard_frame, textvariable=self.home_status_var)
         status_label.pack(pady=5)
         
@@ -151,20 +155,48 @@ class HomeTab(BaseTab):
         self.products_status_var.set("대기 중...")
         products_status_label = ttk.Label(self.frame, textvariable=self.products_status_var)
         products_status_label.pack(side="bottom", pady=2)
-        
-    
+
+    def apply_period_setting(self):
+        """조회 기간 설정 적용 및 저장"""
+        try:
+            selected_period = self.dashboard_period_var.get()
+            if not selected_period:
+                return
+
+            days = int(selected_period)
+
+            # 환경변수에 저장
+            from env_config import config
+            config.set('DASHBOARD_PERIOD_DAYS', str(days))
+            config.save()
+
+            print(f"홈탭 대시보드 조회기간 설정 적용 및 저장: {days}일")
+
+            # 조회 시작 상태 표시
+            self.home_status_var.set("조회 중...")
+
+            # 대시보드 자동 새로고침
+            self.refresh_dashboard()
+
+        except (ValueError, TypeError) as e:
+            print(f"기간 설정 적용 오류: {e}")
+            self.home_status_var.set("설정 오류")
+
     def refresh_dashboard(self):
         """대시보드 새로고침"""
+        # 조회 시작 상태 표시
+        self.home_status_var.set("조회 중...")
+
         # 현재 시간을 기록하고 env에서 간격 설정 로드
         import time
         from env_config import config
-        
+
         self.last_refresh_time = time.time()
         self.refresh_interval = config.get_int('REFRESH_INTERVAL', 60)
-        
+
         # 카운트다운 시작
         self.start_countdown()
-        
+
         run_in_thread(self._refresh_dashboard_thread)
     
     def _refresh_dashboard_thread(self):
@@ -383,25 +415,23 @@ class HomeTab(BaseTab):
             self.app.root.after(0, update_status_buttons)
             
             print(f"대시보드 새로고침 성공: {sum(order_counts.values())}건 조회 완료")
-            
+
+            # 조회 완료 상태 표시
+            self.app.root.after(0, lambda: self.home_status_var.set("대기 중..."))
+
         except Exception as e:
             print(f"대시보드 새로고침 오류: {e}")
+            # 오류 발생 시 상태 표시
+            self.app.root.after(0, lambda: self.home_status_var.set("조회 오류"))
             self.app.root.after(0, lambda: messagebox.showerror("오류", f"대시보드 새로고침 실패: {str(e)}"))
     
     def on_period_changed(self, event=None):
-        """대시보드 기간 변경 이벤트"""
+        """대시보드 기간 선택 이벤트 (적용 버튼을 클릭해야 저장됨)"""
         try:
-            new_period = int(self.dashboard_period_var.get())
-            from env_config import config
-            config.set('DASHBOARD_PERIOD_DAYS', str(new_period))
-            config.save()
-            print(f"대시보드 조회 기간이 {new_period}일로 변경됨")
-            
-            # 자동으로 대시보드 새로고침
-            self.refresh_dashboard()
-            
+            selected_period = self.dashboard_period_var.get()
+            print(f"대시보드 조회 기간 선택: {selected_period}일 (적용 버튼을 클릭하여 저장하세요)")
         except Exception as e:
-            print(f"기간 변경 오류: {e}")
+            print(f"기간 선택 오류: {e}")
     
     def _update_dashboard_ui(self, order_counts, all_orders, total_chunks):
         """대시보드 UI 업데이트 및 상태 변화 감지"""
@@ -493,12 +523,14 @@ class HomeTab(BaseTab):
             # 변화가 있는 경우에만 디스코드 알림 전송
             if status_changes and self.app.notification_manager:
                 print(f"상태 변화 알림 전송: {status_changes}")
-                self._send_status_change_notification(status_changes)
+                # 현재 설정된 조회기간 가져오기
+                query_period = self.dashboard_period_var.get()
+                self._send_status_change_notification(status_changes, current_counts, query_period)
 
         except Exception as e:
             print(f"상태 변화 감지 오류: {e}")
 
-    def _send_status_change_notification(self, status_changes):
+    def _send_status_change_notification(self, status_changes, current_counts, query_period):
         """상태 변화에 대한 디스코드 알림 전송"""
         try:
             if not self.app.notification_manager.enabled_notifications.get('discord'):
@@ -511,7 +543,8 @@ class HomeTab(BaseTab):
             now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
             discord_message = f"**주문 상태가 변화했습니다**\n\n"
-            discord_message += f"🕐 확인 시간: {now}\n\n"
+            discord_message += f"🕐 확인 시간: {now}\n"
+            discord_message += f"📅 조회 기간: 최근 {query_period}일\n\n"
 
             # 상태별 이모지 매핑
             emoji_map = {
@@ -525,11 +558,22 @@ class HomeTab(BaseTab):
                 '교환주문': '🔄'
             }
 
-            # 변화된 상태들을 메시지에 추가
+            # 변화된 상태들을 메시지에 추가 (변화량 + 현재 총건수)
+            discord_message += "**📈 상태 변화 및 현재 총건수:**\n"
             for status, change in status_changes.items():
                 emoji = emoji_map.get(status, '📋')
                 change_text = f"+{change}" if change > 0 else str(change)
-                discord_message += f"{emoji} **{status}**: {change_text}건\n"
+                current_total = current_counts.get(status, 0)
+                discord_message += f"{emoji} **{status}**: {change_text}건 → 총 {current_total:,}건\n"
+
+            # 변화가 없는 상태들의 현재 총건수도 추가 (0건이 아닌 경우만)
+            discord_message += "\n**📊 기타 현재 상태:**\n"
+            for status in ['신규주문', '발송대기', '배송중', '배송완료', '구매확정', '취소주문', '반품주문', '교환주문']:
+                if status not in status_changes:  # 변화가 없는 상태
+                    current_total = current_counts.get(status, 0)
+                    if current_total > 0:  # 0건이 아닌 경우만 표시
+                        emoji = emoji_map.get(status, '📋')
+                        discord_message += f"{emoji} **{status}**: {current_total:,}건\n"
 
             # 색상 결정 (신규주문이 증가하면 초록색, 취소/반품이 증가하면 빨간색, 기타는 파란색)
             color = 0x0099ff  # 기본 파란색
@@ -682,6 +726,8 @@ class HomeTab(BaseTab):
     
     def query_products(self):
         """상품 목록 조회"""
+        # 조회 시작 상태 표시
+        self.products_status_var.set("상품 조회 중...")
         run_in_thread(self._query_products_thread)
     
     def _query_products_thread(self):
