@@ -181,14 +181,19 @@ document.addEventListener('DOMContentLoaded', function() {
 // 상품 로드
 async function loadProducts() {
     try {
+        console.log('상품 로드 시작...');
         showLoading(true);
 
         const response = await fetch('/api/products');
+        console.log('API 응답 상태:', response.status);
         const data = await response.json();
+        console.log('API 응답 데이터:', data);
 
         if (data.success) {
             products = data.products;
             filteredProducts = [...products];
+            console.log('상품 개수:', products.length);
+            console.log('첫 번째 상품:', products[0]);
             renderProducts(filteredProducts);
             updateProductCount(filteredProducts.length);
         } else {
@@ -253,18 +258,24 @@ function filterProducts() {
 
 // 상품 테이블 렌더링
 function renderProducts(productList) {
+    console.log('renderProducts 호출됨, 상품 개수:', productList.length);
     const tbody = document.getElementById('productsTableBody');
     const noProductsMessage = document.getElementById('noProductsMessage');
 
+    console.log('tbody 엘리먼트:', tbody);
+    console.log('noProductsMessage 엘리먼트:', noProductsMessage);
+
     if (productList.length === 0) {
+        console.log('상품이 없으므로 메시지 표시');
         tbody.innerHTML = '';
         noProductsMessage.classList.remove('d-none');
         return;
     }
 
+    console.log('상품 테이블 렌더링 시작...');
     noProductsMessage.classList.add('d-none');
 
-    tbody.innerHTML = productList.map((product, index) => `
+    const tableHTML = productList.map((product, index) => `
         <tr onclick="showProductDetail('${product.product_id}')" style="cursor: pointer;">
             <td>
                 <img src="${product.image_url || '/static/images/no-image.png'}"
@@ -314,6 +325,12 @@ function renderProducts(productList) {
             </td>
         </tr>
     `).join('');
+
+    console.log('테이블 HTML 길이:', tableHTML.length);
+    console.log('테이블 HTML 미리보기:', tableHTML.substring(0, 200) + '...');
+
+    tbody.innerHTML = tableHTML;
+    console.log('테이블 업데이트 완료');
 }
 
 // 필터 초기화
