@@ -86,6 +86,9 @@ class EnvConfig:
     
     def save_to_env_file(self):
         """환경 변수를 .env 파일에 저장"""
+        print(f"[ENV_CONFIG] .env 파일 저장 시작...")
+
+        # 추가된 설정들도 포함하여 저장
         env_vars = {
             'APP_VERSION': self.get('APP_VERSION', '1.0.0'),
             'APP_BUILD_DATE': self.get('APP_BUILD_DATE', '2025-09-14'),
@@ -103,7 +106,7 @@ class EnvConfig:
             'ALLOWED_IPS': self.get('ALLOWED_IPS', '121.190.40.153,175.125.204.97'),
             'QUICK_PERIOD_SETTING': str(self.get_int('QUICK_PERIOD_SETTING', 7)),
             'ORDER_STATUS_TYPES': self.get('ORDER_STATUS_TYPES', 'PAYMENT_WAITING,PAYED,DELIVERING,DELIVERED,PURCHASE_DECIDED,EXCHANGED,CANCELED,RETURNED,CANCELED_BY_NOPAYMENT'),
-            'DASHBOARD_PERIOD_DAYS': str(self.get_int('DASHBOARD_PERIOD_DAYS', 1)),
+            'DASHBOARD_PERIOD_DAYS': str(self.get_int('DASHBOARD_PERIOD_DAYS', 5)),
             'NEW_ORDER_DEFAULT_DAYS': str(self.get_int('NEW_ORDER_DEFAULT_DAYS', 7)),
             'SHIPPING_PENDING_DEFAULT_DAYS': str(self.get_int('SHIPPING_PENDING_DEFAULT_DAYS', 7)),
             'SHIPPING_IN_PROGRESS_DEFAULT_DAYS': str(self.get_int('SHIPPING_IN_PROGRESS_DEFAULT_DAYS', 7)),
@@ -111,48 +114,109 @@ class EnvConfig:
             'PURCHASE_DECIDED_DEFAULT_DAYS': str(self.get_int('PURCHASE_DECIDED_DEFAULT_DAYS', 30)),
             'CANCEL_DEFAULT_DAYS': str(self.get_int('CANCEL_DEFAULT_DAYS', 30)),
             'RETURN_EXCHANGE_DEFAULT_DAYS': str(self.get_int('RETURN_EXCHANGE_DEFAULT_DAYS', 30)),
-            'CANCEL_RETURN_EXCHANGE_DEFAULT_DAYS': str(self.get_int('CANCEL_RETURN_EXCHANGE_DEFAULT_DAYS', 30))
+            'CANCEL_RETURN_EXCHANGE_DEFAULT_DAYS': str(self.get_int('CANCEL_RETURN_EXCHANGE_DEFAULT_DAYS', 30)),
+            # 웹에서 추가한 고급 설정들
+            'NOTIFY_NEW_ORDERS': str(self.get_bool('NOTIFY_NEW_ORDERS', True)).lower(),
+            'NOTIFY_SHIPPED': str(self.get_bool('NOTIFY_SHIPPED', True)).lower(),
+            'NOTIFY_DELIVERED': str(self.get_bool('NOTIFY_DELIVERED', True)).lower(),
+            'NOTIFY_CANCELED': str(self.get_bool('NOTIFY_CANCELED', True)).lower(),
+            'NOTIFY_RETURNS': str(self.get_bool('NOTIFY_RETURNS', True)).lower(),
+            'NOTIFY_ERRORS': str(self.get_bool('NOTIFY_ERRORS', True)).lower(),
+            'AUTO_CONFIRM_ORDERS': str(self.get_bool('AUTO_CONFIRM_ORDERS')).lower(),
+            'AUTO_CONFIRM_DELAY': str(self.get_int('AUTO_CONFIRM_DELAY', 30)),
+            'EXCLUDE_START_TIME': self.get('EXCLUDE_START_TIME', '22:00'),
+            'EXCLUDE_END_TIME': self.get('EXCLUDE_END_TIME', '09:00'),
+            'STOCK_ALERTS': str(self.get_bool('STOCK_ALERTS')).lower(),
+            'STOCK_THRESHOLD': str(self.get_int('STOCK_THRESHOLD', 10))
         }
+
+        print(f"[ENV_CONFIG] {len(env_vars)}개 설정 항목을 .env 파일에 기록")
         
-        with open('.env', 'w', encoding='utf-8') as f:
-            f.write("# 애플리케이션 버전 정보\n")
-            f.write(f"APP_VERSION={env_vars['APP_VERSION']}\n")
-            f.write(f"APP_BUILD_DATE={env_vars['APP_BUILD_DATE']}\n")
-            f.write("\n# 네이버 API 설정\n")
-            f.write(f"NAVER_CLIENT_ID={env_vars['NAVER_CLIENT_ID']}\n")
-            f.write(f"NAVER_CLIENT_SECRET={env_vars['NAVER_CLIENT_SECRET']}\n")
-            f.write("\n# 데이터베이스 설정\n")
-            f.write(f"DATABASE_PATH={env_vars['DATABASE_PATH']}\n")
-            f.write("\n# 디스코드 알림 설정\n")
-            f.write(f"DISCORD_WEBHOOK_URL={env_vars['DISCORD_WEBHOOK_URL']}\n")
-            f.write(f"DISCORD_ENABLED={env_vars['DISCORD_ENABLED']}\n")
-            f.write("\n# 알림 설정\n")
-            f.write(f"DESKTOP_NOTIFICATIONS={env_vars['DESKTOP_NOTIFICATIONS']}\n")
-            f.write(f"CHECK_INTERVAL={env_vars['CHECK_INTERVAL']}\n")
-            f.write("\n# 자동 새로고침 설정\n")
-            f.write(f"AUTO_REFRESH={env_vars['AUTO_REFRESH']}\n")
-            f.write(f"REFRESH_INTERVAL={env_vars['REFRESH_INTERVAL']}\n")
-            f.write("\n# 상품상태 조회 설정\n")
-            f.write(f"PRODUCT_STATUS_TYPES={env_vars['PRODUCT_STATUS_TYPES']}\n")
-            f.write("\n# 주문 컬럼 설정\n")
-            f.write(f"ORDER_COLUMNS={env_vars['ORDER_COLUMNS']}\n")
-            f.write("\n# IP 관리 설정\n")
-            f.write(f"ALLOWED_IPS={env_vars['ALLOWED_IPS']}\n")
-            f.write("\n# 기간 설정\n")
-            f.write(f"QUICK_PERIOD_SETTING={env_vars['QUICK_PERIOD_SETTING']}\n")
-            f.write("\n# 주문 상태 조회 설정\n")
-            f.write(f"ORDER_STATUS_TYPES={env_vars['ORDER_STATUS_TYPES']}\n")
-            f.write("\n# 대시보드 설정\n")
-            f.write(f"DASHBOARD_PERIOD_DAYS={env_vars['DASHBOARD_PERIOD_DAYS']}\n")
-            f.write("\n# 신규 탭 기본 기간 설정\n")
-            f.write(f"NEW_ORDER_DEFAULT_DAYS={env_vars['NEW_ORDER_DEFAULT_DAYS']}\n")
-            f.write(f"SHIPPING_PENDING_DEFAULT_DAYS={env_vars['SHIPPING_PENDING_DEFAULT_DAYS']}\n")
-            f.write(f"SHIPPING_IN_PROGRESS_DEFAULT_DAYS={env_vars['SHIPPING_IN_PROGRESS_DEFAULT_DAYS']}\n")
-            f.write(f"SHIPPING_COMPLETED_DEFAULT_DAYS={env_vars['SHIPPING_COMPLETED_DEFAULT_DAYS']}\n")
-            f.write(f"PURCHASE_DECIDED_DEFAULT_DAYS={env_vars['PURCHASE_DECIDED_DEFAULT_DAYS']}\n")
-            f.write(f"CANCEL_DEFAULT_DAYS={env_vars['CANCEL_DEFAULT_DAYS']}\n")
-            f.write(f"RETURN_EXCHANGE_DEFAULT_DAYS={env_vars['RETURN_EXCHANGE_DEFAULT_DAYS']}\n")
-            f.write(f"CANCEL_RETURN_EXCHANGE_DEFAULT_DAYS={env_vars['CANCEL_RETURN_EXCHANGE_DEFAULT_DAYS']}\n")
+        try:
+            print(f"[ENV_CONFIG] .env 파일 열기...")
+            with open('.env', 'w', encoding='utf-8') as f:
+                print(f"[ENV_CONFIG] .env 파일 쓰기 시작...")
+
+                f.write("# WithUs 주문관리시스템 설정 파일\n")
+                f.write(f"# 마지막 업데이트: {os.environ.get('TZ', 'UTC')}\n\n")
+
+                f.write("# 애플리케이션 버전 정보\n")
+                f.write(f"APP_VERSION={env_vars['APP_VERSION']}\n")
+                f.write(f"APP_BUILD_DATE={env_vars['APP_BUILD_DATE']}\n")
+
+                f.write("\n# 네이버 API 설정\n")
+                f.write(f"NAVER_CLIENT_ID={env_vars['NAVER_CLIENT_ID']}\n")
+                f.write(f"NAVER_CLIENT_SECRET={env_vars['NAVER_CLIENT_SECRET']}\n")
+
+                f.write("\n# 데이터베이스 설정\n")
+                f.write(f"DATABASE_PATH={env_vars['DATABASE_PATH']}\n")
+
+                f.write("\n# 디스코드 알림 설정\n")
+                f.write(f"DISCORD_WEBHOOK_URL={env_vars['DISCORD_WEBHOOK_URL']}\n")
+                f.write(f"DISCORD_ENABLED={env_vars['DISCORD_ENABLED']}\n")
+
+                f.write("\n# 알림 설정\n")
+                f.write(f"DESKTOP_NOTIFICATIONS={env_vars['DESKTOP_NOTIFICATIONS']}\n")
+                f.write(f"CHECK_INTERVAL={env_vars['CHECK_INTERVAL']}\n")
+
+                f.write("\n# 자동 새로고침 설정\n")
+                f.write(f"AUTO_REFRESH={env_vars['AUTO_REFRESH']}\n")
+                f.write(f"REFRESH_INTERVAL={env_vars['REFRESH_INTERVAL']}\n")
+
+                f.write("\n# 상품상태 조회 설정\n")
+                f.write(f"PRODUCT_STATUS_TYPES={env_vars['PRODUCT_STATUS_TYPES']}\n")
+
+                f.write("\n# 주문 컬럼 설정\n")
+                f.write(f"ORDER_COLUMNS={env_vars['ORDER_COLUMNS']}\n")
+
+                f.write("\n# IP 관리 설정\n")
+                f.write(f"ALLOWED_IPS={env_vars['ALLOWED_IPS']}\n")
+
+                f.write("\n# 기간 설정\n")
+                f.write(f"QUICK_PERIOD_SETTING={env_vars['QUICK_PERIOD_SETTING']}\n")
+
+                f.write("\n# 주문 상태 조회 설정\n")
+                f.write(f"ORDER_STATUS_TYPES={env_vars['ORDER_STATUS_TYPES']}\n")
+
+                f.write("\n# 대시보드 설정\n")
+                f.write(f"DASHBOARD_PERIOD_DAYS={env_vars['DASHBOARD_PERIOD_DAYS']}\n")
+
+                f.write("\n# 탭별 기본 기간 설정\n")
+                f.write(f"NEW_ORDER_DEFAULT_DAYS={env_vars['NEW_ORDER_DEFAULT_DAYS']}\n")
+                f.write(f"SHIPPING_PENDING_DEFAULT_DAYS={env_vars['SHIPPING_PENDING_DEFAULT_DAYS']}\n")
+                f.write(f"SHIPPING_IN_PROGRESS_DEFAULT_DAYS={env_vars['SHIPPING_IN_PROGRESS_DEFAULT_DAYS']}\n")
+                f.write(f"SHIPPING_COMPLETED_DEFAULT_DAYS={env_vars['SHIPPING_COMPLETED_DEFAULT_DAYS']}\n")
+                f.write(f"PURCHASE_DECIDED_DEFAULT_DAYS={env_vars['PURCHASE_DECIDED_DEFAULT_DAYS']}\n")
+                f.write(f"CANCEL_DEFAULT_DAYS={env_vars['CANCEL_DEFAULT_DAYS']}\n")
+                f.write(f"RETURN_EXCHANGE_DEFAULT_DAYS={env_vars['RETURN_EXCHANGE_DEFAULT_DAYS']}\n")
+                f.write(f"CANCEL_RETURN_EXCHANGE_DEFAULT_DAYS={env_vars['CANCEL_RETURN_EXCHANGE_DEFAULT_DAYS']}\n")
+
+                # 고급 설정 추가
+                f.write("\n# 고급 알림 설정\n")
+                f.write(f"NOTIFY_NEW_ORDERS={env_vars['NOTIFY_NEW_ORDERS']}\n")
+                f.write(f"NOTIFY_SHIPPED={env_vars['NOTIFY_SHIPPED']}\n")
+                f.write(f"NOTIFY_DELIVERED={env_vars['NOTIFY_DELIVERED']}\n")
+                f.write(f"NOTIFY_CANCELED={env_vars['NOTIFY_CANCELED']}\n")
+                f.write(f"NOTIFY_RETURNS={env_vars['NOTIFY_RETURNS']}\n")
+                f.write(f"NOTIFY_ERRORS={env_vars['NOTIFY_ERRORS']}\n")
+
+                f.write("\n# 자동화 설정\n")
+                f.write(f"AUTO_CONFIRM_ORDERS={env_vars['AUTO_CONFIRM_ORDERS']}\n")
+                f.write(f"AUTO_CONFIRM_DELAY={env_vars['AUTO_CONFIRM_DELAY']}\n")
+                f.write(f"EXCLUDE_START_TIME={env_vars['EXCLUDE_START_TIME']}\n")
+                f.write(f"EXCLUDE_END_TIME={env_vars['EXCLUDE_END_TIME']}\n")
+
+                f.write("\n# 재고 관리 설정\n")
+                f.write(f"STOCK_ALERTS={env_vars['STOCK_ALERTS']}\n")
+                f.write(f"STOCK_THRESHOLD={env_vars['STOCK_THRESHOLD']}\n")
+
+                print(f"[ENV_CONFIG] .env 파일 쓰기 완료")
+
+            print(f"[ENV_CONFIG] .env 파일 저장 성공 - {len(env_vars)}개 설정 저장됨")
+
+        except Exception as e:
+            print(f"[ENV_CONFIG] .env 파일 저장 실패: {e}")
+            raise
 
 # 전역 설정 인스턴스 (지연 로딩)
 _global_config = None

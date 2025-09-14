@@ -664,12 +664,52 @@ async def get_settings():
 
 @app.post("/api/settings")
 async def save_settings(settings_data: dict):
-    """설정 저장 (실제로는 파일 수정이 필요하므로 현재는 시뮬레이션)"""
+    """설정 저장 - 실제로 .env 파일에 저장"""
     try:
-        # 실제 구현 시에는 .env 파일을 수정해야 함
-        # 여기서는 간단한 확인만 수행
-        return {"success": True, "message": "설정이 저장되었습니다. (실제 저장을 위해서는 .env 파일을 직접 수정해주세요)"}
+        logger.info(f"설정 저장 시작: {len(settings_data)}개 항목")
+
+        # 각 설정값을 환경 변수에 설정
+        saved_settings = {}
+        for key, value in settings_data.items():
+            # 값 타입에 따른 변환
+            if isinstance(value, bool):
+                str_value = 'true' if value else 'false'
+            elif isinstance(value, (int, float)):
+                str_value = str(value)
+            else:
+                str_value = str(value) if value is not None else ''
+
+            # 환경 변수에 설정
+            config.set(key, str_value)
+            saved_settings[key] = str_value
+            logger.info(f"설정됨: {key} = {str_value}")
+
+        # .env 파일에 저장
+        logger.info(".env 파일에 저장 시작...")
+        config.save_to_env_file()
+        logger.info(".env 파일 저장 완료")
+
+        # 설정 다시 로드하여 확인
+        config.reload()
+        logger.info("설정 파일 다시 로드 완료")
+
+        # 저장된 설정값들 확인 로그
+        verification_log = []
+        for key in saved_settings.keys():
+            current_value = config.get(key)
+            verification_log.append(f"{key}: {current_value}")
+
+        logger.info(f"저장 확인 결과: {', '.join(verification_log)}")
+
+        return {
+            "success": True,
+            "message": f"설정이 성공적으로 저장되었습니다. ({len(saved_settings)}개 항목)",
+            "saved_count": len(saved_settings),
+            "saved_settings": saved_settings
+        }
+
     except Exception as e:
+        logger.error(f"설정 저장 중 오류 발생: {e}")
         return {"success": False, "error": str(e)}
 
 @app.get("/api/test-api")
@@ -723,6 +763,74 @@ async def test_notifications():
         return {"success": True, "message": "알림 테스트가 완료되었습니다"}
     except Exception as e:
         logger.error(f"알림 테스트 오류: {e}")
+        return {"success": False, "error": str(e)}
+
+@app.post("/api/test-settings-save")
+async def test_settings_save():
+    """설정 저장 테스트 - 실제 .env 파일 저장 확인"""
+    try:
+        logger.info("=== 설정 저장 테스트 시작 ===")
+
+        # 테스트용 설정 데이터
+        test_settings = {
+            'CHECK_INTERVAL': 600,  # 10분으로 변경
+            'DASHBOARD_PERIOD_DAYS': 7,  # 7일로 변경
+            'DISCORD_ENABLED': True,
+            'AUTO_REFRESH': True,
+            'NOTIFY_NEW_ORDERS': True,
+            'STOCK_THRESHOLD': 15
+        }
+
+        logger.info(f"테스트 설정: {test_settings}")
+
+        # 변경 전 값 기록
+        before_values = {}
+        for key in test_settings.keys():
+            before_values[key] = config.get(key)
+
+        logger.info(f"변경 전 값: {before_values}")
+
+        # 설정 저장 호출
+        result = await save_settings(test_settings)
+
+        if result['success']:
+            # 변경 후 값 확인
+            after_values = {}
+            for key in test_settings.keys():
+                after_values[key] = config.get(key)
+
+            logger.info(f"변경 후 값: {after_values}")
+
+            # .env 파일 내용 확인
+            try:
+                with open('.env', 'r', encoding='utf-8') as f:
+                    env_content = f.read()
+                    logger.info(f".env 파일 마지막 10줄:")
+                    lines = env_content.split('\n')
+                    for line in lines[-10:]:
+                        if line.strip():
+                            logger.info(f"  {line}")
+
+            except Exception as e:
+                logger.error(f".env 파일 읽기 실패: {e}")
+
+            return {
+                "success": True,
+                "message": "설정 저장 테스트 완료",
+                "test_settings": test_settings,
+                "before_values": before_values,
+                "after_values": after_values,
+                "save_result": result
+            }
+        else:
+            return {
+                "success": False,
+                "error": "설정 저장 실패",
+                "save_result": result
+            }
+
+    except Exception as e:
+        logger.error(f"설정 저장 테스트 오류: {e}")
         return {"success": False, "error": str(e)}
 
 @app.get("/api/current-ip")

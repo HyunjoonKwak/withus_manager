@@ -197,6 +197,26 @@
     </div>
 </div>
 
+<!-- 설정 저장 테스트 -->
+<div class="test-section">
+    <h4><i class="fas fa-save"></i> 4. 설정 저장 테스트</h4>
+    <div class="test-card">
+        <div class="card-body">
+            <p class="text-muted">설정이 실제로 .env 파일에 저장되는지 테스트합니다.</p>
+            <button class="btn btn-info me-2" onclick="testSettingsSave()">
+                <i class="fas fa-database"></i> 설정 저장 테스트
+            </button>
+            <button class="btn btn-outline-secondary" onclick="clearSettingsResults()">
+                <i class="fas fa-trash"></i> 결과 지우기
+            </button>
+            <div id="settingsResults" class="mt-3" style="display: none;">
+                <h6>저장 테스트 결과</h6>
+                <div id="settingsResponse" class="response-box"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- 전체 테스트 -->
 <div class="test-card">
     <div class="card-body text-center">
@@ -415,6 +435,55 @@ async function testNotification() {
     }
 }
 
+// 설정 저장 테스트
+async function testSettingsSave() {
+    showResults('settingsResults');
+    updateResponse('settingsResponse', '설정 저장 테스트 진행 중...');
+    logMessage('info', '설정 저장 테스트 시작');
+
+    try {
+        const response = await fetch('/api/test-settings-save', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+
+        const data = await response.json();
+
+        const result = {
+            timestamp: new Date().toLocaleString('ko-KR'),
+            status: data.success ? 'SUCCESS' : 'FAILED',
+            message: data.message || data.error,
+            test_details: {
+                before_values: data.before_values,
+                after_values: data.after_values,
+                saved_count: data.save_result?.saved_count
+            },
+            details: data
+        };
+
+        updateResponse('settingsResponse', JSON.stringify(result, null, 2));
+        logMessage(data.success ? 'success' : 'error',
+            `설정 저장 테스트 ${result.status}: ${result.message}`);
+
+        if (data.success && data.save_result?.saved_count) {
+            logMessage('info', `저장된 설정 수: ${data.save_result.saved_count}개`);
+        }
+
+    } catch (error) {
+        const errorResult = {
+            timestamp: new Date().toLocaleString('ko-KR'),
+            status: 'ERROR',
+            message: error.message,
+            error: error.toString()
+        };
+
+        updateResponse('settingsResponse', JSON.stringify(errorResult, null, 2));
+        logMessage('error', '설정 저장 테스트 오류: ' + error.message);
+    }
+}
+
 // 전체 테스트 실행
 async function runAllTests() {
     logMessage('info', '=== 전체 테스트 시작 ===');
@@ -429,6 +498,10 @@ async function runAllTests() {
 
     // 3. 알림 테스트
     await testNotification();
+    await delay(2000);
+
+    // 4. 설정 저장 테스트
+    await testSettingsSave();
 
     logMessage('success', '=== 전체 테스트 완료 ===');
 }
@@ -454,10 +527,15 @@ function clearNotificationResults() {
     document.getElementById('notificationResults').style.display = 'none';
 }
 
+function clearSettingsResults() {
+    document.getElementById('settingsResults').style.display = 'none';
+}
+
 function clearAllResults() {
     clearAuthResults();
     clearOrderResults();
     clearNotificationResults();
+    clearSettingsResults();
     clearTestLog();
     logMessage('info', '모든 테스트 결과를 지웠습니다.');
 }
