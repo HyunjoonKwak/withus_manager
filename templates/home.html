@@ -92,13 +92,14 @@
                 <div class="period-controls">
                     <label for="period-select" class="form-label mb-0 text-sm">기간 변경:</label>
                     <select id="period-select" class="form-select form-select-sm" style="max-width: 120px;" onchange="changeDashboardPeriod()">
-                        <option value="1">1일</option>
-                        <option value="3">3일</option>
-                        <option value="5" selected>5일</option>
-                        <option value="7">7일</option>
-                        <option value="14">14일</option>
-                        <option value="30">30일</option>
-                        <option value="90">90일</option>
+                        <option value="1" {{ 'selected' if dashboard_data.period.days == 1 else '' }}>1일</option>
+                        <option value="3" {{ 'selected' if dashboard_data.period.days == 3 else '' }}>3일</option>
+                        <option value="5" {{ 'selected' if dashboard_data.period.days == 5 else '' }}>5일</option>
+                        <option value="7" {{ 'selected' if dashboard_data.period.days == 7 else '' }}>7일</option>
+                        <option value="10" {{ 'selected' if dashboard_data.period.days == 10 else '' }}>10일</option>
+                        <option value="14" {{ 'selected' if dashboard_data.period.days == 14 else '' }}>14일</option>
+                        <option value="30" {{ 'selected' if dashboard_data.period.days == 30 else '' }}>30일</option>
+                        <option value="90" {{ 'selected' if dashboard_data.period.days == 90 else '' }}>90일</option>
                     </select>
                 </div>
             </div>
@@ -278,6 +279,42 @@ async function testNotifications() {
     } finally {
         button.innerHTML = originalHtml;
         button.disabled = false;
+    }
+}
+
+// 기간 변경
+async function changeDashboardPeriod() {
+    const select = document.getElementById('period-select');
+    const days = parseInt(select.value);
+
+    try {
+        const response = await fetch('/api/dashboard/period', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ days: days })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            // 기간 정보 업데이트
+            document.getElementById('current-period').textContent = `최근 ${days}일간`;
+            if (result.period_dates) {
+                document.getElementById('period-dates').textContent = result.period_dates;
+            }
+
+            // 대시보드 새로고침
+            setTimeout(() => {
+                location.reload();
+            }, 500);
+        } else {
+            throw new Error(result.error || '기간 변경 중 오류가 발생했습니다');
+        }
+    } catch (error) {
+        alert('기간 변경 중 오류가 발생했습니다: ' + error.message);
+        console.error('Period change error:', error);
     }
 }
 
