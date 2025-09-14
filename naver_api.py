@@ -688,9 +688,15 @@ class NaverShoppingAPI:
     
     def sync_orders_to_database(self, db_manager, start_date: str = None, end_date: str = None) -> int:
         """네이버 API에서 주문 데이터를 가져와 데이터베이스에 동기화"""
-        orders = self.get_orders(start_date, end_date)
+        response = self.get_orders(start_date, end_date)
         synced_count = 0
-        
+
+        # get_orders 응답에서 실제 주문 데이터 추출
+        if response and response.get('success'):
+            orders = response.get('data', {}).get('data', [])
+        else:
+            orders = []
+
         for order in orders:
             order_data = {
                 'order_id': order.get('orderId'),

@@ -520,17 +520,23 @@ async def get_orders(
                 limit=limit
             )
 
-            if api_response:
-                logger.info(f"📥 네이버 API 조회 완료: {api_response.get('message', '결과 없음')}")
+            if api_response and api_response.get('success'):
+                total_orders = api_response.get('data', {}).get('total', 0)
+                chunks_processed = api_response.get('chunks_processed', 0)
+                logger.info(f"📥 네이버 API 조회 완료: {chunks_processed}개 청크, 총 {total_orders}건")
 
-                # 2단계: 조회된 데이터를 데이터베이스에 저장
+                # 2단계: 조회된 데이터를 데이터베이스에 저장 (주문이 있든 없든 항상 실행)
                 logger.info("💾 데이터베이스 저장 시작...")
-                saved_count = order_manager.naver_api.sync_orders_to_database(
-                    order_manager.db_manager,
-                    start_date=start_date_str,
-                    end_date=end_date_str
-                )
-                logger.info(f"✅ 데이터베이스 저장 완료: {saved_count}건 저장")
+                try:
+                    saved_count = order_manager.naver_api.sync_orders_to_database(
+                        order_manager.db_manager,
+                        start_date=start_date_str,
+                        end_date=end_date_str
+                    )
+                    logger.info(f"✅ 데이터베이스 저장 완료: {saved_count}건 저장")
+                except Exception as sync_error:
+                    logger.error(f"❌ 데이터베이스 저장 실패: {sync_error}")
+                    # 저장 실패해도 계속 진행
             else:
                 logger.warning("❌ 네이버 API 응답 없음")
         else:
