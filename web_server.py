@@ -522,21 +522,48 @@ async def get_orders(
                     }
                 }
 
-        # API 실패시 또는 API가 없을 때 로컬 DB에서 조회
+        # 로컬 DB에서 필터링하여 조회 (API 조회 후에도 DB에서 최신 데이터 가져옴)
         orders = order_manager.db_manager.get_all_orders()
         order_list = []
+
         for order in orders:
+            # 상태 필터링
+            if order_status and hasattr(order, 'status') and order.status != order_status:
+                continue
+
+            # 날짜 필터링 (간단하게 날짜 문자열 비교)
+            if start_date and hasattr(order, 'order_date'):
+                order_date_str = str(order.order_date)[:10]  # YYYY-MM-DD 형태로 자르기
+                if order_date_str < start_date_str:
+                    continue
+            if end_date and hasattr(order, 'order_date'):
+                order_date_str = str(order.order_date)[:10]
+                if order_date_str > end_date_str:
+                    continue
+
             order_data = {
                 "order_id": getattr(order, 'order_id', ''),
                 "customer_name": getattr(order, 'customer_name', ''),
                 "product_name": getattr(order, 'product_name', ''),
                 "status": getattr(order, 'status', ''),
                 "order_date": getattr(order, 'order_date', ''),
-                "price": getattr(order, 'price', 0)
+                "price": getattr(order, 'price', 0),
+                "shipping_address": getattr(order, 'shipping_address', ''),
+                "quantity": getattr(order, 'quantity', 1)
             }
             order_list.append(order_data)
 
-        return {"success": True, "orders": order_list, "source": "local_db"}
+        return {
+            "success": True,
+            "orders": order_list,
+            "count": len(order_list),
+            "source": "local_db_filtered",
+            "filter": {
+                "start_date": start_date_str,
+                "end_date": end_date_str,
+                "status": order_status
+            }
+        }
 
     except Exception as e:
         logger.error(f"주문 조회 오류: {e}")
