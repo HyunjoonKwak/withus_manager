@@ -114,7 +114,7 @@
                 </div>
             </div>
             <div class="col-md-3 d-flex align-items-end gap-2">
-                <button type="submit" class="btn btn-primary">
+                <button type="button" class="btn btn-primary" onclick="refreshOrders()">
                     <i class="fas fa-search"></i> 조회
                 </button>
                 <button type="button" class="btn btn-success" onclick="exportToExcel()">
@@ -302,9 +302,9 @@ function setPeriod(days) {
     document.getElementById('endDate').value = today.toISOString().split('T')[0];
 }
 
-// 주문 로드
+// 주문 로드 (데이터베이스 전용 - 탭 최초 진입용)
 async function loadOrders() {
-    console.log('loadOrders 함수 호출');
+    console.log('loadOrders 함수 호출 (DB 전용)');
     showLoading(true);
 
     try {
@@ -324,12 +324,12 @@ async function loadOrders() {
             limit: 100
         });
 
-        console.log('API 요청 URL:', `/api/orders?${params}`);
+        console.log('DB 조회 URL:', `/api/orders?${params}`);
 
         const response = await fetch(`/api/orders?${params}`);
         const data = await response.json();
 
-        console.log('API 응답:', data);
+        console.log('DB 응답:', data);
         console.log('주문 수:', data.orders ? data.orders.length : 0);
 
         if (data.success) {
@@ -345,6 +345,54 @@ async function loadOrders() {
     } catch (error) {
         console.error('주문 로드 오류:', error);
         alert('주문을 불러오는 중 오류가 발생했습니다: ' + error.message);
+    } finally {
+        showLoading(false);
+    }
+}
+
+// 주문 갱신 (API 호출 후 DB 저장 - 조회 버튼용)
+async function refreshOrders() {
+    console.log('refreshOrders 함수 호출 (API 갱신)');
+    showLoading(true);
+
+    try {
+        const startDate = document.getElementById('startDate').value;
+        const endDate = document.getElementById('endDate').value;
+
+        console.log('현재 페이지 타입:', currentPageType);
+        console.log('현재 주문 상태:', currentOrderStatus);
+        console.log('시작일:', startDate);
+        console.log('종료일:', endDate);
+
+        const params = new URLSearchParams({
+            start_date: startDate,
+            end_date: endDate,
+            order_status: currentOrderStatus,
+            page_type: currentPageType,  // 페이지 타입 추가
+            limit: 100
+        });
+
+        console.log('API 갱신 URL:', `/api/orders/refresh?${params}`);
+
+        const response = await fetch(`/api/orders/refresh?${params}`);
+        const data = await response.json();
+
+        console.log('API 갱신 응답:', data);
+        console.log('주문 수:', data.orders ? data.orders.length : 0);
+
+        if (data.success) {
+            orders = data.orders;
+            console.log('renderOrders 호출 전, orders:', orders);
+            renderOrders(orders);
+            updateOrderCount(orders.length);
+            console.log('renderOrders 호출 완료');
+        } else {
+            console.error('API 갱신 응답 실패:', data.error);
+            throw new Error(data.error || '주문 갱신 실패');
+        }
+    } catch (error) {
+        console.error('주문 갱신 오류:', error);
+        alert('주문을 갱신하는 중 오류가 발생했습니다: ' + error.message);
     } finally {
         showLoading(false);
     }

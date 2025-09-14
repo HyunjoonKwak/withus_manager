@@ -488,14 +488,14 @@ async def force_monitoring_check(background_tasks: BackgroundTasks):
         return {"success": False, "error": str(e)}
 
 @app.get("/api/orders")
-async def get_orders(
+async def get_orders_from_db(
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
     order_status: Optional[str] = None,
     page_type: Optional[str] = None,
     limit: int = 100
 ):
-    """주문 목록 조회 API"""
+    """주문 목록 조회 API - 데이터베이스 전용 (탭 최초 진입용)"""
     try:
         # 기본 날짜 설정 (페이지별 기간 설정 사용)
         if not start_date or not end_date:
@@ -506,6 +506,7 @@ async def get_orders(
                 # 페이지 타입 매핑
                 period_mapping = {
                     'new-orders': 'NEW_ORDER_DEFAULT_DAYS',
+                    'new_orders': 'NEW_ORDER_DEFAULT_DAYS',  # 신규주문 별칭
                     'shipping-pending': 'SHIPPING_PENDING_DEFAULT_DAYS',
                     'shipping-in-progress': 'SHIPPING_IN_PROGRESS_DEFAULT_DAYS',
                     'shipping-completed': 'SHIPPING_COMPLETED_DEFAULT_DAYS',
@@ -519,7 +520,106 @@ async def get_orders(
                 if page_type in period_mapping:
                     env_key = period_mapping[page_type]
                     default_days = config.get_int(env_key, default_days)
-                    logger.info(f"📅 {page_type} 페이지 기본 기간: {default_days}일 ({env_key})")
+                    logger.info(f"📅 {page_type} 페이지 기본 기간: {default_days}일 ({env_key}) [DB 전용]")
+
+            end_date_obj = datetime.now()
+            start_date_obj = end_date_obj - timedelta(days=default_days)
+            start_date_str = start_date_obj.strftime('%Y-%m-%d')
+            end_date_str = end_date_obj.strftime('%Y-%m-%d')
+        else:
+            start_date_str = start_date
+            end_date_str = end_date
+
+        logger.info(f"📚 데이터베이스에서 주문 조회 (API 호출 없음): {start_date_str} ~ {end_date_str}")
+
+        # 로컬 DB에서만 조회 (API 호출 없음)
+        orders = order_manager.db_manager.get_all_orders()
+
+        # 디버깅 정보 추가
+        debug_info = {
+            "total_orders_in_db": len(orders),
+            "db_path": order_manager.db_manager.db_path,
+            "orders_sample": [order.get('status') for order in orders[:5]] if orders else []
+        }
+
+        order_list = []
+
+        for order in orders:
+            # 상태 필터링
+            if order_status and order.get('status') != order_status:
+                continue
+
+            # 날짜 필터링
+            if start_date or end_date:
+                order_date_str = str(order.get('order_date', ''))[:10]
+                if start_date and order_date_str < start_date_str:
+                    continue
+                if end_date and order_date_str > end_date_str:
+                    continue
+
+            order_data = {
+                "order_id": order.get('order_id', ''),
+                "customer_name": order.get('customer_name', ''),
+                "product_name": order.get('product_name', ''),
+                "status": order.get('status', ''),
+                "order_date": order.get('order_date', ''),
+                "price": order.get('price', 0),
+                "shipping_address": order.get('shipping_address', ''),
+                "quantity": order.get('quantity', 1)
+            }
+            order_list.append(order_data)
+
+        return {
+            "success": True,
+            "orders": order_list,
+            "count": len(order_list),
+            "source": "local_db_only",
+            "filter": {
+                "start_date": start_date_str,
+                "end_date": end_date_str,
+                "status": order_status
+            },
+            "debug": debug_info
+        }
+
+    except Exception as e:
+        logger.error(f"데이터베이스 주문 조회 오류: {e}")
+        return {"success": False, "error": str(e)}
+
+@app.get("/api/orders/refresh")
+async def refresh_orders_from_api(
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    order_status: Optional[str] = None,
+    page_type: Optional[str] = None,
+    limit: int = 100
+):
+    """주문 목록 갱신 API - 네이버 API 호출 후 DB 저장 (조회 버튼용)"""
+    try:
+        # 기본 날짜 설정 (페이지별 기간 설정 사용)
+        if not start_date or not end_date:
+            # 페이지 타입별 기본 기간 가져오기
+            default_days = 30  # 전역 기본값
+
+            if page_type:
+                # 페이지 타입 매핑
+                period_mapping = {
+                    'new-orders': 'NEW_ORDER_DEFAULT_DAYS',
+                    'new_orders': 'NEW_ORDER_DEFAULT_DAYS',  # 신규주문 별칭
+                    'shipping-pending': 'SHIPPING_PENDING_DEFAULT_DAYS',
+                    'shipping-in-progress': 'SHIPPING_IN_PROGRESS_DEFAULT_DAYS',
+                    'shipping-completed': 'SHIPPING_COMPLETED_DEFAULT_DAYS',
+                    'purchase-decided': 'PURCHASE_DECIDED_DEFAULT_DAYS',
+                    'cancel': 'CANCEL_DEFAULT_DAYS',
+                    'cancel_orders': 'CANCEL_DEFAULT_DAYS',  # 취소주문 페이지 별칭
+                    'return-exchange': 'RETURN_EXCHANGE_DEFAULT_DAYS',
+                    'cancel-return-exchange': 'CANCEL_RETURN_EXCHANGE_DEFAULT_DAYS'
+                }
+
+                if page_type in period_mapping:
+                    env_key = period_mapping[page_type]
+                    default_days = config.get_int(env_key, default_days)
+                    logger.info(f"📅 {page_type} 페이지 기본 기간: {default_days}일 ({env_key}) [API 갱신]")
 
             end_date_obj = datetime.now()
             start_date_obj = end_date_obj - timedelta(days=default_days)
@@ -533,7 +633,7 @@ async def get_orders(
         logger.info(f"API 조건 확인: naver_api={bool(order_manager.naver_api)}, order_status='{order_status}'")
 
         if order_manager.naver_api and order_status:
-            logger.info(f"🚀 네이버 API 조회 시작: {start_date_str} ~ {end_date_str}, 상태: {order_status}")
+            logger.info(f"🚀 네이버 API 갱신 시작: {start_date_str} ~ {end_date_str}, 상태: {order_status}")
 
             # 1단계: 네이버 API에서 주문 조회
             api_response = order_manager.naver_api.get_orders(
@@ -608,7 +708,7 @@ async def get_orders(
             "success": True,
             "orders": order_list,
             "count": len(order_list),
-            "source": "local_db_filtered",
+            "source": "api_refreshed",
             "filter": {
                 "start_date": start_date_str,
                 "end_date": end_date_str,
@@ -618,7 +718,7 @@ async def get_orders(
         }
 
     except Exception as e:
-        logger.error(f"주문 조회 오류: {e}")
+        logger.error(f"주문 갱신 오류: {e}")
         return {"success": False, "error": str(e)}
 
 @app.post("/api/orders/action")
@@ -760,6 +860,7 @@ async def get_period_setting(page_type: str):
         # 페이지 타입에 따른 환경변수 키 매핑
         period_mapping = {
             'new-orders': 'NEW_ORDER_DEFAULT_DAYS',
+            'new_orders': 'NEW_ORDER_DEFAULT_DAYS',  # 신규주문 별칭
             'shipping-pending': 'SHIPPING_PENDING_DEFAULT_DAYS',
             'shipping-in-progress': 'SHIPPING_IN_PROGRESS_DEFAULT_DAYS',
             'shipping-completed': 'SHIPPING_COMPLETED_DEFAULT_DAYS',
@@ -773,6 +874,7 @@ async def get_period_setting(page_type: str):
         # 기본값 매핑
         default_values = {
             'new-orders': 3,
+            'new_orders': 3,  # 신규주문 별칭
             'shipping-pending': 3,
             'shipping-in-progress': 3,
             'shipping-completed': 3,
@@ -809,6 +911,7 @@ async def save_period_setting(page_type: str, request_data: dict):
         # 페이지 타입에 따른 환경변수 키 매핑
         period_mapping = {
             'new-orders': 'NEW_ORDER_DEFAULT_DAYS',
+            'new_orders': 'NEW_ORDER_DEFAULT_DAYS',  # 신규주문 별칭
             'shipping-pending': 'SHIPPING_PENDING_DEFAULT_DAYS',
             'shipping-in-progress': 'SHIPPING_IN_PROGRESS_DEFAULT_DAYS',
             'shipping-completed': 'SHIPPING_COMPLETED_DEFAULT_DAYS',
