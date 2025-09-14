@@ -759,13 +759,17 @@ async def get_products():
         products_data = []
         for product in products:
             product_dict = {
-                'id': getattr(product, 'id', ''),
-                'product_id': getattr(product, 'product_id', ''),
-                'name': getattr(product, 'name', ''),
-                'price': getattr(product, 'price', 0),
-                'stock': getattr(product, 'stock', 0),
-                'category': getattr(product, 'category', ''),
-                'status': getattr(product, 'status', '')
+                'id': product.get('channel_product_no', ''),
+                'product_id': product.get('channel_product_no', ''),
+                'name': product.get('product_name', ''),
+                'price': product.get('sale_price', 0),
+                'stock': product.get('stock_quantity', 0),
+                'category': product.get('category_name', ''),
+                'status': product.get('status_type', ''),
+                'brand': product.get('brand_name', ''),
+                'image_url': product.get('representative_image_url', ''),
+                'created_at': product.get('reg_date', ''),
+                'sales_count': 0  # This field is not available in the database yet
             }
             products_data.append(product_dict)
 
