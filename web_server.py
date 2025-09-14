@@ -509,7 +509,8 @@ async def update_dashboard_period(request: Request):
     """대시보드 조회 기간 변경"""
     try:
         data = await request.json()
-        new_period_days = int(data.get('period_days', 5))
+        new_period_days = int(data.get('days', data.get('period_days', 5)))
+        save_to_env = data.get('save_to_env', True)  # 기본값은 저장
 
         # 유효성 검사
         if new_period_days < 1 or new_period_days > 365:
@@ -518,11 +519,15 @@ async def update_dashboard_period(request: Request):
                 "message": "조회 기간은 1일에서 365일 사이여야 합니다."
             }
 
-        # env 설정 업데이트
+        # env 설정 업데이트 (항상 메모리에는 설정)
         config.set('DASHBOARD_PERIOD_DAYS', str(new_period_days))
-        config.save_to_env_file()
 
-        logger.info(f"대시보드 조회 기간이 {new_period_days}일로 변경됨")
+        # save_to_env가 True일 때만 .env 파일에 저장
+        if save_to_env:
+            config.save_to_env_file()
+            logger.info(f"대시보드 조회 기간이 {new_period_days}일로 변경되고 .env 파일에 저장됨")
+        else:
+            logger.info(f"대시보드 조회 기간이 {new_period_days}일로 임시 변경됨 (저장하지 않음)")
 
         # 새로운 기간으로 대시보드 데이터 새로고침
         order_counts = order_manager._get_dashboard_data()
@@ -532,13 +537,15 @@ async def update_dashboard_period(request: Request):
         return {
             "success": True,
             "data": order_counts,
+            "saved_to_env": save_to_env,
             "period": {
                 "days": new_period_days,
                 "start_date": start_date.strftime('%Y-%m-%d'),
                 "end_date": end_date.strftime('%Y-%m-%d'),
                 "description": f"최근 {new_period_days}일간 주문현황"
             },
-            "message": f"대시보드 조회 기간이 {new_period_days}일로 변경되었습니다."
+            "period_dates": f"{start_date.strftime('%Y-%m-%d')} ~ {end_date.strftime('%Y-%m-%d')}",
+            "message": f"대시보드 조회 기간이 {new_period_days}일로 {'저장되었습니다' if save_to_env else '변경되었습니다'}."
         }
 
     except Exception as e:
@@ -1587,6 +1594,149 @@ async def get_current_server_ip():
     except Exception as e:
         logger.error(f"서버 IP 확인 오류: {e}")
         return {"success": False, "error": str(e)}
+
+# ==================== API 테스트 엔드포인트 ====================
+
+@app.post("/api/test-api-token")
+async def test_api_token():
+    """네이버 API 토큰 발급 테스트"""
+    try:
+        logger.info("네이버 API 토큰 발급 테스트 시작")
+
+        # 네이버 API 인스턴스 생성
+        client_id = config.get('NAVER_CLIENT_ID')
+        client_secret = config.get('NAVER_CLIENT_SECRET')
+
+        if not client_id or not client_secret:
+            return {
+                "success": False,
+                "error": "네이버 API 자격증명이 설정되지 않았습니다. 기본 설정 탭에서 클라이언트 ID와 시크릿을 설정해주세요."
+            }
+
+        from naver_api import NaverShoppingAPI
+        naver_api = NaverShoppingAPI(client_id, client_secret)
+
+        # 토큰 발급 시도
+        token = naver_api.get_access_token()
+
+        if token:
+            logger.info(f"토큰 발급 성공: {token[:20]}...")
+            return {
+                "success": True,
+                "token": token,
+                "message": "네이버 API 토큰 발급에 성공했습니다."
+            }
+        else:
+            return {
+                "success": False,
+                "error": "토큰 발급에 실패했습니다. 클라이언트 ID와 시크릿을 확인해주세요."
+            }
+
+    except Exception as e:
+        logger.error(f"API 토큰 테스트 오류: {e}")
+        return {"success": False, "error": f"토큰 테스트 중 오류가 발생했습니다: {str(e)}"}
+
+@app.post("/api/test-orders-api")
+async def test_orders_api():
+    """네이버 주문 API 연결 테스트"""
+    try:
+        logger.info("네이버 주문 API 연결 테스트 시작")
+
+        # 네이버 API 인스턴스 생성
+        client_id = config.get('NAVER_CLIENT_ID')
+        client_secret = config.get('NAVER_CLIENT_SECRET')
+
+        if not client_id or not client_secret:
+            return {
+                "success": False,
+                "error": "네이버 API 자격증명이 설정되지 않았습니다."
+            }
+
+        from naver_api import NaverShoppingAPI
+        naver_api = NaverShoppingAPI(client_id, client_secret)
+
+        # 최근 1일 주문 조회 테스트 (간단한 테스트)
+        from datetime import datetime, timedelta
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=1)
+
+        start_date_str = start_date.strftime('%Y-%m-%d')
+        end_date_str = end_date.strftime('%Y-%m-%d')
+
+        response = naver_api.get_orders(
+            start_date=start_date_str,
+            end_date=end_date_str,
+            order_status='PAYED'  # 단일 상태로 테스트
+        )
+
+        if response and 'body' in response:
+            orders = response['body'].get('orderInfoList', [])
+            order_count = len(orders)
+
+            logger.info(f"주문 API 테스트 성공: {order_count}건 조회")
+            return {
+                "success": True,
+                "order_count": order_count,
+                "test_period": f"{start_date_str} ~ {end_date_str}",
+                "message": f"주문 API 연결에 성공했습니다. (테스트 기간: 최근 1일)"
+            }
+        else:
+            return {
+                "success": False,
+                "error": "주문 API 응답 형식이 올바르지 않습니다."
+            }
+
+    except Exception as e:
+        logger.error(f"주문 API 테스트 오류: {e}")
+        return {"success": False, "error": f"주문 API 테스트 중 오류가 발생했습니다: {str(e)}"}
+
+@app.post("/api/test-products-api")
+async def test_products_api():
+    """네이버 상품 API 연결 테스트"""
+    try:
+        logger.info("네이버 상품 API 연결 테스트 시작")
+
+        # 네이버 API 인스턴스 생성
+        client_id = config.get('NAVER_CLIENT_ID')
+        client_secret = config.get('NAVER_CLIENT_SECRET')
+
+        if not client_id or not client_secret:
+            return {
+                "success": False,
+                "error": "네이버 API 자격증명이 설정되지 않았습니다."
+            }
+
+        from naver_api import NaverShoppingAPI
+        naver_api = NaverShoppingAPI(client_id, client_secret)
+
+        # 상품 목록 조회 테스트 (첫 페이지만)
+        response = naver_api.get_products(
+            product_status_type='SALE',  # 판매중인 상품만
+            page=1,
+            size=10  # 작은 크기로 테스트
+        )
+
+        if response and 'body' in response:
+            products = response['body'].get('productInfoList', [])
+            product_count = len(products)
+            total_count = response['body'].get('totalCount', 0)
+
+            logger.info(f"상품 API 테스트 성공: {product_count}개 조회 (전체: {total_count}개)")
+            return {
+                "success": True,
+                "product_count": product_count,
+                "total_count": total_count,
+                "message": f"상품 API 연결에 성공했습니다. (테스트: 10개 조회, 전체: {total_count}개)"
+            }
+        else:
+            return {
+                "success": False,
+                "error": "상품 API 응답 형식이 올바르지 않습니다."
+            }
+
+    except Exception as e:
+        logger.error(f"상품 API 테스트 오류: {e}")
+        return {"success": False, "error": f"상품 API 테스트 중 오류가 발생했습니다: {str(e)}"}
 
 if __name__ == "__main__":
     # 개발용 서버 실행

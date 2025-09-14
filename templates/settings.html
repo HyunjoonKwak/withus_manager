@@ -29,8 +29,8 @@
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="system-tab" data-bs-toggle="tab" data-bs-target="#system" type="button" role="tab">
-                        <i class="fas fa-info-circle"></i> 시스템 정보
+                    <button class="nav-link" id="api-test-tab" data-bs-toggle="tab" data-bs-target="#api-test" type="button" role="tab">
+                        <i class="fas fa-plug"></i> API 테스트
                     </button>
                 </li>
             </ul>
@@ -406,26 +406,68 @@
                     </div>
                 </div>
 
-                <!-- 시스템 정보 탭 -->
-                <div class="tab-pane fade" id="system" role="tabpanel">
+                <!-- API 테스트 탭 -->
+                <div class="tab-pane fade" id="api-test" role="tabpanel">
                     <div class="mt-4">
                         <div class="card">
                             <div class="card-header">
-                                <h5><i class="fas fa-info-circle text-secondary"></i> 시스템 정보</h5>
+                                <h5><i class="fas fa-plug text-primary"></i> 네이버 API 연결 테스트</h5>
                             </div>
                             <div class="card-body">
                                 <div class="row">
                                     <div class="col-md-6">
-                                        <p><strong>버전:</strong> <span id="systemVersion">{{ version_info.app_version }}</span></p>
-                                        <p><strong>빌드 날짜:</strong> <span id="buildDate">{{ version_info.build_date }}</span></p>
-                                        <p><strong>환경:</strong> <span class="badge bg-info">웹 버전</span></p>
-                                        <p><strong>플랫폼:</strong> EC2 최적화</p>
+                                        <h6><i class="fas fa-key text-info"></i> API 자격증명 상태</h6>
+                                        <table class="table table-sm">
+                                            <tr>
+                                                <td>클라이언트 ID</td>
+                                                <td>
+                                                    {% if config.get('NAVER_CLIENT_ID') %}
+                                                        <span class="badge bg-success">설정됨</span>
+                                                        <small class="text-muted">({{ config.get('NAVER_CLIENT_ID')[:8] }}...)</small>
+                                                    {% else %}
+                                                        <span class="badge bg-danger">미설정</span>
+                                                    {% endif %}
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td>클라이언트 시크릿</td>
+                                                <td>
+                                                    {% if config.get('NAVER_CLIENT_SECRET') %}
+                                                        <span class="badge bg-success">설정됨</span>
+                                                        <small class="text-muted">(****)</small>
+                                                    {% else %}
+                                                        <span class="badge bg-danger">미설정</span>
+                                                    {% endif %}
+                                                </td>
+                                            </tr>
+                                        </table>
                                     </div>
                                     <div class="col-md-6">
-                                        <p><strong>모니터링 상태:</strong> <span id="monitoringStatus" class="badge bg-secondary">확인 중...</span></p>
-                                        <p><strong>마지막 체크:</strong> <span id="lastCheck">확인 중...</span></p>
-                                        <p><strong>메모리 사용:</strong> ~150MB (t2.micro 최적화)</p>
-                                        <p><strong>백그라운드 스레드:</strong> 활성화</p>
+                                        <h6><i class="fas fa-vial text-info"></i> 연결 테스트</h6>
+                                        <div class="d-grid gap-2">
+                                            <button class="btn btn-outline-primary" onclick="testApiToken()">
+                                                <i class="fas fa-key"></i> 토큰 발급 테스트
+                                            </button>
+                                            <button class="btn btn-outline-info" onclick="testOrdersApi()">
+                                                <i class="fas fa-shopping-cart"></i> 주문 API 테스트
+                                            </button>
+                                            <button class="btn btn-outline-success" onclick="testProductsApi()">
+                                                <i class="fas fa-box"></i> 상품 API 테스트
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- 테스트 결과 표시 영역 -->
+                                <div class="mt-4">
+                                    <h6><i class="fas fa-clipboard-list text-info"></i> 테스트 결과</h6>
+                                    <div id="api-test-results" class="border rounded p-3" style="background-color: #f8f9fa; min-height: 200px; font-family: monospace; font-size: 0.9em;">
+                                        <div class="text-muted">테스트 버튼을 클릭하여 API 연결을 확인하세요.</div>
+                                    </div>
+                                    <div class="mt-2">
+                                        <button class="btn btn-sm btn-outline-secondary" onclick="clearTestResults()">
+                                            <i class="fas fa-trash"></i> 결과 지우기
+                                        </button>
                                     </div>
                                 </div>
                             </div>
@@ -787,8 +829,8 @@ function restoreActiveTab() {
 
     if (hash === 'conditions') {
         targetTabId = 'conditions-tab';
-    } else if (hash === 'system') {
-        targetTabId = 'system-tab';
+    } else if (hash === 'api-test') {
+        targetTabId = 'api-test-tab';
     } else if (hash === 'basic') {
         targetTabId = 'basic-tab';
     }
@@ -833,28 +875,131 @@ function setupTabStateTracking() {
 }
 
 // API 테스트 함수들
-async function testApiConnection() {
-    const button = event.target;
-    const resultSpan = document.getElementById('apiTestResult');
+function addTestResult(message, type = 'info') {
+    const resultsDiv = document.getElementById('api-test-results');
+    const timestamp = new Date().toLocaleTimeString('ko-KR');
 
-    button.disabled = true;
-    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 테스트 중...';
-    resultSpan.innerHTML = '';
+    const colorClass = type === 'success' ? 'text-success' :
+                      type === 'error' ? 'text-danger' :
+                      type === 'warning' ? 'text-warning' : 'text-info';
+
+    const icon = type === 'success' ? 'fas fa-check' :
+                type === 'error' ? 'fas fa-times' :
+                type === 'warning' ? 'fas fa-exclamation-triangle' : 'fas fa-info-circle';
+
+    const resultHtml = `<div class="mb-2">
+        <span class="text-muted">[${timestamp}]</span>
+        <span class="${colorClass}"><i class="${icon}"></i> ${message}</span>
+    </div>`;
+
+    resultsDiv.innerHTML += resultHtml;
+    resultsDiv.scrollTop = resultsDiv.scrollHeight;
+}
+
+function clearTestResults() {
+    const resultsDiv = document.getElementById('api-test-results');
+    resultsDiv.innerHTML = '<div class="text-muted">테스트 버튼을 클릭하여 API 연결을 확인하세요.</div>';
+}
+
+async function testApiToken() {
+    const button = event.target;
+    const originalHtml = button.innerHTML;
 
     try {
-        const response = await fetch('/api/test-api');
+        button.disabled = true;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 테스트 중...';
+
+        addTestResult('네이버 API 토큰 발급 테스트 시작...', 'info');
+
+        const response = await fetch('/api/test-api-token', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+
         const result = await response.json();
 
         if (result.success) {
-            resultSpan.innerHTML = '<span class="text-success"><i class="fas fa-check"></i> API 연결 성공</span>';
+            addTestResult('토큰 발급 성공: ' + result.token.substring(0, 20) + '...', 'success');
         } else {
-            resultSpan.innerHTML = '<span class="text-danger"><i class="fas fa-times"></i> API 연결 실패: ' + result.error + '</span>';
+            addTestResult('토큰 발급 실패: ' + result.error, 'error');
         }
     } catch (error) {
-        resultSpan.innerHTML = '<span class="text-danger"><i class="fas fa-times"></i> 테스트 중 오류: ' + error.message + '</span>';
+        addTestResult('토큰 테스트 중 오류: ' + error.message, 'error');
     } finally {
         button.disabled = false;
-        button.innerHTML = '<i class="fas fa-flask"></i> API 연결 테스트';
+        button.innerHTML = originalHtml;
+    }
+}
+
+async function testOrdersApi() {
+    const button = event.target;
+    const originalHtml = button.innerHTML;
+
+    try {
+        button.disabled = true;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 테스트 중...';
+
+        addTestResult('주문 API 연결 테스트 시작...', 'info');
+
+        const response = await fetch('/api/test-orders-api', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            addTestResult('주문 API 테스트 성공', 'success');
+            if (result.order_count !== undefined) {
+                addTestResult('조회된 주문 수: ' + result.order_count + '건', 'info');
+            }
+        } else {
+            addTestResult('주문 API 테스트 실패: ' + result.error, 'error');
+        }
+    } catch (error) {
+        addTestResult('주문 API 테스트 중 오류: ' + error.message, 'error');
+    } finally {
+        button.disabled = false;
+        button.innerHTML = originalHtml;
+    }
+}
+
+async function testProductsApi() {
+    const button = event.target;
+    const originalHtml = button.innerHTML;
+
+    try {
+        button.disabled = true;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 테스트 중...';
+
+        addTestResult('상품 API 연결 테스트 시작...', 'info');
+
+        const response = await fetch('/api/test-products-api', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            addTestResult('상품 API 테스트 성공', 'success');
+            if (result.product_count !== undefined) {
+                addTestResult('조회된 상품 수: ' + result.product_count + '개', 'info');
+            }
+        } else {
+            addTestResult('상품 API 테스트 실패: ' + result.error, 'error');
+        }
+    } catch (error) {
+        addTestResult('상품 API 테스트 중 오류: ' + error.message, 'error');
+    } finally {
+        button.disabled = false;
+        button.innerHTML = originalHtml;
     }
 }
 
