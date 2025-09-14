@@ -504,6 +504,13 @@ async def get_orders(
         # 로컬 DB에서 필터링하여 조회 (API 조회 후에도 DB에서 최신 데이터 가져옴)
         orders = order_manager.db_manager.get_all_orders()
 
+        # 디버깅 정보 추가
+        debug_info = {
+            "total_orders_in_db": len(orders),
+            "db_path": order_manager.db_manager.db_path,
+            "orders_sample": [order.get('status') for order in orders[:5]] if orders else []
+        }
+
         order_list = []
 
         for order in orders:
@@ -540,7 +547,8 @@ async def get_orders(
                 "start_date": start_date_str,
                 "end_date": end_date_str,
                 "status": order_status
-            }
+            },
+            "debug": debug_info
         }
 
     except Exception as e:
