@@ -1,5 +1,5 @@
 """
-WithUs 주문 관리 시스템 - 메인 애플리케이션
+쇼핑몰 주문관리시스템 v1.0.0 - 메인 애플리케이션
 """
 import tkinter as tk
 from tkinter import ttk, messagebox
@@ -22,12 +22,12 @@ class TeeOutput:
             self.log_path = log_path  # 로그 경로 저장
             # 시작 시점 기록
             self.log_file.write(f"\n{'='*50}\n")
-            self.log_file.write(f"WithUs 앱 시작: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+            self.log_file.write(f"쇼핑몰 주문관리시스템 v1.0.0 시작: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
             self.log_file.write(f"로그 파일 경로: {log_path}\n")
             self.log_file.write(f"{'='*50}\n")
 
             # 터미널에도 로그 파일 위치 출력
-            startup_msg = f"💾 로그 파일 위치: {log_path}\n🚀 WithUs 주문관리 시스템 시작 중...\n"
+            startup_msg = f"💾 로그 파일 위치: {log_path}\n🚀 쇼핑몰 주문관리시스템 v1.0.0 시작 중...\n"
             print(startup_msg)
 
         except Exception as e:
@@ -83,7 +83,7 @@ class TeeOutput:
 # stdout 및 stderr 리다이렉트 임시 비활성화 (무한 루프 방지)
 # sys.stdout = TeeOutput()
 # sys.stderr = TeeOutput()
-print("💾 로그 시스템 임시 비활성화 - 직접 출력 모드")
+print("💾 쇼핑몰 주문관리시스템 v1.0.0 - 로그 시스템 임시 비활성화")
 
 from database import DatabaseManager
 from naver_api import NaverShoppingAPI
@@ -94,15 +94,15 @@ from tabs import HomeTab, APITestTab, BasicSettingsTab, ConditionSettingsTab, Or
 
 
 class WithUsOrderManager:
-    """WithUs 주문 관리 시스템 메인 클래스"""
+    """쇼핑몰 주문관리시스템 v1.0.0 메인 클래스"""
     
     def __init__(self):
         import time
         app_start_time = time.time()
-        print(f"=== WithUs 주문 관리 시스템 시작 ===")
+        print(f"=== 쇼핑몰 주문관리시스템 v1.0.0 시작 ===")
 
         self.root = tk.Tk()
-        self.root.title("WithUs 주문 관리 시스템")
+        self.root.title("쇼핑몰 주문관리시스템 (v1.0.0)")
         self.root.geometry("1400x900")
         print(f"Tkinter 루트 윈도우 생성: {time.time() - app_start_time:.3f}초")
         

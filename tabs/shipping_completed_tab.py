@@ -31,7 +31,7 @@ class ShippingCompletedTab(BaseTab):
         desc_frame = ttk.Frame(self.frame)
         desc_frame.pack(fill="x", padx=5, pady=5)
         desc_label = ttk.Label(desc_frame,
-                              text="발송처리 이후 구매확정 대기중인 주문을 조회할수 있습니다.",
+                              text="발송처리 이후 구매확정 대기중인 주문을 조회할수 있습니다. *[송장수정모드 켜기]를 클릭하면 배송완료 주문의 송장번호를 수정할수 있습니다.",
                               font=("맑은 고딕", 14, "bold"),
                               foreground="#666666",
                               wraplength=800)

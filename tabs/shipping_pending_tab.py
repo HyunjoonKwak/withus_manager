@@ -30,12 +30,19 @@ class ShippingPendingTab(BaseTab):
         # 설명 라벨 추가
         desc_frame = ttk.Frame(self.frame)
         desc_frame.pack(fill="x", padx=5, pady=5)
-        desc_label = ttk.Label(desc_frame,
-                              text="판매자가 (주문확인)후 (발송처리)전 주문건입니다. (발송처리)를 할수 있습니다.",
+        desc_label1 = ttk.Label(desc_frame,
+                              text="발송대기 주문이란 판매자가 [주문확인]후 [발송처리]전 주문건입니다. [발송처리]를 할수 있습니다.",
                               font=("맑은 고딕", 14, "bold"),
                               foreground="#666666",
                               wraplength=800)
-        desc_label.pack(anchor="w", padx=10)
+        desc_label1.pack(anchor="w", padx=10)
+
+        desc_label2 = ttk.Label(desc_frame,
+                              text="송장번호 입력후 발송처리 버튼을 클릭해 주세요.",
+                              font=("맑은 고딕", 14, "bold"),
+                              foreground="#666666",
+                              wraplength=800)
+        desc_label2.pack(anchor="w", padx=10)
 
         # 발송대기 주문 관리 섹션
         collection_frame = ttk.LabelFrame(self.frame, text="발송대기 주문 관리")

@@ -31,7 +31,7 @@ class OrdersTab(BaseTab):
         desc_frame = ttk.Frame(self.frame)
         desc_frame.pack(fill="x", padx=5, pady=5)
         desc_label = ttk.Label(desc_frame,
-                              text="구매자가 결제완료후, 판매자 주문확인 전 주문건입니다. (주문확인) 또는 (발송지연안내), (판매취소)를 할수 있습니다.",
+                              text="모든 상태의 주문을 한 화면에서 조회 할 수 있습니다.",
                               font=("맑은 고딕", 14, "bold"),
                               foreground="#666666",
                               wraplength=800)
