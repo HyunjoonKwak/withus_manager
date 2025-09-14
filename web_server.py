@@ -156,32 +156,34 @@ class LightweightOrderManager:
                 end_date = datetime.now()
                 start_date = end_date - timedelta(days=period_days)
 
-                # 모든 주문 상태로 조회 (중복조합)
-                order_status_types = config.get('ORDER_STATUS_TYPES', 'PAYMENT_WAITING,PAYED,DELIVERING,DELIVERED,PURCHASE_DECIDED,EXCHANGED,CANCELED,RETURNED,CANCELED_BY_NOPAYMENT').split(',')
+                # 모든 주문 상태를 콤마로 분리해서 한 번에 조회
+                order_status_types = config.get('ORDER_STATUS_TYPES', 'PAYMENT_WAITING,PAYED,DELIVERING,DELIVERED,PURCHASE_DECIDED,EXCHANGED,CANCELED,RETURNED,CANCELED_BY_NOPAYMENT')
 
-                all_orders = []
-                for status in order_status_types:
-                    try:
-                        # 각 상태별로 주문 조회
-                        response = self.naver_api.get_orders(
-                            start_date=start_date.strftime('%Y-%m-%d'),
-                            end_date=end_date.strftime('%Y-%m-%d'),
-                            order_status=status.strip()
-                        )
+                try:
+                    # 전체 상태를 콤마 분리된 문자열로 한 번에 조회
+                    response = self.naver_api.get_orders(
+                        start_date=start_date.strftime('%Y-%m-%d'),
+                        end_date=end_date.strftime('%Y-%m-%d'),
+                        order_status=order_status_types  # 콤마로 분리된 전체 상태
+                    )
 
-                        if response and response.get('success'):
-                            orders_data = response.get('data', [])
-                            if isinstance(orders_data, list):
-                                all_orders.extend(orders_data)
-                            elif isinstance(orders_data, dict) and 'contents' in orders_data:
-                                all_orders.extend(orders_data.get('contents', []))
+                    if response and response.get('success'):
+                        orders_data = response.get('data', [])
+                        if isinstance(orders_data, list):
+                            orders = orders_data
+                        elif isinstance(orders_data, dict) and 'contents' in orders_data:
+                            orders = orders_data.get('contents', [])
+                        else:
+                            orders = []
+                    else:
+                        logger.warning("네이버 API 주문 조회 실패")
+                        orders = []
 
-                    except Exception as e:
-                        logger.warning(f"주문 상태 {status} 조회 중 오류: {e}")
-                        continue
+                except Exception as e:
+                    logger.error(f"네이버 API 주문 조회 중 오류: {e}")
+                    orders = []
 
-                orders = all_orders
-                logger.info(f"네이버 API에서 {len(orders)}개 주문 조회 완료")
+                logger.info(f"네이버 API에서 {len(orders)}개 주문 조회 완료 (전체 상태 한 번에 조회)")
 
             # 상태별 카운팅
             order_counts = {
