@@ -492,14 +492,37 @@ async def get_orders(
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
     order_status: Optional[str] = None,
+    page_type: Optional[str] = None,
     limit: int = 100
 ):
     """주문 목록 조회 API"""
     try:
-        # 기본 날짜 설정 (최근 30일)
+        # 기본 날짜 설정 (페이지별 기간 설정 사용)
         if not start_date or not end_date:
+            # 페이지 타입별 기본 기간 가져오기
+            default_days = 30  # 전역 기본값
+
+            if page_type:
+                # 페이지 타입 매핑
+                period_mapping = {
+                    'new-orders': 'NEW_ORDER_DEFAULT_DAYS',
+                    'shipping-pending': 'SHIPPING_PENDING_DEFAULT_DAYS',
+                    'shipping-in-progress': 'SHIPPING_IN_PROGRESS_DEFAULT_DAYS',
+                    'shipping-completed': 'SHIPPING_COMPLETED_DEFAULT_DAYS',
+                    'purchase-decided': 'PURCHASE_DECIDED_DEFAULT_DAYS',
+                    'cancel': 'CANCEL_DEFAULT_DAYS',
+                    'cancel_orders': 'CANCEL_DEFAULT_DAYS',  # 취소주문 페이지 별칭
+                    'return-exchange': 'RETURN_EXCHANGE_DEFAULT_DAYS',
+                    'cancel-return-exchange': 'CANCEL_RETURN_EXCHANGE_DEFAULT_DAYS'
+                }
+
+                if page_type in period_mapping:
+                    env_key = period_mapping[page_type]
+                    default_days = config.get_int(env_key, default_days)
+                    logger.info(f"📅 {page_type} 페이지 기본 기간: {default_days}일 ({env_key})")
+
             end_date_obj = datetime.now()
-            start_date_obj = end_date_obj - timedelta(days=30)
+            start_date_obj = end_date_obj - timedelta(days=default_days)
             start_date_str = start_date_obj.strftime('%Y-%m-%d')
             end_date_str = end_date_obj.strftime('%Y-%m-%d')
         else:
