@@ -6,120 +6,428 @@
         <div class="col-12">
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <h2><i class="fas fa-cog text-primary"></i> 설정</h2>
-                <button class="btn btn-success" onclick="saveSettings()">
-                    <i class="fas fa-save"></i> 설정 저장
-                </button>
-            </div>
-
-            <!-- API 설정 -->
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h5><i class="fas fa-plug text-warning"></i> 네이버 API 설정</h5>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <label for="clientId" class="form-label">클라이언트 ID</label>
-                            <input type="text" class="form-control" id="clientId" placeholder="네이버 클라이언트 ID">
-                        </div>
-                        <div class="col-md-6">
-                            <label for="clientSecret" class="form-label">클라이언트 시크릿</label>
-                            <div class="input-group">
-                                <input type="password" class="form-control" id="clientSecret" placeholder="네이버 클라이언트 시크릿">
-                                <button class="btn btn-outline-secondary" type="button" onclick="togglePassword('clientSecret')">
-                                    <i class="fas fa-eye"></i>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="mt-3">
-                        <button class="btn btn-primary" onclick="testApiConnection()">
-                            <i class="fas fa-flask"></i> API 연결 테스트
-                        </button>
-                        <span id="apiTestResult" class="ms-3"></span>
-                    </div>
+                <div class="btn-group">
+                    <button class="btn btn-success" onclick="saveAllSettings()">
+                        <i class="fas fa-save"></i> 모든 설정 저장
+                    </button>
+                    <button class="btn btn-outline-secondary" onclick="resetToDefaults()">
+                        <i class="fas fa-undo"></i> 기본값으로 초기화
+                    </button>
                 </div>
             </div>
 
-            <!-- 알림 설정 -->
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h5><i class="fas fa-bell text-info"></i> 알림 설정</h5>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-8">
-                            <label for="discordWebhook" class="form-label">Discord 웹훅 URL</label>
-                            <div class="input-group">
-                                <input type="password" class="form-control" id="discordWebhook" placeholder="Discord 웹훅 URL">
-                                <button class="btn btn-outline-secondary" type="button" onclick="togglePassword('discordWebhook')">
-                                    <i class="fas fa-eye"></i>
-                                </button>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Discord 알림 활성화</label>
-                            <div class="form-check form-switch">
-                                <input class="form-check-input" type="checkbox" id="discordEnabled">
-                                <label class="form-check-label" for="discordEnabled">
-                                    Discord 알림 사용
-                                </label>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="mt-3">
-                        <button class="btn btn-primary" onclick="testDiscordNotification()">
-                            <i class="fab fa-discord"></i> Discord 알림 테스트
-                        </button>
-                        <span id="discordTestResult" class="ms-3"></span>
-                    </div>
-                </div>
-            </div>
+            <!-- 설정 탭 -->
+            <ul class="nav nav-tabs" id="settingsTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="basic-tab" data-bs-toggle="tab" data-bs-target="#basic" type="button" role="tab">
+                        <i class="fas fa-tools"></i> 기본설정
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="conditions-tab" data-bs-toggle="tab" data-bs-target="#conditions" type="button" role="tab">
+                        <i class="fas fa-filter"></i> 조건설정
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="system-tab" data-bs-toggle="tab" data-bs-target="#system" type="button" role="tab">
+                        <i class="fas fa-info-circle"></i> 시스템 정보
+                    </button>
+                </li>
+            </ul>
 
-            <!-- 모니터링 설정 -->
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h5><i class="fas fa-monitor-heart-rate text-success"></i> 모니터링 설정</h5>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-4">
-                            <label for="checkInterval" class="form-label">체크 간격 (초)</label>
-                            <input type="number" class="form-control" id="checkInterval" min="60" max="3600" value="300">
-                            <div class="form-text">권장값: 300초 (5분)</div>
+            <!-- 탭 컨텐츠 -->
+            <div class="tab-content" id="settingsTabContent">
+                <!-- 기본설정 탭 -->
+                <div class="tab-pane fade show active" id="basic" role="tabpanel">
+                    <div class="mt-4">
+                        <!-- API 설정 -->
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <h5><i class="fas fa-plug text-warning"></i> 네이버 API 설정</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <label for="clientId" class="form-label">클라이언트 ID</label>
+                                        <input type="text" class="form-control" id="clientId" placeholder="네이버 클라이언트 ID">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="clientSecret" class="form-label">클라이언트 시크릿</label>
+                                        <div class="input-group">
+                                            <input type="password" class="form-control" id="clientSecret" placeholder="네이버 클라이언트 시크릿">
+                                            <button class="btn btn-outline-secondary" type="button" onclick="togglePassword('clientSecret')">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="mt-3">
+                                    <button class="btn btn-primary" onclick="testApiConnection()">
+                                        <i class="fas fa-flask"></i> API 연결 테스트
+                                    </button>
+                                    <span id="apiTestResult" class="ms-3"></span>
+                                </div>
+                            </div>
                         </div>
-                        <div class="col-md-4">
-                            <label for="dashboardPeriod" class="form-label">대시보드 조회 기간 (일)</label>
-                            <input type="number" class="form-control" id="dashboardPeriod" min="1" max="30" value="5">
-                            <div class="form-text">최근 며칠의 데이터를 표시할지 설정</div>
+
+                        <!-- 알림 설정 -->
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <h5><i class="fas fa-bell text-info"></i> 알림 설정</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-8">
+                                        <label for="discordWebhook" class="form-label">Discord 웹훅 URL</label>
+                                        <div class="input-group">
+                                            <input type="password" class="form-control" id="discordWebhook" placeholder="Discord 웹훅 URL">
+                                            <button class="btn btn-outline-secondary" type="button" onclick="togglePassword('discordWebhook')">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">Discord 알림 활성화</label>
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" id="discordEnabled">
+                                            <label class="form-check-label" for="discordEnabled">
+                                                Discord 알림 사용
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="mt-3">
+                                    <button class="btn btn-primary" onclick="testDiscordNotification()">
+                                        <i class="fab fa-discord"></i> Discord 알림 테스트
+                                    </button>
+                                    <span id="discordTestResult" class="ms-3"></span>
+                                </div>
+                            </div>
                         </div>
-                        <div class="col-md-4">
-                            <label class="form-label">자동 새로고침</label>
-                            <div class="form-check form-switch">
-                                <input class="form-check-input" type="checkbox" id="autoRefresh">
-                                <label class="form-check-label" for="autoRefresh">
-                                    자동 새로고침 사용
-                                </label>
+
+                        <!-- IP 관리 -->
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <h5><i class="fas fa-globe text-success"></i> 허가된 공인 IP 관리</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label">현재 공인 IP:</label>
+                                        <div class="d-flex align-items-center">
+                                            <strong id="currentIP" class="me-2">확인 중...</strong>
+                                            <span id="ipStatus" class="badge bg-secondary me-2">확인 중</span>
+                                            <button class="btn btn-sm btn-outline-primary" onclick="refreshCurrentIP()">
+                                                <i class="fas fa-sync-alt"></i> 새로고침
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <button class="btn btn-sm btn-outline-info" onclick="showIPHelp()">
+                                            <i class="fas fa-question-circle"></i> IP 관리 도움말
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <label class="form-label">허가된 IP 목록 (최대 5개)</label>
+                                        <select class="form-control" id="ipList" size="5" style="height: 120px;">
+                                        </select>
+                                        <small class="form-text text-muted">기본값: 121.190.40.153, 175.125.204.97</small>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">IP 관리</label>
+                                        <div class="input-group mb-2">
+                                            <input type="text" class="form-control" id="newIP" placeholder="새 IP 주소 입력">
+                                            <button class="btn btn-outline-success" onclick="addIP()">
+                                                <i class="fas fa-plus"></i> 추가
+                                            </button>
+                                        </div>
+                                        <div class="btn-group w-100">
+                                            <button class="btn btn-outline-primary" onclick="addCurrentIP()">
+                                                <i class="fas fa-map-marker-alt"></i> 현재IP 추가
+                                            </button>
+                                            <button class="btn btn-outline-danger" onclick="deleteSelectedIP()">
+                                                <i class="fas fa-trash"></i> 선택 삭제
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 모니터링 설정 -->
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <h5><i class="fas fa-monitor-heart-rate text-success"></i> 모니터링 설정</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <label for="checkInterval" class="form-label">체크 간격 (초)</label>
+                                        <input type="number" class="form-control" id="checkInterval" min="60" max="3600" value="300">
+                                        <div class="form-text">권장값: 300초 (5분)</div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label for="refreshInterval" class="form-label">자동 새로고침 간격 (초)</label>
+                                        <input type="number" class="form-control" id="refreshInterval" min="30" max="600" value="60">
+                                        <div class="form-text">GUI에서 자동 새로고침 간격</div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">자동 새로고침</label>
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" id="autoRefresh">
+                                            <label class="form-check-label" for="autoRefresh">
+                                                자동 새로고침 사용
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- 시스템 정보 -->
-            <div class="card">
-                <div class="card-header">
-                    <h5><i class="fas fa-info-circle text-secondary"></i> 시스템 정보</h5>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <p><strong>버전:</strong> <span id="systemVersion">{{ version_info.app_version }}</span></p>
-                            <p><strong>빌드 날짜:</strong> <span id="buildDate">{{ version_info.build_date }}</span></p>
+                <!-- 조건설정 탭 -->
+                <div class="tab-pane fade" id="conditions" role="tabpanel">
+                    <div class="mt-4">
+                        <!-- 대시보드 설정 -->
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <h5><i class="fas fa-chart-line text-primary"></i> 대시보드 설정</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <label for="dashboardPeriod" class="form-label">대시보드 조회 기간 (일)</label>
+                                        <input type="number" class="form-control" id="dashboardPeriod" min="1" max="30" value="5">
+                                        <div class="form-text">최근 며칠의 데이터를 표시할지 설정</div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label for="quickPeriod" class="form-label">빠른 기간 설정 (일)</label>
+                                        <input type="number" class="form-control" id="quickPeriod" min="1" max="30" value="3">
+                                        <div class="form-text">빠른 조회용 기본 기간</div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                        <div class="col-md-6">
-                            <p><strong>모니터링 상태:</strong> <span id="monitoringStatus" class="badge bg-secondary">확인 중...</span></p>
-                            <p><strong>마지막 체크:</strong> <span id="lastCheck">확인 중...</span></p>
+
+                        <!-- 주문 상태 설정 -->
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <h5><i class="fas fa-list-check text-warning"></i> 주문 상태 조회 설정</h5>
+                            </div>
+                            <div class="card-body">
+                                <label class="form-label">조회할 주문 상태 선택</label>
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="orderStatus1" value="PAYMENT_WAITING" checked>
+                                            <label class="form-check-label" for="orderStatus1">결제대기</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="orderStatus2" value="PAYED" checked>
+                                            <label class="form-check-label" for="orderStatus2">결제완료</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="orderStatus3" value="DELIVERING" checked>
+                                            <label class="form-check-label" for="orderStatus3">배송중</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="orderStatus4" value="DELIVERED" checked>
+                                            <label class="form-check-label" for="orderStatus4">배송완료</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="orderStatus5" value="PURCHASE_DECIDED" checked>
+                                            <label class="form-check-label" for="orderStatus5">구매확정</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="orderStatus6" value="CANCELED" checked>
+                                            <label class="form-check-label" for="orderStatus6">주문취소</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="orderStatus7" value="RETURNED" checked>
+                                            <label class="form-check-label" for="orderStatus7">반품</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="orderStatus8" value="EXCHANGED" checked>
+                                            <label class="form-check-label" for="orderStatus8">교환</label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="form-text mt-2">선택한 상태의 주문만 조회됩니다. 기본값: PAYMENT_WAITING, PAYED, DELIVERING</div>
+                            </div>
+                        </div>
+
+                        <!-- 상품 상태 설정 -->
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <h5><i class="fas fa-box text-info"></i> 상품 상태 조회 설정</h5>
+                            </div>
+                            <div class="card-body">
+                                <label class="form-label">조회할 상품 상태 선택</label>
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="productStatus1" value="SALE" checked>
+                                            <label class="form-check-label" for="productStatus1">판매중</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="productStatus2" value="WAIT" checked>
+                                            <label class="form-check-label" for="productStatus2">판매대기</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="productStatus3" value="OUTOFSTOCK" checked>
+                                            <label class="form-check-label" for="productStatus3">품절</label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="form-text mt-2">선택한 상태의 상품만 조회됩니다. 기본값: SALE, WAIT, OUTOFSTOCK</div>
+                            </div>
+                        </div>
+
+                        <!-- 주문 컬럼 설정 -->
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <h5><i class="fas fa-columns text-secondary"></i> 주문 컬럼 표시 설정</h5>
+                            </div>
+                            <div class="card-body">
+                                <label class="form-label">표시할 컬럼 선택</label>
+                                <div class="row">
+                                    <div class="col-md-3">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="orderCol1" value="주문ID" checked>
+                                            <label class="form-check-label" for="orderCol1">주문ID</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="orderCol2" value="주문자" checked>
+                                            <label class="form-check-label" for="orderCol2">주문자</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="orderCol3" value="상품명" checked>
+                                            <label class="form-check-label" for="orderCol3">상품명</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="orderCol4" value="옵션정보" checked>
+                                            <label class="form-check-label" for="orderCol4">옵션정보</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="orderCol5" value="수량" checked>
+                                            <label class="form-check-label" for="orderCol5">수량</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="orderCol6" value="금액" checked>
+                                            <label class="form-check-label" for="orderCol6">금액</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="orderCol7" value="배송지주소" checked>
+                                            <label class="form-check-label" for="orderCol7">배송지주소</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="orderCol8" value="배송예정일" checked>
+                                            <label class="form-check-label" for="orderCol8">배송예정일</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="orderCol9" value="주문일시" checked>
+                                            <label class="form-check-label" for="orderCol9">주문일시</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="orderCol10" value="상태" checked>
+                                            <label class="form-check-label" for="orderCol10">상태</label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="form-text mt-2">선택한 컬럼만 주문 목록에 표시됩니다.</div>
+                            </div>
+                        </div>
+
+                        <!-- 탭별 기본 기간 설정 -->
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <h5><i class="fas fa-calendar-alt text-purple"></i> 탭별 기본 기간 설정</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <label for="newOrderDays" class="form-label">신규주문 기본 기간 (일)</label>
+                                        <input type="number" class="form-control" id="newOrderDays" min="1" max="90" value="3">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label for="shippingPendingDays" class="form-label">발송대기 기본 기간 (일)</label>
+                                        <input type="number" class="form-control" id="shippingPendingDays" min="1" max="90" value="3">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label for="shippingInProgressDays" class="form-label">배송중 기본 기간 (일)</label>
+                                        <input type="number" class="form-control" id="shippingInProgressDays" min="1" max="90" value="30">
+                                    </div>
+                                </div>
+                                <div class="row mt-3">
+                                    <div class="col-md-4">
+                                        <label for="shippingCompletedDays" class="form-label">배송완료 기본 기간 (일)</label>
+                                        <input type="number" class="form-control" id="shippingCompletedDays" min="1" max="90" value="7">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label for="purchaseDecidedDays" class="form-label">구매확정 기본 기간 (일)</label>
+                                        <input type="number" class="form-control" id="purchaseDecidedDays" min="1" max="90" value="3">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label for="cancelDays" class="form-label">취소주문 기본 기간 (일)</label>
+                                        <input type="number" class="form-control" id="cancelDays" min="1" max="90" value="30">
+                                    </div>
+                                </div>
+                                <div class="row mt-3">
+                                    <div class="col-md-4">
+                                        <label for="returnExchangeDays" class="form-label">반품/교환 기본 기간 (일)</label>
+                                        <input type="number" class="form-control" id="returnExchangeDays" min="1" max="90" value="15">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label for="cancelReturnExchangeDays" class="form-label">취소/반품/교환 기본 기간 (일)</label>
+                                        <input type="number" class="form-control" id="cancelReturnExchangeDays" min="1" max="90" value="7">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 시스템 정보 탭 -->
+                <div class="tab-pane fade" id="system" role="tabpanel">
+                    <div class="mt-4">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5><i class="fas fa-info-circle text-secondary"></i> 시스템 정보</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <p><strong>버전:</strong> <span id="systemVersion">{{ version_info.app_version }}</span></p>
+                                        <p><strong>빌드 날짜:</strong> <span id="buildDate">{{ version_info.build_date }}</span></p>
+                                        <p><strong>환경:</strong> <span class="badge bg-info">웹 버전</span></p>
+                                        <p><strong>플랫폼:</strong> EC2 최적화</p>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <p><strong>모니터링 상태:</strong> <span id="monitoringStatus" class="badge bg-secondary">확인 중...</span></p>
+                                        <p><strong>마지막 체크:</strong> <span id="lastCheck">확인 중...</span></p>
+                                        <p><strong>메모리 사용:</strong> ~150MB (t2.micro 최적화)</p>
+                                        <p><strong>백그라운드 스레드:</strong> 활성화</p>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -129,40 +437,299 @@
 </div>
 
 <script>
-async function loadSettings() {
+// 전역 변수
+let currentSettings = {};
+let currentIP = '';
+
+// 페이지 로드 시 실행
+document.addEventListener('DOMContentLoaded', function() {
+    loadAllSettings();
+    updateSystemStatus();
+    refreshCurrentIP();
+
+    // 10초마다 시스템 상태 업데이트
+    setInterval(updateSystemStatus, 10000);
+});
+
+// 모든 설정 로드
+async function loadAllSettings() {
     try {
         const response = await fetch('/api/settings');
-        const settings = await response.json();
+        const result = await response.json();
 
-        if (settings.success) {
-            // API 설정 로드 (보안상 실제 값은 마스킹)
-            document.getElementById('clientId').value = settings.data.client_id ? '****' + settings.data.client_id.slice(-4) : '';
-            document.getElementById('clientSecret').value = settings.data.client_secret ? '****' : '';
+        if (result.success) {
+            currentSettings = result.data;
 
-            // 알림 설정 로드
-            document.getElementById('discordWebhook').value = settings.data.discord_webhook ? '****' : '';
-            document.getElementById('discordEnabled').checked = settings.data.discord_enabled || false;
+            // 기본설정
+            document.getElementById('clientId').value = currentSettings.client_id || '';
+            document.getElementById('clientSecret').value = currentSettings.client_secret || '';
+            document.getElementById('discordWebhook').value = currentSettings.discord_webhook || '';
+            document.getElementById('discordEnabled').checked = currentSettings.discord_enabled || false;
+            document.getElementById('checkInterval').value = currentSettings.check_interval || 300;
+            document.getElementById('refreshInterval').value = currentSettings.refresh_interval || 60;
+            document.getElementById('autoRefresh').checked = currentSettings.auto_refresh || false;
 
-            // 모니터링 설정 로드
-            document.getElementById('checkInterval').value = settings.data.check_interval || 300;
-            document.getElementById('dashboardPeriod').value = settings.data.dashboard_period || 5;
-            document.getElementById('autoRefresh').checked = settings.data.auto_refresh || false;
+            // 조건설정
+            document.getElementById('dashboardPeriod').value = currentSettings.dashboard_period || 5;
+            document.getElementById('quickPeriod').value = currentSettings.quick_period || 3;
+
+            // 허용된 IP 로드
+            loadIPSettings();
+
+            // 탭별 기간 설정
+            document.getElementById('newOrderDays').value = currentSettings.new_order_days || 3;
+            document.getElementById('shippingPendingDays').value = currentSettings.shipping_pending_days || 3;
+            document.getElementById('shippingInProgressDays').value = currentSettings.shipping_in_progress_days || 30;
+            document.getElementById('shippingCompletedDays').value = currentSettings.shipping_completed_days || 7;
+            document.getElementById('purchaseDecidedDays').value = currentSettings.purchase_decided_days || 3;
+            document.getElementById('cancelDays').value = currentSettings.cancel_days || 30;
+            document.getElementById('returnExchangeDays').value = currentSettings.return_exchange_days || 15;
+            document.getElementById('cancelReturnExchangeDays').value = currentSettings.cancel_return_exchange_days || 7;
+
+            // 체크박스 설정들 로드
+            loadCheckboxSettings();
         }
     } catch (error) {
         showNotification('설정 로드 중 오류 발생: ' + error.message, 'error');
     }
 }
 
-async function saveSettings() {
+// IP 설정 로드
+function loadIPSettings() {
+    const allowedIPs = currentSettings.allowed_ips || '121.190.40.153,175.125.204.97';
+    const ipList = allowedIPs.split(',').map(ip => ip.trim()).filter(ip => ip);
+
+    const select = document.getElementById('ipList');
+    select.innerHTML = '';
+
+    ipList.forEach(ip => {
+        const option = document.createElement('option');
+        option.value = ip;
+        option.textContent = ip;
+        select.appendChild(option);
+    });
+}
+
+// 체크박스 설정들 로드
+function loadCheckboxSettings() {
+    // 주문 상태
+    const orderStatuses = (currentSettings.order_status_types || 'PAYMENT_WAITING,PAYED,DELIVERING').split(',');
+    for (let i = 1; i <= 8; i++) {
+        const checkbox = document.getElementById(`orderStatus${i}`);
+        if (checkbox && orderStatuses.includes(checkbox.value)) {
+            checkbox.checked = true;
+        }
+    }
+
+    // 상품 상태
+    const productStatuses = (currentSettings.product_status_types || 'SALE,WAIT,OUTOFSTOCK').split(',');
+    for (let i = 1; i <= 3; i++) {
+        const checkbox = document.getElementById(`productStatus${i}`);
+        if (checkbox && productStatuses.includes(checkbox.value)) {
+            checkbox.checked = true;
+        }
+    }
+
+    // 주문 컬럼
+    const orderColumns = (currentSettings.order_columns || '주문ID,주문자,상품명,옵션정보,수량,금액,배송지주소,배송예정일,주문일시,상태').split(',');
+    for (let i = 1; i <= 10; i++) {
+        const checkbox = document.getElementById(`orderCol${i}`);
+        if (checkbox && orderColumns.includes(checkbox.value)) {
+            checkbox.checked = true;
+        }
+    }
+}
+
+// 현재 IP 새로고침
+async function refreshCurrentIP() {
+    try {
+        document.getElementById('currentIP').textContent = '확인 중...';
+        document.getElementById('ipStatus').className = 'badge bg-secondary';
+        document.getElementById('ipStatus').textContent = '확인 중';
+
+        const response = await fetch('https://api.ipify.org?format=json');
+        const data = await response.json();
+        currentIP = data.ip;
+
+        document.getElementById('currentIP').textContent = currentIP;
+
+        // IP 허가 상태 확인
+        const allowedIPs = Array.from(document.getElementById('ipList').options).map(opt => opt.value);
+        if (allowedIPs.includes(currentIP)) {
+            document.getElementById('ipStatus').className = 'badge bg-success';
+            document.getElementById('ipStatus').textContent = '✓ 허가됨';
+        } else {
+            document.getElementById('ipStatus').className = 'badge bg-warning';
+            document.getElementById('ipStatus').textContent = '✗ 허가되지 않음';
+        }
+    } catch (error) {
+        document.getElementById('currentIP').textContent = '확인 실패';
+        document.getElementById('ipStatus').className = 'badge bg-danger';
+        document.getElementById('ipStatus').textContent = '오류';
+        console.error('IP 확인 오류:', error);
+    }
+}
+
+// IP 관리 함수들
+function addIP() {
+    const newIPInput = document.getElementById('newIP');
+    const newIP = newIPInput.value.trim();
+
+    if (!newIP) {
+        showNotification('IP 주소를 입력해주세요.', 'warning');
+        return;
+    }
+
+    if (!validateIPFormat(newIP)) {
+        showNotification('올바른 IP 주소 형식이 아닙니다.', 'error');
+        return;
+    }
+
+    const select = document.getElementById('ipList');
+    if (select.options.length >= 5) {
+        showNotification('최대 5개의 IP만 관리할 수 있습니다.', 'warning');
+        return;
+    }
+
+    // 중복 확인
+    for (let option of select.options) {
+        if (option.value === newIP) {
+            showNotification('이미 추가된 IP 주소입니다.', 'warning');
+            return;
+        }
+    }
+
+    // IP 추가
+    const option = document.createElement('option');
+    option.value = newIP;
+    option.textContent = newIP;
+    select.appendChild(option);
+
+    newIPInput.value = '';
+    showNotification('IP가 추가되었습니다.', 'success');
+}
+
+function addCurrentIP() {
+    if (!currentIP || currentIP === '확인 중...' || currentIP === '확인 실패') {
+        showNotification('현재 IP를 먼저 확인해주세요.', 'warning');
+        return;
+    }
+
+    const select = document.getElementById('ipList');
+    if (select.options.length >= 5) {
+        showNotification('최대 5개의 IP만 관리할 수 있습니다.', 'warning');
+        return;
+    }
+
+    // 중복 확인
+    for (let option of select.options) {
+        if (option.value === currentIP) {
+            showNotification('현재 IP는 이미 허가 목록에 있습니다.', 'info');
+            return;
+        }
+    }
+
+    // IP 추가
+    const option = document.createElement('option');
+    option.value = currentIP;
+    option.textContent = currentIP;
+    select.appendChild(option);
+
+    showNotification('현재 IP가 허가 목록에 추가되었습니다.', 'success');
+
+    // 상태 업데이트
+    document.getElementById('ipStatus').className = 'badge bg-success';
+    document.getElementById('ipStatus').textContent = '✓ 허가됨';
+}
+
+function deleteSelectedIP() {
+    const select = document.getElementById('ipList');
+    const selectedIndex = select.selectedIndex;
+
+    if (selectedIndex === -1) {
+        showNotification('삭제할 IP를 선택해주세요.', 'warning');
+        return;
+    }
+
+    if (confirm(`IP '${select.options[selectedIndex].value}'를 삭제하시겠습니까?`)) {
+        select.remove(selectedIndex);
+        showNotification('IP가 삭제되었습니다.', 'success');
+
+        // 현재 IP 상태 다시 확인
+        refreshCurrentIP();
+    }
+}
+
+function validateIPFormat(ip) {
+    const pattern = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+    return pattern.test(ip);
+}
+
+function showIPHelp() {
+    const helpText = `💡 허가된 공인 IP 관리 도움말
+
+🔹 현재 공인 IP
+  - 웹 브라우저가 실행되는 환경의 공인 IP 주소입니다
+  - "새로고침" 버튼으로 최신 정보를 확인할 수 있습니다
+
+🔹 허가된 IP 목록 (최대 5개)
+  - 네이버 커머스 API 사용이 허가된 IP 주소 목록입니다
+  - 기본값: 121.190.40.153, 175.125.204.97
+
+🔹 IP 추가/삭제
+  - "추가": 입력창에 IP 주소를 입력하여 추가
+  - "현재IP 추가": 현재 공인 IP를 허가 목록에 추가
+  - "선택 삭제": 목록에서 선택한 IP 삭제
+
+🔹 허가되지 않은 IP로 실행 시
+  - 주황색 "✗ 허가되지 않음" 표시
+  - 네이버 커머스 API 관리 페이지에서 IP 추가 필요
+
+📋 네이버 커머스 API 관리 페이지
+  - URL: https://apicenter.commerce.naver.com/ko/member/application/manage/list
+
+⚠️ 주의사항
+  - IP 변경 후 "모든 설정 저장" 버튼을 눌러 저장하세요
+  - 네이버 커머스 API에서도 동일한 IP를 허가해야 합니다
+  - 최대 5개의 IP만 관리할 수 있습니다`;
+
+    alert(helpText);
+}
+
+// 설정 저장 관련 함수들
+async function saveAllSettings() {
     try {
         const settings = {
+            // 기본설정
             client_id: document.getElementById('clientId').value,
             client_secret: document.getElementById('clientSecret').value,
             discord_webhook: document.getElementById('discordWebhook').value,
             discord_enabled: document.getElementById('discordEnabled').checked,
             check_interval: parseInt(document.getElementById('checkInterval').value),
+            refresh_interval: parseInt(document.getElementById('refreshInterval').value),
+            auto_refresh: document.getElementById('autoRefresh').checked,
+
+            // 조건설정
             dashboard_period: parseInt(document.getElementById('dashboardPeriod').value),
-            auto_refresh: document.getElementById('autoRefresh').checked
+            quick_period: parseInt(document.getElementById('quickPeriod').value),
+
+            // IP 설정
+            allowed_ips: Array.from(document.getElementById('ipList').options).map(opt => opt.value).join(','),
+
+            // 탭별 기간 설정
+            new_order_days: parseInt(document.getElementById('newOrderDays').value),
+            shipping_pending_days: parseInt(document.getElementById('shippingPendingDays').value),
+            shipping_in_progress_days: parseInt(document.getElementById('shippingInProgressDays').value),
+            shipping_completed_days: parseInt(document.getElementById('shippingCompletedDays').value),
+            purchase_decided_days: parseInt(document.getElementById('purchaseDecidedDays').value),
+            cancel_days: parseInt(document.getElementById('cancelDays').value),
+            return_exchange_days: parseInt(document.getElementById('returnExchangeDays').value),
+            cancel_return_exchange_days: parseInt(document.getElementById('cancelReturnExchangeDays').value),
+
+            // 체크박스 설정들
+            order_status_types: getCheckedValues('orderStatus', 8).join(','),
+            product_status_types: getCheckedValues('productStatus', 3).join(','),
+            order_columns: getCheckedValues('orderCol', 10).join(',')
         };
 
         const response = await fetch('/api/settings', {
@@ -176,7 +743,7 @@ async function saveSettings() {
         const result = await response.json();
 
         if (result.success) {
-            showNotification('설정이 저장되었습니다.', 'success');
+            showNotification('모든 설정이 저장되었습니다.', 'success');
         } else {
             showNotification('설정 저장 실패: ' + result.error, 'error');
         }
@@ -185,6 +752,19 @@ async function saveSettings() {
     }
 }
 
+// 체크된 값들 가져오기
+function getCheckedValues(prefix, count) {
+    const values = [];
+    for (let i = 1; i <= count; i++) {
+        const checkbox = document.getElementById(`${prefix}${i}`);
+        if (checkbox && checkbox.checked) {
+            values.push(checkbox.value);
+        }
+    }
+    return values;
+}
+
+// API 테스트 함수들
 async function testApiConnection() {
     const button = event.target;
     const resultSpan = document.getElementById('apiTestResult');
@@ -237,6 +817,60 @@ async function testDiscordNotification() {
     }
 }
 
+// 기본값으로 초기화
+function resetToDefaults() {
+    if (confirm('모든 설정을 기본값으로 초기화하시겠습니까?')) {
+        // 기본값 설정
+        document.getElementById('clientId').value = '';
+        document.getElementById('clientSecret').value = '';
+        document.getElementById('discordWebhook').value = '';
+        document.getElementById('discordEnabled').checked = true;
+        document.getElementById('checkInterval').value = 300;
+        document.getElementById('refreshInterval').value = 60;
+        document.getElementById('autoRefresh').checked = true;
+        document.getElementById('dashboardPeriod').value = 5;
+        document.getElementById('quickPeriod').value = 3;
+
+        // IP 기본값
+        const select = document.getElementById('ipList');
+        select.innerHTML = '';
+        const defaultIPs = ['121.190.40.153', '175.125.204.97'];
+        defaultIPs.forEach(ip => {
+            const option = document.createElement('option');
+            option.value = ip;
+            option.textContent = ip;
+            select.appendChild(option);
+        });
+
+        // 탭별 기간 기본값
+        document.getElementById('newOrderDays').value = 3;
+        document.getElementById('shippingPendingDays').value = 3;
+        document.getElementById('shippingInProgressDays').value = 30;
+        document.getElementById('shippingCompletedDays').value = 7;
+        document.getElementById('purchaseDecidedDays').value = 3;
+        document.getElementById('cancelDays').value = 30;
+        document.getElementById('returnExchangeDays').value = 15;
+        document.getElementById('cancelReturnExchangeDays').value = 7;
+
+        // 모든 체크박스 체크
+        for (let i = 1; i <= 8; i++) {
+            const checkbox = document.getElementById(`orderStatus${i}`);
+            if (checkbox) checkbox.checked = true;
+        }
+        for (let i = 1; i <= 3; i++) {
+            const checkbox = document.getElementById(`productStatus${i}`);
+            if (checkbox) checkbox.checked = true;
+        }
+        for (let i = 1; i <= 10; i++) {
+            const checkbox = document.getElementById(`orderCol${i}`);
+            if (checkbox) checkbox.checked = true;
+        }
+
+        showNotification('설정이 기본값으로 초기화되었습니다.', 'success');
+    }
+}
+
+// 유틸리티 함수들
 function togglePassword(inputId) {
     const input = document.getElementById(inputId);
     const icon = event.target.querySelector('i');
@@ -253,9 +887,9 @@ function togglePassword(inputId) {
 }
 
 function showNotification(message, type = 'info') {
-    // 간단한 알림 표시
     const alertClass = type === 'success' ? 'alert-success' :
-                      type === 'error' ? 'alert-danger' : 'alert-info';
+                      type === 'error' ? 'alert-danger' :
+                      type === 'warning' ? 'alert-warning' : 'alert-info';
 
     const alert = document.createElement('div');
     alert.className = `alert ${alertClass} alert-dismissible fade show position-fixed`;
@@ -269,7 +903,6 @@ function showNotification(message, type = 'info') {
 
     document.body.appendChild(alert);
 
-    // 3초 후 자동 제거
     setTimeout(() => {
         if (alert.parentNode) {
             alert.parentNode.removeChild(alert);
@@ -301,14 +934,5 @@ async function updateSystemStatus() {
         console.error('시스템 상태 업데이트 오류:', error);
     }
 }
-
-// 페이지 로드 시 실행
-document.addEventListener('DOMContentLoaded', function() {
-    loadSettings();
-    updateSystemStatus();
-
-    // 10초마다 시스템 상태 업데이트
-    setInterval(updateSystemStatus, 10000);
-});
 </script>
 {% endblock %}

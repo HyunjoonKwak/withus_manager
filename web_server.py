@@ -390,13 +390,36 @@ async def get_settings():
     try:
         # 보안상 실제 값은 마스킹하여 반환
         settings = {
+            # 기본설정
             "client_id": config.get('NAVER_CLIENT_ID', ''),
             "client_secret": config.get('NAVER_CLIENT_SECRET', ''),
             "discord_webhook": config.get('DISCORD_WEBHOOK_URL', ''),
             "discord_enabled": config.get_bool('DISCORD_ENABLED', False),
             "check_interval": config.get_int('CHECK_INTERVAL', 300),
+            "refresh_interval": config.get_int('REFRESH_INTERVAL', 60),
+            "auto_refresh": config.get_bool('AUTO_REFRESH', True),
+
+            # 조건설정
             "dashboard_period": config.get_int('DASHBOARD_PERIOD_DAYS', 5),
-            "auto_refresh": config.get_bool('AUTO_REFRESH', True)
+            "quick_period": config.get_int('QUICK_PERIOD_SETTING', 3),
+
+            # IP 설정
+            "allowed_ips": config.get('ALLOWED_IPS', '121.190.40.153,175.125.204.97'),
+
+            # 탭별 기간 설정
+            "new_order_days": config.get_int('NEW_ORDER_DEFAULT_DAYS', 3),
+            "shipping_pending_days": config.get_int('SHIPPING_PENDING_DEFAULT_DAYS', 3),
+            "shipping_in_progress_days": config.get_int('SHIPPING_IN_PROGRESS_DEFAULT_DAYS', 30),
+            "shipping_completed_days": config.get_int('SHIPPING_COMPLETED_DEFAULT_DAYS', 7),
+            "purchase_decided_days": config.get_int('PURCHASE_DECIDED_DEFAULT_DAYS', 3),
+            "cancel_days": config.get_int('CANCEL_DEFAULT_DAYS', 30),
+            "return_exchange_days": config.get_int('RETURN_EXCHANGE_DEFAULT_DAYS', 15),
+            "cancel_return_exchange_days": config.get_int('CANCEL_RETURN_EXCHANGE_DEFAULT_DAYS', 7),
+
+            # 체크박스 설정들
+            "order_status_types": config.get('ORDER_STATUS_TYPES', 'PAYMENT_WAITING,PAYED,DELIVERING'),
+            "product_status_types": config.get('PRODUCT_STATUS_TYPES', 'SALE,WAIT,OUTOFSTOCK'),
+            "order_columns": config.get('ORDER_COLUMNS', '주문ID,주문자,상품명,옵션정보,수량,금액,배송지주소,배송예정일,주문일시,상태')
         }
 
         # 민감한 정보 마스킹
