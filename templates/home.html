@@ -81,10 +81,10 @@
                 <div class="period-info">
                     <i class="fas fa-calendar-alt text-info"></i>
                     <strong>조회 기간:</strong>
-                    <span id="current-period">최근 {{ dashboard_data.period.days|default:5 }}일간</span>
+                    <span id="current-period">최근 {{ dashboard_data.period.days|default(5) }}일간</span>
                     <br>
                     <small id="period-dates" class="text-muted">
-                        {{ dashboard_data.period.start_date|default:"" }} ~ {{ dashboard_data.period.end_date|default:"" }}
+                        {{ dashboard_data.period.start_date|default("") }} ~ {{ dashboard_data.period.end_date|default("") }}
                     </small>
                 </div>
             </div>
