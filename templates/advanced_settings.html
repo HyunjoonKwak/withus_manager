@@ -1,0 +1,529 @@
+{% extends "base.html" %}
+
+{% block extra_head %}
+<style>
+    .settings-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 1.5rem;
+        border-radius: 0.5rem;
+        margin-bottom: 1.5rem;
+    }
+    .settings-section {
+        background: white;
+        border-radius: 0.5rem;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        margin-bottom: 1.5rem;
+    }
+    .section-header {
+        background-color: #f8f9fa;
+        padding: 1rem 1.5rem;
+        border-radius: 0.5rem 0.5rem 0 0;
+        border-bottom: 1px solid #e9ecef;
+    }
+    .section-body {
+        padding: 1.5rem;
+    }
+    .setting-item {
+        padding: 1rem;
+        border: 1px solid #e9ecef;
+        border-radius: 0.375rem;
+        margin-bottom: 1rem;
+        background: #f8f9fa;
+    }
+    .setting-item:last-child {
+        margin-bottom: 0;
+    }
+    .switch {
+        position: relative;
+        display: inline-block;
+        width: 60px;
+        height: 34px;
+    }
+    .switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+    .slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #ccc;
+        transition: .4s;
+        border-radius: 34px;
+    }
+    .slider:before {
+        position: absolute;
+        content: "";
+        height: 26px;
+        width: 26px;
+        left: 4px;
+        bottom: 4px;
+        background-color: white;
+        transition: .4s;
+        border-radius: 50%;
+    }
+    input:checked + .slider {
+        background-color: #2196F3;
+    }
+    input:checked + .slider:before {
+        transform: translateX(26px);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="settings-header">
+    <h2 class="h4 mb-2">
+        <i class="fas fa-cogs"></i> {{ title }}
+    </h2>
+    <p class="mb-0">시스템 고급 설정 및 자동화 조건을 관리할 수 있습니다.</p>
+</div>
+
+<!-- 모니터링 설정 -->
+<div class="settings-section">
+    <div class="section-header">
+        <h5 class="mb-0">
+            <i class="fas fa-eye"></i> 모니터링 설정
+        </h5>
+    </div>
+    <div class="section-body">
+        <form id="monitoringSettingsForm">
+            <div class="setting-item">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="mb-1">자동 모니터링 활성화</h6>
+                        <small class="text-muted">백그라운드에서 주문 상태를 자동으로 확인합니다.</small>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="autoMonitoring" name="auto_monitoring">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="setting-item">
+                <div class="row">
+                    <div class="col-md-6">
+                        <label class="form-label">확인 간격 (분)</label>
+                        <select class="form-select" id="checkInterval" name="check_interval">
+                            <option value="60">1분</option>
+                            <option value="300">5분</option>
+                            <option value="600">10분</option>
+                            <option value="1800">30분</option>
+                            <option value="3600">1시간</option>
+                        </select>
+                        <small class="text-muted">모니터링 체크 주기를 설정합니다.</small>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">대시보드 조회 기간 (일)</label>
+                        <input type="number" class="form-control" id="dashboardPeriod" name="dashboard_period"
+                               min="1" max="90" value="5">
+                        <small class="text-muted">대시보드에서 표시할 주문 조회 기간</small>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- 알림 설정 -->
+<div class="settings-section">
+    <div class="section-header">
+        <h5 class="mb-0">
+            <i class="fas fa-bell"></i> 알림 설정
+        </h5>
+    </div>
+    <div class="section-body">
+        <form id="notificationSettingsForm">
+            <div class="setting-item">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="mb-1">Discord 알림 활성화</h6>
+                        <small class="text-muted">주문 상태 변화 시 Discord로 알림을 전송합니다.</small>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="discordEnabled" name="discord_enabled">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="setting-item">
+                <div class="row">
+                    <div class="col-md-12">
+                        <label class="form-label">Discord 웹훅 URL</label>
+                        <input type="url" class="form-control" id="discordWebhook" name="discord_webhook"
+                               placeholder="https://discord.com/api/webhooks/...">
+                        <small class="text-muted">Discord 채널의 웹훅 URL을 입력하세요.</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="setting-item">
+                <h6 class="mb-3">알림 조건 설정</h6>
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="notifyNewOrders" name="notify_new_orders">
+                            <label class="form-check-label" for="notifyNewOrders">
+                                신규주문 알림
+                            </label>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="notifyShipped" name="notify_shipped">
+                            <label class="form-check-label" for="notifyShipped">
+                                발송완료 알림
+                            </label>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="notifyDelivered" name="notify_delivered">
+                            <label class="form-check-label" for="notifyDelivered">
+                                배송완료 알림
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                <div class="row mt-2">
+                    <div class="col-md-4">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="notifyCanceled" name="notify_canceled">
+                            <label class="form-check-label" for="notifyCanceled">
+                                주문취소 알림
+                            </label>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="notifyReturns" name="notify_returns">
+                            <label class="form-check-label" for="notifyReturns">
+                                반품/교환 알림
+                            </label>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="notifyErrors" name="notify_errors">
+                            <label class="form-check-label" for="notifyErrors">
+                                오류 발생 알림
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- 자동화 규칙 -->
+<div class="settings-section">
+    <div class="section-header">
+        <h5 class="mb-0">
+            <i class="fas fa-robot"></i> 자동화 규칙
+        </h5>
+    </div>
+    <div class="section-body">
+        <form id="automationSettingsForm">
+            <div class="setting-item">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="mb-1">자동 주문 확인</h6>
+                        <small class="text-muted">신규 주문을 자동으로 확인 상태로 변경합니다.</small>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="autoConfirmOrders" name="auto_confirm_orders">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="setting-item">
+                <div class="row">
+                    <div class="col-md-6">
+                        <label class="form-label">자동 확인 지연시간 (분)</label>
+                        <input type="number" class="form-control" id="autoConfirmDelay" name="auto_confirm_delay"
+                               min="0" max="1440" value="30">
+                        <small class="text-muted">주문 후 몇 분 뒤 자동 확인할지 설정</small>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">자동 확인 제외 시간</label>
+                        <div class="row">
+                            <div class="col-6">
+                                <input type="time" class="form-control" id="excludeStartTime" name="exclude_start_time" value="22:00">
+                                <small class="text-muted">시작 시간</small>
+                            </div>
+                            <div class="col-6">
+                                <input type="time" class="form-control" id="excludeEndTime" name="exclude_end_time" value="09:00">
+                                <small class="text-muted">종료 시간</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="setting-item">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="mb-1">재고 부족 알림</h6>
+                        <small class="text-muted">상품 재고가 설정된 수량 이하가 되면 알림을 보냅니다.</small>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="stockAlerts" name="stock_alerts">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div class="mt-2">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <label class="form-label">알림 기준 재고 수량</label>
+                            <input type="number" class="form-control" id="stockThreshold" name="stock_threshold"
+                                   min="0" max="1000" value="10">
+                            <small class="text-muted">이 수량 이하가 되면 알림</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- IP 관리 -->
+<div class="settings-section">
+    <div class="section-header">
+        <h5 class="mb-0">
+            <i class="fas fa-shield-alt"></i> IP 관리
+        </h5>
+    </div>
+    <div class="section-body">
+        <form id="ipSettingsForm">
+            <div class="setting-item">
+                <label class="form-label">허용된 IP 주소</label>
+                <textarea class="form-control" id="allowedIPs" name="allowed_ips" rows="3"
+                          placeholder="123.456.789.012&#10;234.567.890.123&#10;(한 줄에 하나씩 입력)"></textarea>
+                <small class="text-muted">네이버 API 호출을 허용할 IP 주소 목록 (한 줄에 하나씩)</small>
+            </div>
+
+            <div class="setting-item">
+                <div class="row">
+                    <div class="col-md-6">
+                        <label class="form-label">현재 서버 IP</label>
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="currentServerIP" readonly>
+                            <button class="btn btn-outline-secondary" type="button" onclick="refreshServerIP()">
+                                <i class="fas fa-sync"></i> 새로고침
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">IP 허가 상태</label>
+                        <div id="ipPermissionStatus" class="form-control bg-light">
+                            확인 중...
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- 저장 버튼 -->
+<div class="text-center">
+    <button type="button" class="btn btn-primary btn-lg me-3" onclick="saveAllSettings()">
+        <i class="fas fa-save"></i> 설정 저장
+    </button>
+    <button type="button" class="btn btn-outline-secondary btn-lg me-3" onclick="loadSettings()">
+        <i class="fas fa-undo"></i> 설정 다시 불러오기
+    </button>
+    <button type="button" class="btn btn-outline-danger btn-lg" onclick="resetToDefaults()">
+        <i class="fas fa-factory"></i> 기본값으로 초기화
+    </button>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+// 페이지 로드시 설정 불러오기
+document.addEventListener('DOMContentLoaded', function() {
+    loadSettings();
+    refreshServerIP();
+});
+
+// 설정 불러오기
+async function loadSettings() {
+    try {
+        const response = await fetch('/api/settings');
+        const data = await response.json();
+
+        if (data.success) {
+            const settings = data.settings;
+
+            // 모니터링 설정
+            document.getElementById('autoMonitoring').checked = settings.AUTO_REFRESH === 'true';
+            document.getElementById('checkInterval').value = settings.CHECK_INTERVAL || '300';
+            document.getElementById('dashboardPeriod').value = settings.DASHBOARD_PERIOD_DAYS || '5';
+
+            // 알림 설정
+            document.getElementById('discordEnabled').checked = settings.DISCORD_ENABLED === 'true';
+            document.getElementById('discordWebhook').value = settings.DISCORD_WEBHOOK_URL || '';
+
+            // 알림 조건
+            document.getElementById('notifyNewOrders').checked = settings.NOTIFY_NEW_ORDERS !== 'false';
+            document.getElementById('notifyShipped').checked = settings.NOTIFY_SHIPPED !== 'false';
+            document.getElementById('notifyDelivered').checked = settings.NOTIFY_DELIVERED !== 'false';
+            document.getElementById('notifyCanceled').checked = settings.NOTIFY_CANCELED !== 'false';
+            document.getElementById('notifyReturns').checked = settings.NOTIFY_RETURNS !== 'false';
+            document.getElementById('notifyErrors').checked = settings.NOTIFY_ERRORS !== 'false';
+
+            // 자동화 규칙
+            document.getElementById('autoConfirmOrders').checked = settings.AUTO_CONFIRM_ORDERS === 'true';
+            document.getElementById('autoConfirmDelay').value = settings.AUTO_CONFIRM_DELAY || '30';
+            document.getElementById('excludeStartTime').value = settings.EXCLUDE_START_TIME || '22:00';
+            document.getElementById('excludeEndTime').value = settings.EXCLUDE_END_TIME || '09:00';
+            document.getElementById('stockAlerts').checked = settings.STOCK_ALERTS === 'true';
+            document.getElementById('stockThreshold').value = settings.STOCK_THRESHOLD || '10';
+
+            // IP 설정
+            document.getElementById('allowedIPs').value = settings.ALLOWED_IPS || '';
+
+            console.log('설정 로드 완료');
+        } else {
+            throw new Error(data.error || '설정 로드 실패');
+        }
+    } catch (error) {
+        console.error('설정 로드 오류:', error);
+        alert('설정을 불러오는 중 오류가 발생했습니다: ' + error.message);
+    }
+}
+
+// 설정 저장
+async function saveAllSettings() {
+    try {
+        const settings = {
+            // 모니터링 설정
+            AUTO_REFRESH: document.getElementById('autoMonitoring').checked,
+            CHECK_INTERVAL: document.getElementById('checkInterval').value,
+            DASHBOARD_PERIOD_DAYS: document.getElementById('dashboardPeriod').value,
+
+            // 알림 설정
+            DISCORD_ENABLED: document.getElementById('discordEnabled').checked,
+            DISCORD_WEBHOOK_URL: document.getElementById('discordWebhook').value,
+
+            // 알림 조건
+            NOTIFY_NEW_ORDERS: document.getElementById('notifyNewOrders').checked,
+            NOTIFY_SHIPPED: document.getElementById('notifyShipped').checked,
+            NOTIFY_DELIVERED: document.getElementById('notifyDelivered').checked,
+            NOTIFY_CANCELED: document.getElementById('notifyCanceled').checked,
+            NOTIFY_RETURNS: document.getElementById('notifyReturns').checked,
+            NOTIFY_ERRORS: document.getElementById('notifyErrors').checked,
+
+            // 자동화 규칙
+            AUTO_CONFIRM_ORDERS: document.getElementById('autoConfirmOrders').checked,
+            AUTO_CONFIRM_DELAY: document.getElementById('autoConfirmDelay').value,
+            EXCLUDE_START_TIME: document.getElementById('excludeStartTime').value,
+            EXCLUDE_END_TIME: document.getElementById('excludeEndTime').value,
+            STOCK_ALERTS: document.getElementById('stockAlerts').checked,
+            STOCK_THRESHOLD: document.getElementById('stockThreshold').value,
+
+            // IP 설정
+            ALLOWED_IPS: document.getElementById('allowedIPs').value
+        };
+
+        const response = await fetch('/api/settings', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(settings)
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            alert('설정이 성공적으로 저장되었습니다.');
+            // 페이지 새로고침하여 변경사항 적용
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
+        } else {
+            throw new Error(data.error || '설정 저장 실패');
+        }
+    } catch (error) {
+        console.error('설정 저장 오류:', error);
+        alert('설정 저장 중 오류가 발생했습니다: ' + error.message);
+    }
+}
+
+// 서버 IP 새로고침
+async function refreshServerIP() {
+    try {
+        const response = await fetch('/api/current-ip');
+        const data = await response.json();
+
+        if (data.success) {
+            document.getElementById('currentServerIP').value = data.ip;
+
+            const statusElement = document.getElementById('ipPermissionStatus');
+            if (data.is_allowed) {
+                statusElement.innerHTML = '<span class="text-success"><i class="fas fa-check"></i> 허가됨</span>';
+                statusElement.className = 'form-control bg-success bg-opacity-10';
+            } else {
+                statusElement.innerHTML = '<span class="text-danger"><i class="fas fa-times"></i> 차단됨</span>';
+                statusElement.className = 'form-control bg-danger bg-opacity-10';
+            }
+        } else {
+            document.getElementById('currentServerIP').value = '확인 실패';
+            document.getElementById('ipPermissionStatus').innerHTML = '확인 실패';
+        }
+    } catch (error) {
+        console.error('IP 확인 오류:', error);
+        document.getElementById('currentServerIP').value = '오류 발생';
+        document.getElementById('ipPermissionStatus').innerHTML = '오류 발생';
+    }
+}
+
+// 기본값으로 초기화
+function resetToDefaults() {
+    if (!confirm('모든 설정을 기본값으로 초기화하시겠습니까?')) {
+        return;
+    }
+
+    // 모니터링 설정
+    document.getElementById('autoMonitoring').checked = true;
+    document.getElementById('checkInterval').value = '300';
+    document.getElementById('dashboardPeriod').value = '5';
+
+    // 알림 설정
+    document.getElementById('discordEnabled').checked = false;
+    document.getElementById('discordWebhook').value = '';
+
+    // 알림 조건
+    document.getElementById('notifyNewOrders').checked = true;
+    document.getElementById('notifyShipped').checked = true;
+    document.getElementById('notifyDelivered').checked = true;
+    document.getElementById('notifyCanceled').checked = true;
+    document.getElementById('notifyReturns').checked = true;
+    document.getElementById('notifyErrors').checked = true;
+
+    // 자동화 규칙
+    document.getElementById('autoConfirmOrders').checked = false;
+    document.getElementById('autoConfirmDelay').value = '30';
+    document.getElementById('excludeStartTime').value = '22:00';
+    document.getElementById('excludeEndTime').value = '09:00';
+    document.getElementById('stockAlerts').checked = false;
+    document.getElementById('stockThreshold').value = '10';
+
+    // IP 설정
+    document.getElementById('allowedIPs').value = '121.190.40.153\n175.125.204.97';
+
+    alert('설정이 기본값으로 초기화되었습니다. 저장 버튼을 눌러 적용하세요.');
+}
+</script>
+{% endblock %}

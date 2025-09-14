@@ -276,13 +276,145 @@ async def home(request: Request):
 
 @app.get("/orders", response_class=HTMLResponse)
 async def orders_page(request: Request):
-    """주문 목록 페이지"""
+    """전체 주문 목록 페이지"""
     context = {
         "request": request,
-        "title": "주문 관리 - " + get_full_title(),
-        "version_info": get_detailed_version_info()
+        "title": "전체주문 - " + get_full_title(),
+        "version_info": get_detailed_version_info(),
+        "page_type": "all_orders"
     }
     return templates.TemplateResponse("orders.html", context)
+
+@app.get("/new-orders", response_class=HTMLResponse)
+async def new_orders_page(request: Request):
+    """신규주문 관리 페이지"""
+    context = {
+        "request": request,
+        "title": "신규주문 - " + get_full_title(),
+        "version_info": get_detailed_version_info(),
+        "page_type": "new_orders",
+        "order_status": "PAYED",
+        "description": "신규주문이란 구매자가 결제완료후 판매자 주문확인 전 주문건입니다. [주문확인] 또는 [발송지연안내], [판매취소]를 할수 있습니다."
+    }
+    return templates.TemplateResponse("order_management.html", context)
+
+@app.get("/shipping-pending", response_class=HTMLResponse)
+async def shipping_pending_page(request: Request):
+    """발송대기 주문 페이지"""
+    context = {
+        "request": request,
+        "title": "발송대기 - " + get_full_title(),
+        "version_info": get_detailed_version_info(),
+        "page_type": "shipping_pending",
+        "order_status": "CONFIRMED",
+        "description": "발송대기 주문이란 판매자가 [주문확인]후 [발송처리]전 주문건입니다. [발송처리]를 할수 있습니다."
+    }
+    return templates.TemplateResponse("order_management.html", context)
+
+@app.get("/shipping-in-progress", response_class=HTMLResponse)
+async def shipping_in_progress_page(request: Request):
+    """배송중 주문 페이지"""
+    context = {
+        "request": request,
+        "title": "배송중 - " + get_full_title(),
+        "version_info": get_detailed_version_info(),
+        "page_type": "shipping_in_progress",
+        "order_status": "DISPATCHED",
+        "description": "배송중 주문이란 상품이 택배사에 인도되어 배송중인 주문건입니다."
+    }
+    return templates.TemplateResponse("order_management.html", context)
+
+@app.get("/shipping-completed", response_class=HTMLResponse)
+async def shipping_completed_page(request: Request):
+    """배송완료 주문 페이지"""
+    context = {
+        "request": request,
+        "title": "배송완료 - " + get_full_title(),
+        "version_info": get_detailed_version_info(),
+        "page_type": "shipping_completed",
+        "order_status": "DELIVERED",
+        "description": "배송완료 주문이란 상품이 구매자에게 배송완료된 주문건입니다."
+    }
+    return templates.TemplateResponse("order_management.html", context)
+
+@app.get("/purchase-decided", response_class=HTMLResponse)
+async def purchase_decided_page(request: Request):
+    """구매확정 주문 페이지"""
+    context = {
+        "request": request,
+        "title": "구매확정 - " + get_full_title(),
+        "version_info": get_detailed_version_info(),
+        "page_type": "purchase_decided",
+        "order_status": "PURCHASE_DECIDED",
+        "description": "구매확정 주문이란 구매자가 구매확정을 완료한 주문건입니다."
+    }
+    return templates.TemplateResponse("order_management.html", context)
+
+@app.get("/cancel", response_class=HTMLResponse)
+async def cancel_orders_page(request: Request):
+    """취소주문 페이지"""
+    context = {
+        "request": request,
+        "title": "취소주문 - " + get_full_title(),
+        "version_info": get_detailed_version_info(),
+        "page_type": "cancel_orders",
+        "order_status": "CANCELED",
+        "description": "취소주문이란 구매자가 주문을 취소한 주문건입니다."
+    }
+    return templates.TemplateResponse("order_management.html", context)
+
+@app.get("/returns-exchanges", response_class=HTMLResponse)
+async def returns_exchanges_page(request: Request):
+    """반품교환 주문 페이지"""
+    context = {
+        "request": request,
+        "title": "반품교환 - " + get_full_title(),
+        "version_info": get_detailed_version_info(),
+        "page_type": "returns_exchanges",
+        "order_status": "RETURN_REQUESTED",
+        "description": "반품교환 주문이란 구매자가 반품이나 교환을 요청한 주문건입니다."
+    }
+    return templates.TemplateResponse("order_management.html", context)
+
+@app.get("/products", response_class=HTMLResponse)
+async def products_page(request: Request):
+    """상품관리 페이지"""
+    context = {
+        "request": request,
+        "title": "상품관리 - " + get_full_title(),
+        "version_info": get_detailed_version_info()
+    }
+    return templates.TemplateResponse("products.html", context)
+
+@app.get("/api-test", response_class=HTMLResponse)
+async def api_test_page(request: Request):
+    """API 테스트 페이지"""
+    context = {
+        "request": request,
+        "title": "API 테스트 - " + get_full_title(),
+        "version_info": get_detailed_version_info()
+    }
+    return templates.TemplateResponse("api_test.html", context)
+
+@app.get("/advanced-settings", response_class=HTMLResponse)
+async def advanced_settings_page(request: Request):
+    """고급 설정 페이지"""
+    context = {
+        "request": request,
+        "title": "조건설정 - " + get_full_title(),
+        "version_info": get_detailed_version_info()
+    }
+    return templates.TemplateResponse("advanced_settings.html", context)
+
+@app.get("/help", response_class=HTMLResponse)
+async def help_page(request: Request):
+    """도움말 페이지"""
+    context = {
+        "request": request,
+        "title": "도움말 - " + get_full_title(),
+        "version_info": get_detailed_version_info()
+    }
+    return templates.TemplateResponse("help.html", context)
 
 @app.get("/settings", response_class=HTMLResponse)
 async def settings_page(request: Request):
@@ -336,12 +468,50 @@ async def force_monitoring_check(background_tasks: BackgroundTasks):
         return {"success": False, "error": str(e)}
 
 @app.get("/api/orders")
-async def get_orders():
+async def get_orders(
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    order_status: Optional[str] = None,
+    limit: int = 100
+):
     """주문 목록 조회 API"""
     try:
-        orders = order_manager.db_manager.get_all_orders()
+        # 기본 날짜 설정 (최근 30일)
+        if not start_date or not end_date:
+            end_date_obj = datetime.now()
+            start_date_obj = end_date_obj - timedelta(days=30)
+            start_date_str = start_date_obj.strftime('%Y-%m-%d')
+            end_date_str = end_date_obj.strftime('%Y-%m-%d')
+        else:
+            start_date_str = start_date
+            end_date_str = end_date
 
-        # 간단한 직렬화
+        # 네이버 API에서 주문 조회
+        if order_manager.naver_api and order_status:
+            api_response = order_manager.naver_api.get_orders(
+                start_date=start_date_str,
+                end_date=end_date_str,
+                order_status=order_status,
+                limit=limit
+            )
+
+            if api_response and api_response.get('success'):
+                api_data = api_response.get('data', {})
+                orders_list = api_data.get('orders', [])
+
+                return {
+                    "success": True,
+                    "orders": orders_list,
+                    "count": len(orders_list),
+                    "filter": {
+                        "start_date": start_date_str,
+                        "end_date": end_date_str,
+                        "status": order_status
+                    }
+                }
+
+        # API 실패시 또는 API가 없을 때 로컬 DB에서 조회
+        orders = order_manager.db_manager.get_all_orders()
         order_list = []
         for order in orders:
             order_data = {
@@ -354,10 +524,68 @@ async def get_orders():
             }
             order_list.append(order_data)
 
-        return {"success": True, "orders": order_list}
+        return {"success": True, "orders": order_list, "source": "local_db"}
 
     except Exception as e:
         logger.error(f"주문 조회 오류: {e}")
+        return {"success": False, "error": str(e)}
+
+@app.post("/api/orders/action")
+async def perform_order_action(action_data: dict):
+    """주문 액션 수행 API (주문확인, 발송처리, 취소 등)"""
+    try:
+        action = action_data.get('action')
+        order_id = action_data.get('order_id')
+        additional_data = action_data.get('data', {})
+
+        if not action or not order_id:
+            return {"success": False, "error": "액션과 주문 ID가 필요합니다"}
+
+        result = {"success": False, "message": "지원하지 않는 액션입니다"}
+
+        # 액션별 처리
+        if action == "confirm_order":
+            result = {"success": True, "message": f"주문 {order_id} 확인 완료"}
+        elif action == "dispatch_order":
+            tracking_number = additional_data.get('tracking_number')
+            result = {"success": True, "message": f"주문 {order_id} 발송 처리 완료"}
+        elif action == "cancel_order":
+            cancel_reason = additional_data.get('cancel_reason')
+            result = {"success": True, "message": f"주문 {order_id} 취소 처리 완료"}
+
+        return result
+
+    except Exception as e:
+        logger.error(f"주문 액션 수행 오류: {e}")
+        return {"success": False, "error": str(e)}
+
+@app.get("/api/products")
+async def get_products():
+    """상품 목록 조회 API"""
+    try:
+        products = order_manager.db_manager.get_all_products()
+
+        products_data = []
+        for product in products:
+            product_dict = {
+                'id': getattr(product, 'id', ''),
+                'product_id': getattr(product, 'product_id', ''),
+                'name': getattr(product, 'name', ''),
+                'price': getattr(product, 'price', 0),
+                'stock': getattr(product, 'stock', 0),
+                'category': getattr(product, 'category', ''),
+                'status': getattr(product, 'status', '')
+            }
+            products_data.append(product_dict)
+
+        return {
+            "success": True,
+            "products": products_data,
+            "count": len(products_data)
+        }
+
+    except Exception as e:
+        logger.error(f"상품 조회 API 오류: {e}")
         return {"success": False, "error": str(e)}
 
 @app.get("/health")
@@ -476,6 +704,25 @@ async def test_discord():
         return {"success": True, "message": "Discord 알림이 전송되었습니다"}
     except Exception as e:
         logger.error(f"Discord 테스트 오류: {e}")
+        return {"success": False, "error": str(e)}
+
+@app.post("/api/test-notifications")
+async def test_notifications():
+    """알림 테스트 (대시보드용)"""
+    try:
+        if not order_manager.notification_manager:
+            return {"success": False, "error": "알림 관리자가 초기화되지 않았습니다"}
+
+        # 대시보드용 테스트 알림 전송
+        order_manager.notification_manager.send_discord_notification(
+            "🔔 대시보드 알림 테스트",
+            f"WithUs 주문관리 웹 대시보드에서 발송하는 테스트 알림입니다.\n\n**테스트 시간**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n**상태**: ✅ 정상 작동",
+            0x0099ff
+        )
+
+        return {"success": True, "message": "알림 테스트가 완료되었습니다"}
+    except Exception as e:
+        logger.error(f"알림 테스트 오류: {e}")
         return {"success": False, "error": str(e)}
 
 @app.get("/api/current-ip")

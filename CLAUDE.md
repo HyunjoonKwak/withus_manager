@@ -1,50 +1,61 @@
 # CLAUDE.md
 
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
 이 파일은 Claude Code (claude.ai/code)가 이 저장소에서 작업할 때 필요한 가이드를 제공합니다.
 
-## 개발 명령어
+## Development Commands
 
-### 환경 설정
+### Environment Setup
 ```bash
-# 의존성 설치
+# Install dependencies
 pip install -r requirements.txt
 
-# 애플리케이션 실행
+# Run GUI application (for local development)
 python main.py
+
+# Run web server (for remote access/EC2 deployment)
+python web_server.py
+# Access via browser: http://localhost:8000
 ```
 
-### 백그라운드 서비스 실행
+### Testing and Development
 ```bash
-# 백그라운드 모니터링 시작 (별도 프로세스로 실행)
-python background_monitor.py
+# Test Naver API connection
+python -c "from naver_api import NaverShoppingAPI; from env_config import config; api = NaverShoppingAPI(config.get('NAVER_CLIENT_ID'), config.get('NAVER_CLIENT_SECRET')); print('Token success:', api.get_access_token())"
 
-# 백그라운드 프로세스 확인
+# Database inspection
+sqlite3 orders.db
+# SQLite commands: .tables, .schema orders, SELECT * FROM orders LIMIT 5;
+
+# Background monitoring (optional standalone service)
+python background_monitor.py
 ps aux | grep background_monitor
 ```
 
-### 듀얼 시스템 워크플로우
+### Development Workflow
 ```bash
-# 🖥️ GUI 앱으로 로컬 개발 (추천)
-python main.py
-
-# 🌐 웹 서버로 원격 운영
-python web_server.py
-# 웹 브라우저: http://localhost:8000
-
-# API 연결 테스트 (독립 실행)
-python -c "from naver_api import NaverShoppingAPI; from env_config import config; api = NaverShoppingAPI(config.get('NAVER_CLIENT_ID'), config.get('NAVER_CLIENT_SECRET')); print('Token success:', api.get_access_token())"
-
-# 데이터베이스 검사
-sqlite3 orders.db
-# SQLite 명령어: .tables, .schema orders, SELECT * FROM orders LIMIT 5;
-
-# 🛠️ 새 기능 개발 시 (GUI → 웹 자동 연동)
-# DEVELOPMENT_GUIDE.md 참조하여 개발
+# For new feature development that auto-syncs between GUI and Web:
+# 1. Implement business logic in tabs/ directory
+# 2. Add GUI interface in main.py
+# 3. Add web API endpoints in web_server.py
+# 4. Add web templates in templates/
+# See DEVELOPMENT_GUIDE.md for detailed patterns
 ```
 
-## 프로젝트 아키텍처
+## Project Architecture
+
+**Naver Shopping Order Management System** - A dual-interface e-commerce order management system. GUI app and web interface share common database and business logic for consistent user experience.
 
 **네이버 쇼핑 주문관리 시스템** - 듀얼 인터페이스를 제공하는 전자상거래 주문 관리 시스템입니다. GUI 앱과 웹 인터페이스가 공통 데이터베이스와 비즈니스 로직을 공유하여 일관된 사용자 경험을 제공합니다.
+
+### Key Architecture Principles
+
+1. **Dual Interface System**: Two separate UIs (GUI + Web) sharing identical business logic
+2. **Common Logic Layer**: All business logic centralized in `tabs/` directory classes
+3. **Interface Independence**: GUI (`main.py`) and Web (`web_server.py`) handle only UI/UX
+4. **Shared Data Layer**: Single SQLite database (`orders.db`) accessed by both interfaces
+5. **Modular Tab System**: 18+ specialized tab modules for different order management functions
 
 ### 듀얼 시스템 구조
 
@@ -53,25 +64,57 @@ sqlite3 orders.db
 1. **GUI 앱**: Python Tkinter 기반 데스크탑 애플리케이션 (로컬 작업 최적화)
 2. **웹 서버**: FastAPI 기반 경량 웹 인터페이스 (원격 접속 및 EC2 운영)
 
-### 핵심 구성요소
+### Core Components
 
-#### 공통 비즈니스 로직 레이어
-- **database.py** - SQLite 데이터베이스 매니저 (주문, 상품, 설정, 알림 스키마)
-- **naver_api.py** - 네이버 쇼핑 API 클라이언트 (커스텀 OAuth2 구현)
-- **notification_manager.py** - 다중 채널 알림 시스템 (데스크탑 + 디스코드)
-- **env_config.py** - 타입 안전 환경 설정 매니저 (.env 파일 지원)
-- **tabs/** - 비즈니스 로직 모듈 (18개 전문 탭, GUI/웹 공통 사용)
+#### Common Business Logic Layer
+- **database.py** - SQLite database manager with schemas for orders, products, settings, notifications
+- **naver_api.py** - Naver Shopping API client with custom OAuth2 implementation using bcrypt + base64
+- **notification_manager.py** - Multi-channel notification system (desktop + Discord webhooks)
+- **env_config.py** - Type-safe environment configuration manager with .env file support
+- **tabs/** - Modular business logic (18+ specialized tabs shared by GUI/Web)
 
-#### GUI 인터페이스 (main.py)
-- **main.py** - 메인 GUI 애플리케이션 (모든 탭 조정)
-- **ui_utils.py** - GUI 전용 유틸리티 함수 및 컨텍스트 메뉴
+#### GUI Interface (main.py)
+- **main.py** - Main GUI application coordinating all tabs (Tkinter-based)
+- **ui_utils.py** - GUI-specific utilities and context menus
 
-#### 웹 인터페이스 (web_server.py)
-- **web_server.py** - 경량 FastAPI 웹 서버 (백그라운드 모니터링 포함)
-- **templates/** - HTML 템플릿 (반응형 웹 UI)
+#### Web Interface (web_server.py)
+- **web_server.py** - Lightweight FastAPI web server with embedded background monitoring
+- **templates/** - HTML templates for responsive web UI (Bootstrap-based)
 
-#### 선택적 구성요소
-- **background_monitor.py** - 독립적인 백그라운드 모니터링 서비스 (선택사항)
+#### Optional Components
+- **background_monitor.py** - Standalone background monitoring service (optional)
+
+### Tab System Architecture
+
+The tabs/ directory contains specialized modules that implement core business logic:
+
+**Order Management Tabs:**
+- `home_tab.py` - Dashboard with real-time monitoring
+- `new_order_tab.py` - New order processing
+- `shipping_pending_tab.py` - Orders pending shipment
+- `shipping_in_progress_tab.py` - Orders in transit
+- `shipping_completed_tab.py` - Completed orders
+- `cancel_tab.py` - Order cancellations
+- `return_exchange_tab.py` - Returns and exchanges
+
+**System Management:**
+- `basic_settings_tab.py` - Basic application settings
+- `condition_settings_tab.py` - Conditional logic settings
+- `api_test_tab.py` - API connection testing
+- `products_tab.py` - Product catalog management
+
+Each tab class follows a standard pattern:
+```python
+class TabName:
+    def __init__(self, db_manager, api_client):
+        # Initialization
+
+    def get_data(self, **filters):
+        # Data retrieval logic
+
+    def process_action(self, data):
+        # Business logic processing
+```
 
 ### 데이터베이스 스키마
 
@@ -176,28 +219,70 @@ sqlite3 orders.db
 - **DEVELOPMENT_GUIDE.md** - GUI → 웹 자동 연동 개발 가이드
 - **__pycache__/** - Python 바이트코드 (개발 중 안전하게 삭제 가능)
 
-## 🔧 새 기능 개발 가이드
+## Development Guidelines
 
-**DEVELOPMENT_GUIDE.md를 반드시 참조하세요!**
+### New Feature Development Pattern
 
-새로운 기능을 개발할 때는 다음 원칙을 따르면 GUI와 웹에서 자동으로 연동됩니다:
+**ALWAYS refer to DEVELOPMENT_GUIDE.md for detailed patterns!**
 
-1. **비즈니스 로직 분리**: 모든 기능을 `tabs/` 디렉토리의 독립 클래스로 구현
-2. **인터페이스 독립성**: GUI와 웹은 오직 UI만 담당, 로직은 호출만
-3. **표준 메서드 패턴**: `get_*()`, `process_*()`, `check_*()` 명명 규칙 준수
-4. **공통 에러 처리**: 일관된 에러 반환 형식 사용
+When developing new features, follow this architecture to ensure automatic GUI/Web synchronization:
 
-### 예시: 새 기능 "고객 분석" 추가 시
+1. **Business Logic Separation**: Implement all functionality as independent classes in `tabs/` directory
+2. **Interface Independence**: GUI and Web handle only UI/UX, business logic is called not implemented
+3. **Standard Method Patterns**: Follow `get_*()`, `process_*()`, `check_*()` naming conventions
+4. **Common Error Handling**: Use consistent error return formats
+
+### Adding a New Feature Example
 ```bash
-# 1. 비즈니스 로직 생성
-tabs/customer_analytics_tab.py  # 핵심 로직 (GUI/웹 공통)
+# 1. Create business logic module
+tabs/new_feature_tab.py  # Core logic (shared by GUI/Web)
 
-# 2. GUI 연동
-main.py  # 새 탭 추가
+# 2. Add GUI interface
+main.py  # Add new tab to GUI
 
-# 3. 웹 연동
-web_server.py  # API 엔드포인트 추가
-templates/customer_analytics.html  # 웹 UI 템플릿
+# 3. Add web interface
+web_server.py  # Add API endpoints
+templates/new_feature.html  # Add web UI template
 
-# 결과: 동일한 로직으로 GUI와 웹에서 모두 사용 가능!
+# Result: Same logic works in both GUI and Web interfaces!
 ```
+
+### Critical Development Rules
+
+1. **Never put business logic in main.py or web_server.py** - They are UI controllers only
+2. **Always use dependency injection** - Pass db_manager and api_client to tab classes
+3. **Follow the tab class pattern** - Initialize, get data, process actions
+4. **Test both interfaces** - Ensure GUI and Web produce identical results
+5. **Use type hints** - Especially for data exchange between components
+
+## Important Development Notes
+
+### Custom Naver API Authentication
+The system uses a custom OAuth2 implementation with bcrypt + base64 encoding for client secret signing. This is specific to Naver Shopping API requirements and differs from standard OAuth2 flows.
+
+### Database Schema Considerations
+- **orders** table: Contains customer info, product details, shipping status, tracking numbers
+- **products** table: Comprehensive product catalog with pricing, inventory, categories, images
+- **settings** table: Key-value application configuration storage
+- **notification_logs** table: Notification history and delivery tracking
+
+### Notification System
+Supports dual notification channels (desktop + Discord) with configurable enable/disable settings. Discord notifications include status changes, current counts, and query periods.
+
+### Background Monitoring
+Two approaches available:
+1. **Embedded in web server** (recommended): Python threading in web_server.py
+2. **Standalone service**: background_monitor.py as separate process
+
+### Error Handling Patterns
+The application includes comprehensive error handling for:
+- API failures and network issues
+- Database operation errors
+- Configuration validation
+- Background monitoring failures
+
+### Memory Optimization
+Web server optimized for EC2 t2.micro (~150MB memory usage) through:
+- Minimal dependencies (no SQLAlchemy, Celery, Redis, Pydantic)
+- Use of Python built-in modules (sqlite3, threading, json)
+- Lightweight FastAPI instead of Django/Flask

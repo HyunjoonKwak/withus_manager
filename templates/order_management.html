@@ -1,0 +1,474 @@
+{% extends "base.html" %}
+
+{% block extra_head %}
+<style>
+    .order-description {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 1rem;
+        border-radius: 0.5rem;
+        margin-bottom: 1rem;
+    }
+    .filter-card {
+        background: white;
+        border-radius: 0.5rem;
+        padding: 1.5rem;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        margin-bottom: 1.5rem;
+    }
+    .orders-table {
+        background: white;
+        border-radius: 0.5rem;
+        overflow: hidden;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .table th {
+        background-color: #f8f9fa;
+        border-top: none;
+        font-weight: 600;
+    }
+    .status-badge {
+        padding: 0.25rem 0.75rem;
+        border-radius: 1rem;
+        font-size: 0.875rem;
+        font-weight: 500;
+    }
+    .btn-action {
+        padding: 0.25rem 0.75rem;
+        font-size: 0.875rem;
+        border-radius: 0.25rem;
+    }
+    .loading-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.5);
+        display: none;
+        z-index: 9999;
+        align-items: center;
+        justify-content: center;
+    }
+    .loading-spinner {
+        background: white;
+        padding: 2rem;
+        border-radius: 0.5rem;
+        text-align: center;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- 로딩 오버레이 -->
+<div class="loading-overlay" id="loadingOverlay">
+    <div class="loading-spinner">
+        <div class="spinner-border text-primary mb-3" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <p class="mb-0">처리 중...</p>
+    </div>
+</div>
+
+<!-- 페이지 제목 및 설명 -->
+<div class="order-description">
+    <h2 class="h4 mb-2">
+        <i class="fas fa-box"></i> {{ title }}
+    </h2>
+    <p class="mb-0">{{ description }}</p>
+</div>
+
+<!-- 필터 섹션 -->
+<div class="filter-card">
+    <h5 class="mb-3"><i class="fas fa-filter"></i> 조회 조건</h5>
+    <form id="filterForm">
+        <div class="row">
+            <div class="col-md-3">
+                <label class="form-label">시작일</label>
+                <input type="date" class="form-control" id="startDate" name="start_date">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">종료일</label>
+                <input type="date" class="form-control" id="endDate" name="end_date">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">기간 설정</label>
+                <select class="form-select" id="periodSelect">
+                    <option value="">직접 선택</option>
+                    <option value="1">1일</option>
+                    <option value="3">3일</option>
+                    <option value="7">7일</option>
+                    <option value="15">15일</option>
+                    <option value="30">30일</option>
+                </select>
+            </div>
+            <div class="col-md-3 d-flex align-items-end gap-2">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-search"></i> 조회
+                </button>
+                <button type="button" class="btn btn-success" onclick="exportToExcel()">
+                    <i class="fas fa-file-excel"></i> Excel
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- 주문 목록 -->
+<div class="orders-table">
+    <div class="d-flex justify-content-between align-items-center p-3 border-bottom">
+        <h5 class="mb-0"><i class="fas fa-list"></i> 주문 목록</h5>
+        <div id="orderCount" class="badge bg-primary fs-6">
+            총 <span id="totalCount">0</span>건
+        </div>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-hover mb-0">
+            <thead>
+                <tr>
+                    <th width="3%">
+                        <input type="checkbox" id="selectAll" onchange="toggleAllOrders()">
+                    </th>
+                    <th width="12%">주문번호</th>
+                    <th width="15%">상품명</th>
+                    <th width="10%">고객명</th>
+                    <th width="10%">주문일시</th>
+                    <th width="8%">금액</th>
+                    <th width="8%">수량</th>
+                    <th width="10%">상태</th>
+                    <th width="12%">송장번호</th>
+                    <th width="12%">액션</th>
+                </tr>
+            </thead>
+            <tbody id="ordersTableBody">
+                <!-- 동적으로 로드됨 -->
+            </tbody>
+        </table>
+    </div>
+
+    <!-- 주문이 없을 때 -->
+    <div id="noOrdersMessage" class="text-center p-5 d-none">
+        <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+        <h5 class="text-muted">조회된 주문이 없습니다</h5>
+        <p class="text-muted">다른 조건으로 검색해보세요.</p>
+    </div>
+</div>
+
+<!-- 주문 액션 모달 -->
+<div class="modal fade" id="actionModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="actionModalTitle">주문 처리</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="actionForm">
+                    <input type="hidden" id="actionOrderId" name="order_id">
+                    <input type="hidden" id="actionType" name="action">
+
+                    <div id="trackingNumberField" class="mb-3" style="display: none;">
+                        <label class="form-label">송장번호</label>
+                        <input type="text" class="form-control" id="trackingNumber" name="tracking_number" placeholder="송장번호를 입력하세요">
+                    </div>
+
+                    <div id="cancelReasonField" class="mb-3" style="display: none;">
+                        <label class="form-label">취소 사유</label>
+                        <select class="form-select" id="cancelReason" name="cancel_reason">
+                            <option value="customer_request">고객 요청</option>
+                            <option value="out_of_stock">재고 부족</option>
+                            <option value="product_defect">상품 불량</option>
+                            <option value="other">기타</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                <button type="button" class="btn btn-primary" onclick="processAction()">확인</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+let currentPageType = '{{ page_type }}';
+let currentOrderStatus = '{{ order_status }}';
+let orders = [];
+
+// 페이지 로드시 초기화
+document.addEventListener('DOMContentLoaded', function() {
+    initializeDates();
+    loadOrders();
+
+    // 기간 선택 이벤트
+    document.getElementById('periodSelect').addEventListener('change', function() {
+        if (this.value) {
+            setPeriod(parseInt(this.value));
+        }
+    });
+
+    // 폼 제출 이벤트
+    document.getElementById('filterForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        loadOrders();
+    });
+});
+
+// 날짜 초기화 (기본 7일)
+function initializeDates() {
+    const today = new Date();
+    const weekAgo = new Date(today.getTime() - (7 * 24 * 60 * 60 * 1000));
+
+    document.getElementById('startDate').value = weekAgo.toISOString().split('T')[0];
+    document.getElementById('endDate').value = today.toISOString().split('T')[0];
+    document.getElementById('periodSelect').value = '7';
+}
+
+// 기간 설정
+function setPeriod(days) {
+    const today = new Date();
+    const startDate = new Date(today.getTime() - (days * 24 * 60 * 60 * 1000));
+
+    document.getElementById('startDate').value = startDate.toISOString().split('T')[0];
+    document.getElementById('endDate').value = today.toISOString().split('T')[0];
+}
+
+// 주문 로드
+async function loadOrders() {
+    showLoading(true);
+
+    try {
+        const startDate = document.getElementById('startDate').value;
+        const endDate = document.getElementById('endDate').value;
+
+        const params = new URLSearchParams({
+            start_date: startDate,
+            end_date: endDate,
+            order_status: currentOrderStatus,
+            limit: 100
+        });
+
+        const response = await fetch(`/api/orders?${params}`);
+        const data = await response.json();
+
+        if (data.success) {
+            orders = data.orders;
+            renderOrders(orders);
+            updateOrderCount(orders.length);
+        } else {
+            throw new Error(data.error || '주문 로드 실패');
+        }
+    } catch (error) {
+        console.error('주문 로드 오류:', error);
+        alert('주문을 불러오는 중 오류가 발생했습니다: ' + error.message);
+    } finally {
+        showLoading(false);
+    }
+}
+
+// 주문 테이블 렌더링
+function renderOrders(orderList) {
+    const tbody = document.getElementById('ordersTableBody');
+    const noOrdersMessage = document.getElementById('noOrdersMessage');
+
+    if (orderList.length === 0) {
+        tbody.innerHTML = '';
+        noOrdersMessage.classList.remove('d-none');
+        return;
+    }
+
+    noOrdersMessage.classList.add('d-none');
+
+    tbody.innerHTML = orderList.map((order, index) => `
+        <tr>
+            <td>
+                <input type="checkbox" class="order-checkbox" value="${order.order_id}">
+            </td>
+            <td>
+                <small class="text-muted">${order.order_id || '-'}</small>
+            </td>
+            <td>
+                <div class="text-truncate" style="max-width: 150px;" title="${order.product_name || '-'}">
+                    ${order.product_name || '-'}
+                </div>
+            </td>
+            <td>${order.customer_name || '-'}</td>
+            <td>
+                <small>${formatDate(order.order_date)}</small>
+            </td>
+            <td class="text-end">
+                ${formatPrice(order.price)}
+            </td>
+            <td class="text-center">${order.quantity || 1}</td>
+            <td>
+                <span class="status-badge ${getStatusBadgeClass(order.status)}">
+                    ${getStatusText(order.status)}
+                </span>
+            </td>
+            <td>
+                <small>${order.tracking_number || '-'}</small>
+            </td>
+            <td>
+                ${getActionButtons(order)}
+            </td>
+        </tr>
+    `).join('');
+}
+
+// 상태별 배지 클래스
+function getStatusBadgeClass(status) {
+    switch(status) {
+        case 'PAYED': return 'bg-success';
+        case 'CONFIRMED': return 'bg-primary';
+        case 'DISPATCHED': return 'bg-info';
+        case 'DELIVERED': return 'bg-secondary';
+        case 'PURCHASE_DECIDED': return 'bg-dark';
+        case 'CANCELED': return 'bg-danger';
+        case 'RETURN_REQUESTED': return 'bg-warning';
+        default: return 'bg-light text-dark';
+    }
+}
+
+// 상태 텍스트
+function getStatusText(status) {
+    switch(status) {
+        case 'PAYED': return '결제완료';
+        case 'CONFIRMED': return '주문확인';
+        case 'DISPATCHED': return '발송완료';
+        case 'DELIVERED': return '배송완료';
+        case 'PURCHASE_DECIDED': return '구매확정';
+        case 'CANCELED': return '주문취소';
+        case 'RETURN_REQUESTED': return '반품요청';
+        default: return status || '-';
+    }
+}
+
+// 액션 버튼 생성
+function getActionButtons(order) {
+    switch(currentPageType) {
+        case 'new_orders':
+            return `
+                <button class="btn btn-sm btn-success btn-action" onclick="showActionModal('${order.order_id}', 'confirm_order', '주문 확인')">
+                    확인
+                </button>
+            `;
+        case 'shipping_pending':
+            return `
+                <button class="btn btn-sm btn-primary btn-action" onclick="showActionModal('${order.order_id}', 'dispatch_order', '발송 처리')">
+                    발송
+                </button>
+            `;
+        case 'cancel_orders':
+            return `
+                <button class="btn btn-sm btn-warning btn-action" onclick="showActionModal('${order.order_id}', 'cancel_order', '주문 취소')">
+                    취소
+                </button>
+            `;
+        default:
+            return '<span class="text-muted">-</span>';
+    }
+}
+
+// 액션 모달 표시
+function showActionModal(orderId, action, title) {
+    document.getElementById('actionOrderId').value = orderId;
+    document.getElementById('actionType').value = action;
+    document.getElementById('actionModalTitle').textContent = title;
+
+    // 필드 표시/숨김
+    document.getElementById('trackingNumberField').style.display =
+        action === 'dispatch_order' ? 'block' : 'none';
+    document.getElementById('cancelReasonField').style.display =
+        action === 'cancel_order' ? 'block' : 'none';
+
+    new bootstrap.Modal(document.getElementById('actionModal')).show();
+}
+
+// 액션 처리
+async function processAction() {
+    const form = document.getElementById('actionForm');
+    const formData = new FormData(form);
+
+    const actionData = {
+        order_id: formData.get('order_id'),
+        action: formData.get('action'),
+        data: {}
+    };
+
+    if (formData.get('tracking_number')) {
+        actionData.data.tracking_number = formData.get('tracking_number');
+    }
+    if (formData.get('cancel_reason')) {
+        actionData.data.cancel_reason = formData.get('cancel_reason');
+    }
+
+    try {
+        showLoading(true);
+
+        const response = await fetch('/api/orders/action', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(actionData)
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            alert(result.message);
+            bootstrap.Modal.getInstance(document.getElementById('actionModal')).hide();
+            loadOrders(); // 주문 목록 새로고침
+        } else {
+            throw new Error(result.error || '처리 실패');
+        }
+    } catch (error) {
+        console.error('액션 처리 오류:', error);
+        alert('처리 중 오류가 발생했습니다: ' + error.message);
+    } finally {
+        showLoading(false);
+    }
+}
+
+// 전체 선택/해제
+function toggleAllOrders() {
+    const selectAll = document.getElementById('selectAll');
+    const checkboxes = document.querySelectorAll('.order-checkbox');
+
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = selectAll.checked;
+    });
+}
+
+// Excel 내보내기
+function exportToExcel() {
+    // 추후 구현 (현재는 알림만)
+    alert('Excel 내보내기 기능이 곧 구현될 예정입니다.');
+}
+
+// 유틸리티 함수들
+function formatDate(dateStr) {
+    if (!dateStr) return '-';
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('ko-KR') + ' ' + date.toLocaleTimeString('ko-KR', {hour: '2-digit', minute: '2-digit'});
+}
+
+function formatPrice(price) {
+    if (!price) return '-';
+    return new Intl.NumberFormat('ko-KR').format(price) + '원';
+}
+
+function updateOrderCount(count) {
+    document.getElementById('totalCount').textContent = count;
+}
+
+function showLoading(show) {
+    const overlay = document.getElementById('loadingOverlay');
+    overlay.style.display = show ? 'flex' : 'none';
+}
+</script>
+{% endblock %}
