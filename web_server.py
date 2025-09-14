@@ -471,16 +471,69 @@ async def refresh_dashboard():
     """대시보드 수동 새로고침"""
     try:
         order_counts = order_manager._get_dashboard_data()
+        period_days = config.get_int('DASHBOARD_PERIOD_DAYS', 5)
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=period_days)
 
         return {
             "success": True,
             "data": order_counts,
+            "period": {
+                "days": period_days,
+                "start_date": start_date.strftime('%Y-%m-%d'),
+                "end_date": end_date.strftime('%Y-%m-%d'),
+                "description": f"최근 {period_days}일간 주문현황"
+            },
             "last_check": datetime.now().isoformat(),
             "total_orders": sum(order_counts.values())
         }
     except Exception as e:
         logger.error(f"대시보드 새로고침 오류: {e}")
         return {"success": False, "error": str(e)}
+
+@app.post("/api/dashboard/period")
+async def update_dashboard_period(request: Request):
+    """대시보드 조회 기간 변경"""
+    try:
+        data = await request.json()
+        new_period_days = int(data.get('period_days', 5))
+
+        # 유효성 검사
+        if new_period_days < 1 or new_period_days > 365:
+            return {
+                "success": False,
+                "message": "조회 기간은 1일에서 365일 사이여야 합니다."
+            }
+
+        # env 설정 업데이트
+        config.set('DASHBOARD_PERIOD_DAYS', str(new_period_days))
+        config.save_to_env_file()
+
+        logger.info(f"대시보드 조회 기간이 {new_period_days}일로 변경됨")
+
+        # 새로운 기간으로 대시보드 데이터 새로고침
+        order_counts = order_manager._get_dashboard_data()
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=new_period_days)
+
+        return {
+            "success": True,
+            "data": order_counts,
+            "period": {
+                "days": new_period_days,
+                "start_date": start_date.strftime('%Y-%m-%d'),
+                "end_date": end_date.strftime('%Y-%m-%d'),
+                "description": f"최근 {new_period_days}일간 주문현황"
+            },
+            "message": f"대시보드 조회 기간이 {new_period_days}일로 변경되었습니다."
+        }
+
+    except Exception as e:
+        logger.error(f"대시보드 기간 변경 오류: {e}")
+        return {
+            "success": False,
+            "message": f"기간 변경 중 오류가 발생했습니다: {str(e)}"
+        }
 
 @app.get("/api/monitoring/status")
 async def get_monitoring_status():
