@@ -511,14 +511,26 @@ async def get_orders(
 
         if order_manager.naver_api and order_status:
             logger.info(f"🚀 네이버 API 조회 시작: {start_date_str} ~ {end_date_str}, 상태: {order_status}")
+
+            # 1단계: 네이버 API에서 주문 조회
             api_response = order_manager.naver_api.get_orders(
                 start_date=start_date_str,
                 end_date=end_date_str,
                 order_status=order_status,
                 limit=limit
             )
+
             if api_response:
-                logger.info(f"✅ 네이버 API 조회 완료: {api_response.get('message', '결과 없음')}")
+                logger.info(f"📥 네이버 API 조회 완료: {api_response.get('message', '결과 없음')}")
+
+                # 2단계: 조회된 데이터를 데이터베이스에 저장
+                logger.info("💾 데이터베이스 저장 시작...")
+                saved_count = order_manager.naver_api.sync_orders_to_database(
+                    order_manager.db_manager,
+                    start_date=start_date_str,
+                    end_date=end_date_str
+                )
+                logger.info(f"✅ 데이터베이스 저장 완료: {saved_count}건 저장")
             else:
                 logger.warning("❌ 네이버 API 응답 없음")
         else:
