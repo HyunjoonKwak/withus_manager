@@ -222,6 +222,8 @@ withus_manager/
 - **API 연동**: `naver_api.py`에 새 API 메서드 추가
 - **알림 기능**: `notification_manager.py`에 새 알림 타입 추가
 
+> 📖 **자세한 개발 가이드**: `DEVELOPMENT_GUIDE.md` 파일을 참조하여 GUI에서 개발한 기능이 웹에서도 자동으로 동작하도록 구현하세요.
+
 ## 🚨 문제 해결
 
 ### 일반적인 문제들

@@ -22,19 +22,14 @@ python background_monitor.py
 ps aux | grep background_monitor
 ```
 
-### 개발 워크플로우
+### 듀얼 시스템 워크플로우
 ```bash
-# 개발 환경에서 메인 애플리케이션 시작
+# 🖥️ GUI 앱으로 로컬 개발 (추천)
 python main.py
 
-# FastAPI 백엔드 서버 시작
-cd api_server
-python run_server.py
-# API 문서: http://localhost:8000/docs
-
-# FastAPI API 테스트
-cd api_server
-python test_api.py
+# 🌐 웹 서버로 원격 운영
+python web_server.py
+# 웹 브라우저: http://localhost:8000
 
 # API 연결 테스트 (독립 실행)
 python -c "from naver_api import NaverShoppingAPI; from env_config import config; api = NaverShoppingAPI(config.get('NAVER_CLIENT_ID'), config.get('NAVER_CLIENT_SECRET')); print('Token success:', api.get_access_token())"
@@ -42,6 +37,9 @@ python -c "from naver_api import NaverShoppingAPI; from env_config import config
 # 데이터베이스 검사
 sqlite3 orders.db
 # SQLite 명령어: .tables, .schema orders, SELECT * FROM orders LIMIT 5;
+
+# 🛠️ 새 기능 개발 시 (GUI → 웹 자동 연동)
+# DEVELOPMENT_GUIDE.md 참조하여 개발
 ```
 
 ## 프로젝트 아키텍처
@@ -159,5 +157,33 @@ sqlite3 orders.db
 
 - **orders.db** - SQLite 데이터베이스 (첫 실행 시 자동 생성)
 - **.env** - 환경 설정 (API 키, 설정)
-- **tabs/** - 모듈러 UI 컴포넌트 디렉토리
+- **tabs/** - 모듈러 UI 컴포넌트 디렉토리 (비즈니스 로직)
+- **templates/** - 웹 인터페이스 템플릿
+- **DEVELOPMENT_GUIDE.md** - GUI → 웹 자동 연동 개발 가이드
 - **__pycache__/** - Python 바이트코드 (개발 중 안전하게 삭제 가능)
+
+## 🔧 새 기능 개발 가이드
+
+**DEVELOPMENT_GUIDE.md를 반드시 참조하세요!**
+
+새로운 기능을 개발할 때는 다음 원칙을 따르면 GUI와 웹에서 자동으로 연동됩니다:
+
+1. **비즈니스 로직 분리**: 모든 기능을 `tabs/` 디렉토리의 독립 클래스로 구현
+2. **인터페이스 독립성**: GUI와 웹은 오직 UI만 담당, 로직은 호출만
+3. **표준 메서드 패턴**: `get_*()`, `process_*()`, `check_*()` 명명 규칙 준수
+4. **공통 에러 처리**: 일관된 에러 반환 형식 사용
+
+### 예시: 새 기능 "고객 분석" 추가 시
+```bash
+# 1. 비즈니스 로직 생성
+tabs/customer_analytics_tab.py  # 핵심 로직 (GUI/웹 공통)
+
+# 2. GUI 연동
+main.py  # 새 탭 추가
+
+# 3. 웹 연동
+web_server.py  # API 엔드포인트 추가
+templates/customer_analytics.html  # 웹 UI 템플릿
+
+# 결과: 동일한 로직으로 GUI와 웹에서 모두 사용 가능!
+```
