@@ -88,14 +88,33 @@ class EnvConfig:
         """환경 변수를 .env 파일에 저장"""
         print(f"[ENV_CONFIG] .env 파일 저장 시작...")
 
-        # 추가된 설정들도 포함하여 저장
+        # 민감한 정보는 원본 파일에서 직접 읽어서 보존
+        original_client_id = None
+        original_client_secret = None
+        original_discord_webhook = None
+
+        try:
+            if os.path.exists('.env'):
+                with open('.env', 'r', encoding='utf-8') as f:
+                    for line in f:
+                        line = line.strip()
+                        if line.startswith('NAVER_CLIENT_ID='):
+                            original_client_id = line.split('=', 1)[1].strip()
+                        elif line.startswith('NAVER_CLIENT_SECRET='):
+                            original_client_secret = line.split('=', 1)[1].strip()
+                        elif line.startswith('DISCORD_WEBHOOK_URL='):
+                            original_discord_webhook = line.split('=', 1)[1].strip()
+        except Exception as e:
+            print(f"[ENV_CONFIG] 원본 민감 정보 읽기 실패: {e}")
+
+        # 추가된 설정들도 포함하여 저장 (민감한 정보는 원본 유지)
         env_vars = {
             'APP_VERSION': self.get('APP_VERSION', '1.0.0'),
             'APP_BUILD_DATE': self.get('APP_BUILD_DATE', '2025-09-14'),
-            'NAVER_CLIENT_ID': self.get('NAVER_CLIENT_ID'),
-            'NAVER_CLIENT_SECRET': self.get('NAVER_CLIENT_SECRET'),
+            'NAVER_CLIENT_ID': original_client_id or self.get('NAVER_CLIENT_ID'),
+            'NAVER_CLIENT_SECRET': original_client_secret or self.get('NAVER_CLIENT_SECRET'),
             'DATABASE_PATH': self.get('DATABASE_PATH', 'orders.db'),
-            'DISCORD_WEBHOOK_URL': self.get('DISCORD_WEBHOOK_URL'),
+            'DISCORD_WEBHOOK_URL': original_discord_webhook or self.get('DISCORD_WEBHOOK_URL'),
             'DISCORD_ENABLED': str(self.get_bool('DISCORD_ENABLED')).lower(),
             'DESKTOP_NOTIFICATIONS': str(self.get_bool('DESKTOP_NOTIFICATIONS', True)).lower(),
             'CHECK_INTERVAL': str(self.get_int('CHECK_INTERVAL', 300)),
