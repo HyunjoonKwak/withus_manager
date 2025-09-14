@@ -862,13 +862,20 @@ async def get_period_setting(page_type: str):
             'new-orders': 'NEW_ORDER_DEFAULT_DAYS',
             'new_orders': 'NEW_ORDER_DEFAULT_DAYS',  # 신규주문 별칭
             'shipping-pending': 'SHIPPING_PENDING_DEFAULT_DAYS',
+            'shipping_pending': 'SHIPPING_PENDING_DEFAULT_DAYS',  # 발송대기 별칭
             'shipping-in-progress': 'SHIPPING_IN_PROGRESS_DEFAULT_DAYS',
+            'shipping_in_progress': 'SHIPPING_IN_PROGRESS_DEFAULT_DAYS',  # 배송중 별칭
             'shipping-completed': 'SHIPPING_COMPLETED_DEFAULT_DAYS',
+            'shipping_completed': 'SHIPPING_COMPLETED_DEFAULT_DAYS',  # 배송완료 별칭
             'purchase-decided': 'PURCHASE_DECIDED_DEFAULT_DAYS',
+            'purchase_decided': 'PURCHASE_DECIDED_DEFAULT_DAYS',  # 구매확정 별칭
             'cancel': 'CANCEL_DEFAULT_DAYS',
             'cancel_orders': 'CANCEL_DEFAULT_DAYS',  # 취소주문 페이지 별칭
             'return-exchange': 'RETURN_EXCHANGE_DEFAULT_DAYS',
-            'cancel-return-exchange': 'CANCEL_RETURN_EXCHANGE_DEFAULT_DAYS'
+            'return_exchange': 'RETURN_EXCHANGE_DEFAULT_DAYS',  # 반품교환 별칭
+            'returns_exchanges': 'RETURN_EXCHANGE_DEFAULT_DAYS',  # 반품교환 별칭2
+            'cancel-return-exchange': 'CANCEL_RETURN_EXCHANGE_DEFAULT_DAYS',
+            'cancel_return_exchange': 'CANCEL_RETURN_EXCHANGE_DEFAULT_DAYS'  # 취소반품교환 별칭
         }
 
         # 기본값 매핑
@@ -876,13 +883,20 @@ async def get_period_setting(page_type: str):
             'new-orders': 3,
             'new_orders': 3,  # 신규주문 별칭
             'shipping-pending': 3,
+            'shipping_pending': 3,  # 발송대기 별칭
             'shipping-in-progress': 3,
+            'shipping_in_progress': 3,  # 배송중 별칭
             'shipping-completed': 3,
+            'shipping_completed': 3,  # 배송완료 별칭
             'purchase-decided': 3,
+            'purchase_decided': 3,  # 구매확정 별칭
             'cancel': 3,
             'cancel_orders': 3,  # 취소주문 페이지 별칭
             'return-exchange': 3,
-            'cancel-return-exchange': 3
+            'return_exchange': 3,  # 반품교환 별칭
+            'returns_exchanges': 3,  # 반품교환 별칭2
+            'cancel-return-exchange': 3,
+            'cancel_return_exchange': 3  # 취소반품교환 별칭
         }
 
         if page_type not in period_mapping:
@@ -913,13 +927,20 @@ async def save_period_setting(page_type: str, request_data: dict):
             'new-orders': 'NEW_ORDER_DEFAULT_DAYS',
             'new_orders': 'NEW_ORDER_DEFAULT_DAYS',  # 신규주문 별칭
             'shipping-pending': 'SHIPPING_PENDING_DEFAULT_DAYS',
+            'shipping_pending': 'SHIPPING_PENDING_DEFAULT_DAYS',  # 발송대기 별칭
             'shipping-in-progress': 'SHIPPING_IN_PROGRESS_DEFAULT_DAYS',
+            'shipping_in_progress': 'SHIPPING_IN_PROGRESS_DEFAULT_DAYS',  # 배송중 별칭
             'shipping-completed': 'SHIPPING_COMPLETED_DEFAULT_DAYS',
+            'shipping_completed': 'SHIPPING_COMPLETED_DEFAULT_DAYS',  # 배송완료 별칭
             'purchase-decided': 'PURCHASE_DECIDED_DEFAULT_DAYS',
+            'purchase_decided': 'PURCHASE_DECIDED_DEFAULT_DAYS',  # 구매확정 별칭
             'cancel': 'CANCEL_DEFAULT_DAYS',
             'cancel_orders': 'CANCEL_DEFAULT_DAYS',  # 취소주문 페이지 별칭
             'return-exchange': 'RETURN_EXCHANGE_DEFAULT_DAYS',
-            'cancel-return-exchange': 'CANCEL_RETURN_EXCHANGE_DEFAULT_DAYS'
+            'return_exchange': 'RETURN_EXCHANGE_DEFAULT_DAYS',  # 반품교환 별칭
+            'returns_exchanges': 'RETURN_EXCHANGE_DEFAULT_DAYS',  # 반품교환 별칭2
+            'cancel-return-exchange': 'CANCEL_RETURN_EXCHANGE_DEFAULT_DAYS',
+            'cancel_return_exchange': 'CANCEL_RETURN_EXCHANGE_DEFAULT_DAYS'  # 취소반품교환 별칭
         }
 
         if page_type not in period_mapping:
