@@ -91,6 +91,9 @@
             <button type="button" class="btn btn-outline-info" onclick="saveFilterSettings()">
                 <i class="fas fa-save"></i> 필터 저장
             </button>
+            <button type="button" class="btn btn-outline-warning" onclick="loadFromSettings()" title="설정 페이지의 상품조회설정에서 불러오기">
+                <i class="fas fa-cog"></i> 설정에서 불러오기
+            </button>
             <button type="button" class="btn btn-success" onclick="refreshProducts()">
                 <i class="fas fa-sync"></i> 새로고침
             </button>
@@ -321,6 +324,54 @@ async function loadFilterSettings() {
         }
     } catch (error) {
         console.error('필터 설정 로드 오류:', error);
+    }
+}
+
+// 설정 페이지에서 상품조회설정 불러오기
+async function loadFromSettings() {
+    try {
+        // 사용자에게 확인
+        if (!confirm('설정 페이지의 상품조회설정을 현재 필터에 적용하시겠습니까?\n현재 선택된 필터는 초기화됩니다.')) {
+            return;
+        }
+
+        // 설정 API에서 상품 상태 조회 설정 가져오기
+        const response = await fetch('/api/settings');
+        const result = await response.json();
+
+        if (result.success && result.data) {
+            const productStatusTypes = result.data.product_status_types;
+
+            if (productStatusTypes) {
+                // 모든 체크박스 초기화
+                resetFilters();
+
+                // 설정에서 가져온 상태들 체크
+                const statusList = productStatusTypes.split(',').map(s => s.trim()).filter(s => s);
+                statusList.forEach(status => {
+                    const checkbox = document.getElementById(`status_${status}`);
+                    if (checkbox) {
+                        checkbox.checked = true;
+                    }
+                });
+
+                // 필터 업데이트
+                updateStatusCount();
+                filterProducts();
+
+                // 상품 필터 설정도 동기화
+                await saveFilterSettings();
+
+                alert(`설정 페이지에서 ${statusList.length}개의 상품 상태를 불러왔습니다: ${statusList.join(', ')}`);
+            } else {
+                alert('설정 페이지에 상품조회설정이 없습니다.\n설정 > 조건설정 > 상품 상태 조회 설정을 먼저 구성해주세요.');
+            }
+        } else {
+            throw new Error(result.error || '설정 조회 실패');
+        }
+    } catch (error) {
+        console.error('설정에서 불러오기 오류:', error);
+        alert('설정에서 불러오기 중 오류가 발생했습니다: ' + error.message);
     }
 }
 

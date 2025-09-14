@@ -884,26 +884,41 @@ async def get_products():
 
 @app.post("/api/products/filter-settings")
 async def save_product_filter_settings(request: Request):
-    """상품 필터 설정 저장"""
+    """상품 필터 설정 저장 - 설정 페이지와 연동"""
     try:
         data = await request.json()
         selected_statuses = data.get('selectedStatuses', [])
 
-        # 환경 설정에 저장
+        # 설정 페이지의 product_status_types에 저장 (메인 설정)
+        config.set('PRODUCT_STATUS_TYPES', ','.join(selected_statuses))
+        # 하위 호환성을 위해 기존 키도 유지
         config.set('PRODUCT_FILTER_STATUSES', ','.join(selected_statuses))
         config.save_to_env_file()
 
+        logger.info(f"상품 필터 설정 저장: {selected_statuses}")
         return {"success": True, "message": "필터 설정이 저장되었습니다."}
     except Exception as e:
+        logger.error(f"상품 필터 설정 저장 실패: {e}")
         return {"success": False, "error": str(e)}
 
 @app.get("/api/products/filter-settings")
 async def get_product_filter_settings():
-    """상품 필터 설정 조회"""
+    """상품 필터 설정 조회 - 설정 페이지와 연동"""
     try:
-        saved_statuses = config.get('PRODUCT_FILTER_STATUSES', '')
-        selected_statuses = saved_statuses.split(',') if saved_statuses else []
+        # 설정 페이지의 product_status_types를 우선적으로 확인
+        product_status_types = config.get('PRODUCT_STATUS_TYPES', '')
+        if product_status_types:
+            selected_statuses = [s.strip() for s in product_status_types.split(',') if s.strip()]
+        else:
+            # 없으면 기존 PRODUCT_FILTER_STATUSES 사용 (하위 호환성)
+            saved_statuses = config.get('PRODUCT_FILTER_STATUSES', '')
+            selected_statuses = [s.strip() for s in saved_statuses.split(',') if s.strip()] if saved_statuses else []
 
+        # 기본값 설정 (아무 설정이 없을 경우)
+        if not selected_statuses:
+            selected_statuses = ['SALE', 'WAIT', 'OUTOFSTOCK']
+
+        logger.info(f"상품 필터 설정 조회: {selected_statuses}")
         return {
             "success": True,
             "settings": {
@@ -911,6 +926,7 @@ async def get_product_filter_settings():
             }
         }
     except Exception as e:
+        logger.error(f"상품 필터 설정 조회 실패: {e}")
         return {"success": False, "error": str(e)}
 
 @app.post("/api/products/refresh")
