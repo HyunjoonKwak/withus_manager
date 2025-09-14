@@ -346,9 +346,74 @@ function resetFilters() {
     updateProductCount(filteredProducts.length);
 }
 
-// 상품 새로고침
-function refreshProducts() {
-    loadProducts();
+// 상품 새로고침 (네이버 API에서 가져오기)
+async function refreshProducts() {
+    try {
+        console.log('네이버 API에서 상품 새로고침 시작...');
+        showLoading(true);
+
+        // 새로고침 버튼 업데이트
+        const refreshBtn = document.querySelector('button[onclick="refreshProducts()"]');
+        if (refreshBtn) {
+            const originalText = refreshBtn.innerHTML;
+            refreshBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> API 새로고침 중...';
+            refreshBtn.disabled = true;
+        }
+
+        const response = await fetch('/api/products/refresh', {
+            method: 'POST'
+        });
+        console.log('API 새로고침 응답 상태:', response.status);
+        const data = await response.json();
+        console.log('API 새로고침 응답 데이터:', data);
+
+        if (data.success) {
+            products = data.products;
+            filteredProducts = [...products];
+            console.log('네이버 API에서 새로고침:', products.length, '개 상품');
+            renderProducts(filteredProducts);
+            updateProductCount(filteredProducts.length);
+
+            // 성공 메시지 표시
+            if (data.message) {
+                const alertDiv = document.createElement('div');
+                alertDiv.className = 'alert alert-success alert-dismissible fade show mt-3';
+                alertDiv.innerHTML = `
+                    <i class="fas fa-check-circle"></i> ${data.message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                `;
+                document.querySelector('.container').prepend(alertDiv);
+
+                // 3초 후 자동 제거
+                setTimeout(() => {
+                    if (alertDiv.parentNode) {
+                        alertDiv.remove();
+                    }
+                }, 3000);
+            }
+        } else {
+            throw new Error(data.error || '상품 새로고침 실패');
+        }
+
+        // 버튼 원상복구
+        if (refreshBtn) {
+            refreshBtn.innerHTML = '<i class="fas fa-sync"></i> 새로고침';
+            refreshBtn.disabled = false;
+        }
+
+    } catch (error) {
+        console.error('상품 새로고침 오류:', error);
+        alert('상품을 새로고침하는 중 오류가 발생했습니다: ' + error.message);
+
+        // 실패 시 버튼 원상복구
+        const refreshBtn = document.querySelector('button[onclick="refreshProducts()"]');
+        if (refreshBtn) {
+            refreshBtn.innerHTML = '<i class="fas fa-sync"></i> 새로고침';
+            refreshBtn.disabled = false;
+        }
+    } finally {
+        showLoading(false);
+    }
 }
 
 // 상품 내보내기

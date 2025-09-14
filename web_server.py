@@ -788,6 +788,114 @@ async def get_products():
         logger.error(f"상품 조회 API 오류: {e}")
         return {"success": False, "error": str(e)}
 
+@app.post("/api/products/refresh")
+async def refresh_products_from_api():
+    """상품 목록 갱신 API - 네이버 API에서 상품 데이터 새로고침"""
+    try:
+        logger.info("상품 API 새로고침 시작")
+
+        # 네이버 API에서 상품 데이터 가져오기
+        response = order_manager.naver_api.get_products()
+
+        if not response or 'success' not in response:
+            logger.error("네이버 API 응답이 올바르지 않음")
+            return {
+                "success": False,
+                "error": "네이버 API 응답이 올바르지 않습니다"
+            }
+
+        if not response.get('success'):
+            error_msg = response.get('error', '알 수 없는 오류')
+            logger.error(f"네이버 API 오류: {error_msg}")
+            return {
+                "success": False,
+                "error": f"네이버 API 오류: {error_msg}"
+            }
+
+        # 상품 데이터 처리 및 DB 저장
+        products_data = response.get('data', [])
+        logger.info(f"네이버 API에서 {len(products_data)}개 상품 조회됨")
+
+        # 데이터베이스에 상품 저장
+        saved_count = 0
+        for product in products_data:
+            try:
+                if isinstance(product, dict) and 'channelProducts' in product:
+                    channel_products = product.get('channelProducts', [])
+                    if channel_products and len(channel_products) > 0:
+                        channel_product = channel_products[0]
+
+                        # 상품 정보 추출
+                        product_data = {
+                            'channel_product_no': str(channel_product.get('channelProductNo', '')),
+                            'origin_product_no': str(product.get('originProductNo', '')),
+                            'product_name': product.get('productName', ''),
+                            'status_type': channel_product.get('statusType', ''),
+                            'sale_price': channel_product.get('salePrice', 0),
+                            'discounted_price': channel_product.get('discountedPrice', 0),
+                            'stock_quantity': channel_product.get('stockQuantity', 0),
+                            'category_id': product.get('categoryId', ''),
+                            'category_name': product.get('categoryName', ''),
+                            'brand_name': product.get('brandName', ''),
+                            'manufacturer_name': product.get('manufacturerName', ''),
+                            'model_name': product.get('modelName', ''),
+                            'seller_management_code': product.get('sellerManagementCode', ''),
+                            'reg_date': product.get('regDate', ''),
+                            'modified_date': product.get('modifiedDate', ''),
+                            'representative_image_url': product.get('representativeImageUrl', ''),
+                            'whole_category_name': product.get('wholeCategoryName', ''),
+                            'whole_category_id': product.get('wholeCategoryId', ''),
+                            'delivery_fee': channel_product.get('deliveryFee', 0),
+                            'return_fee': channel_product.get('returnFee', 0),
+                            'exchange_fee': channel_product.get('exchangeFee', 0),
+                            'discount_method': channel_product.get('discountMethod', ''),
+                            'customer_benefit': channel_product.get('customerBenefit', '')
+                        }
+
+                        # 데이터베이스에 저장
+                        order_manager.db_manager.save_product(product_data)
+                        saved_count += 1
+
+            except Exception as save_error:
+                logger.warning(f"상품 저장 오류: {save_error}")
+                continue
+
+        logger.info(f"상품 새로고침 완료: {saved_count}개 저장됨")
+
+        # 업데이트된 상품 목록 조회
+        products = order_manager.db_manager.get_all_products()
+
+        # 웹 인터페이스용 데이터 포맷
+        formatted_products = []
+        for product in products:
+            product_dict = {
+                'id': product.get('channel_product_no', ''),
+                'product_id': product.get('channel_product_no', ''),
+                'name': product.get('product_name', ''),
+                'price': product.get('sale_price', 0),
+                'stock': product.get('stock_quantity', 0),
+                'category': product.get('category_name', ''),
+                'status': product.get('status_type', ''),
+                'brand': product.get('brand_name', ''),
+                'image_url': product.get('representative_image_url', ''),
+                'created_at': product.get('reg_date', ''),
+                'sales_count': 0
+            }
+            formatted_products.append(product_dict)
+
+        return {
+            "success": True,
+            "products": formatted_products,
+            "count": len(formatted_products),
+            "refreshed_from_api": True,
+            "saved_count": saved_count,
+            "message": f"네이버 API에서 {saved_count}개 상품을 새로고침했습니다"
+        }
+
+    except Exception as e:
+        logger.error(f"상품 새로고침 API 오류: {e}")
+        return {"success": False, "error": str(e)}
+
 @app.get("/health")
 async def health_check():
     """헬스 체크"""
