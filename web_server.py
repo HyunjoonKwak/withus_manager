@@ -664,12 +664,35 @@ async def get_settings():
 
 @app.post("/api/settings")
 async def save_settings(settings_data: dict):
-    """설정 저장 - 실제로 .env 파일에 저장"""
+    """설정 저장 - 실제로 .env 파일에 저장 (상세 로깅 포함)"""
+    import os
+    import time
+
     try:
-        logger.info(f"설정 저장 시작: {len(settings_data)}개 항목")
+        logger.info("=" * 60)
+        logger.info(f"🔧 설정 저장 프로세스 시작 - 받은 데이터: {len(settings_data)}개 항목")
+        logger.info(f"📝 요청된 설정 데이터: {settings_data}")
+
+        # .env 파일 상태 확인 (저장 전)
+        env_file_path = '.env'
+        if os.path.exists(env_file_path):
+            file_stat_before = os.stat(env_file_path)
+            logger.info(f"📄 저장 전 .env 파일 상태:")
+            logger.info(f"   - 크기: {file_stat_before.st_size} bytes")
+            logger.info(f"   - 마지막 수정: {time.ctime(file_stat_before.st_mtime)}")
+        else:
+            logger.warning(f"⚠️  .env 파일이 존재하지 않음: {env_file_path}")
+
+        # 변경 전 값들 기록
+        original_values = {}
+        for key in settings_data.keys():
+            original_values[key] = config.get(key)
+        logger.info(f"🔍 변경 전 원본 값들: {original_values}")
 
         # 각 설정값을 환경 변수에 설정
         saved_settings = {}
+        logger.info("🔄 환경 변수 설정 시작...")
+
         for key, value in settings_data.items():
             # 값 타입에 따른 변환
             if isinstance(value, bool):
@@ -680,37 +703,102 @@ async def save_settings(settings_data: dict):
                 str_value = str(value) if value is not None else ''
 
             # 환경 변수에 설정
+            logger.info(f"   🏷️  {key}: '{original_values.get(key, 'None')}' → '{str_value}'")
             config.set(key, str_value)
             saved_settings[key] = str_value
-            logger.info(f"설정됨: {key} = {str_value}")
+
+        logger.info(f"✅ 환경 변수 설정 완료 - {len(saved_settings)}개 항목")
 
         # .env 파일에 저장
-        logger.info(".env 파일에 저장 시작...")
-        config.save_to_env_file()
-        logger.info(".env 파일 저장 완료")
+        logger.info("💾 .env 파일 저장 시작...")
+        save_start_time = time.time()
+
+        try:
+            config.save_to_env_file()
+            save_end_time = time.time()
+            logger.info(f"✅ .env 파일 저장 완료 - 소요시간: {save_end_time - save_start_time:.3f}초")
+        except Exception as save_error:
+            logger.error(f"❌ .env 파일 저장 실패: {save_error}")
+            raise save_error
+
+        # .env 파일 상태 확인 (저장 후)
+        if os.path.exists(env_file_path):
+            file_stat_after = os.stat(env_file_path)
+            logger.info(f"📄 저장 후 .env 파일 상태:")
+            logger.info(f"   - 크기: {file_stat_after.st_size} bytes (변화: {file_stat_after.st_size - file_stat_before.st_size:+d})")
+            logger.info(f"   - 마지막 수정: {time.ctime(file_stat_after.st_mtime)}")
+
+            # 파일이 실제로 변경되었는지 확인
+            if file_stat_after.st_mtime > file_stat_before.st_mtime:
+                logger.info("✅ 파일이 성공적으로 업데이트됨")
+            else:
+                logger.warning("⚠️  파일 수정 시간이 변경되지 않음")
+
+        # 파일 내용 일부 확인
+        try:
+            with open(env_file_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+                lines = content.split('\n')
+                logger.info(f"📖 .env 파일 내용 확인 - 총 {len(lines)}줄")
+
+                # 저장된 설정들이 파일에 실제로 있는지 확인
+                for key, value in saved_settings.items():
+                    expected_line = f"{key}={value}"
+                    found = any(expected_line in line for line in lines)
+                    logger.info(f"   🔍 {key}={value}: {'✅ 발견' if found else '❌ 없음'}")
+
+        except Exception as read_error:
+            logger.error(f"❌ .env 파일 읽기 실패: {read_error}")
 
         # 설정 다시 로드하여 확인
+        logger.info("🔄 설정 파일 다시 로드 시작...")
+        reload_start_time = time.time()
         config.reload()
-        logger.info("설정 파일 다시 로드 완료")
+        reload_end_time = time.time()
+        logger.info(f"✅ 설정 파일 다시 로드 완료 - 소요시간: {reload_end_time - reload_start_time:.3f}초")
 
-        # 저장된 설정값들 확인 로그
-        verification_log = []
-        for key in saved_settings.keys():
+        # 저장된 설정값들 최종 확인
+        verification_results = {}
+        all_verified = True
+
+        logger.info("🔍 저장 결과 검증 시작...")
+        for key, expected_value in saved_settings.items():
             current_value = config.get(key)
-            verification_log.append(f"{key}: {current_value}")
+            is_match = current_value == expected_value
+            verification_results[key] = {
+                'expected': expected_value,
+                'actual': current_value,
+                'match': is_match
+            }
 
-        logger.info(f"저장 확인 결과: {', '.join(verification_log)}")
+            status_icon = "✅" if is_match else "❌"
+            logger.info(f"   {status_icon} {key}: 예상='{expected_value}', 실제='{current_value}', 일치={is_match}")
+
+            if not is_match:
+                all_verified = False
+
+        if all_verified:
+            logger.info("🎉 모든 설정이 성공적으로 저장되고 검증됨!")
+        else:
+            logger.warning("⚠️  일부 설정의 검증에 실패함")
+
+        logger.info("=" * 60)
 
         return {
             "success": True,
             "message": f"설정이 성공적으로 저장되었습니다. ({len(saved_settings)}개 항목)",
             "saved_count": len(saved_settings),
-            "saved_settings": saved_settings
+            "saved_settings": saved_settings,
+            "verification_results": verification_results,
+            "all_verified": all_verified,
+            "file_updated": file_stat_after.st_mtime > file_stat_before.st_mtime if 'file_stat_after' in locals() else False
         }
 
     except Exception as e:
-        logger.error(f"설정 저장 중 오류 발생: {e}")
-        return {"success": False, "error": str(e)}
+        logger.error(f"💥 설정 저장 중 치명적 오류 발생: {type(e).__name__}: {e}")
+        import traceback
+        logger.error(f"📋 상세 오류 트레이스:\n{traceback.format_exc()}")
+        return {"success": False, "error": str(e), "error_type": type(e).__name__}
 
 @app.get("/api/test-api")
 async def test_api():
