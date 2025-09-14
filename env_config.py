@@ -40,7 +40,10 @@ class EnvConfig:
 
                 self._file_mtime = current_mtime
                 self._loaded = True
-                print(f"env 파일 로드 완료: {len(self._cache)}개 설정")
+                # 초기 로드 시에만 로그 출력
+                if not hasattr(self, '_initial_loaded'):
+                    print(f"env 파일 로드 완료: {len(self._cache)}개 설정")
+                    self._initial_loaded = True
 
         except Exception as e:
             print(f"env 파일 로드 오류: {e}")
@@ -161,13 +164,22 @@ def get_config():
         _global_config = EnvConfig()
     return _global_config
 
-# 프록시 클래스를 통한 지연 로딩
+# 프록시 클래스를 통한 지연 로딩 (싱글톤 최적화)
 class _ConfigProxy:
+    def __init__(self):
+        self._config_instance = None
+
+    def _get_config_cached(self):
+        """캐시된 설정 인스턴스 반환"""
+        if self._config_instance is None:
+            self._config_instance = get_config()
+        return self._config_instance
+
     def __getattr__(self, name):
-        return getattr(get_config(), name)
+        return getattr(self._get_config_cached(), name)
 
     def __call__(self, *args, **kwargs):
-        return get_config()(*args, **kwargs)
+        return self._get_config_cached()(*args, **kwargs)
 
 # 하위 호환성을 위한 프록시
 config = _ConfigProxy()
