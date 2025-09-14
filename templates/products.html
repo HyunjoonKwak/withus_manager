@@ -275,7 +275,6 @@ function renderProducts(productList) {
     console.log('상품 테이블 렌더링 시작...');
     noProductsMessage.classList.add('d-none');
 
-    console.log('첫 번째 상품 확인:', productList[0]);
 
     const tableHTML = productList.map((product, index) => `
         <tr onclick="showProductDetail('${product.product_id}')" style="cursor: pointer;">
