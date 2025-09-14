@@ -144,46 +144,12 @@ class LightweightOrderManager:
             logger.error(f"모니터링 체크 오류: {e}")
 
     def _get_dashboard_data(self) -> Dict[str, int]:
-        """대시보드 데이터 조회 - 네이버 API에서 실시간 데이터 가져오기"""
+        """대시보드 데이터 조회 - 로컬 데이터베이스에서 조회 (웹서버 최적화)"""
         try:
-            if not self.naver_api:
-                logger.warning("네이버 API가 초기화되지 않아 로컬 데이터 사용")
-                orders = self.db_manager.get_all_orders()
-            else:
-                # 네이버 API에서 최신 주문 데이터 조회
-                logger.info("네이버 API에서 최신 주문 데이터 조회 중...")
-                period_days = config.get_int('DASHBOARD_PERIOD_DAYS', 5)
-                end_date = datetime.now()
-                start_date = end_date - timedelta(days=period_days)
-
-                # 모든 주문 상태를 콤마로 분리해서 한 번에 조회
-                order_status_types = config.get('ORDER_STATUS_TYPES', 'PAYMENT_WAITING,PAYED,DELIVERING,DELIVERED,PURCHASE_DECIDED,EXCHANGED,CANCELED,RETURNED,CANCELED_BY_NOPAYMENT')
-
-                try:
-                    # 전체 상태를 콤마 분리된 문자열로 한 번에 조회
-                    response = self.naver_api.get_orders(
-                        start_date=start_date.strftime('%Y-%m-%d'),
-                        end_date=end_date.strftime('%Y-%m-%d'),
-                        order_status=order_status_types  # 콤마로 분리된 전체 상태
-                    )
-
-                    if response and response.get('success'):
-                        orders_data = response.get('data', [])
-                        if isinstance(orders_data, list):
-                            orders = orders_data
-                        elif isinstance(orders_data, dict) and 'contents' in orders_data:
-                            orders = orders_data.get('contents', [])
-                        else:
-                            orders = []
-                    else:
-                        logger.warning("네이버 API 주문 조회 실패")
-                        orders = []
-
-                except Exception as e:
-                    logger.error(f"네이버 API 주문 조회 중 오류: {e}")
-                    orders = []
-
-                logger.info(f"네이버 API에서 {len(orders)}개 주문 조회 완료 (전체 상태 한 번에 조회)")
+            # 웹서버에서는 GUI 의존성 없이 로컬 DB만 사용
+            logger.info("로컬 데이터베이스에서 주문 데이터 조회 중...")
+            orders = self.db_manager.get_all_orders()
+            logger.info(f"로컬 DB에서 {len(orders)}개 주문 조회 완료")
 
             # 상태별 카운팅
             order_counts = {
@@ -215,12 +181,17 @@ class LightweightOrderManager:
                     # 네이버 API 응답의 경우
                     naver_status = order.get('orderStatus', order.get('status', '기타'))
                     ui_status = status_mapping.get(naver_status, '기타')
+                    # 디버깅: 실제 주문 상태 확인
+                    logger.info(f"주문 상태 매핑: {naver_status} -> {ui_status}")
                 else:
                     # 로컬 DB 데이터의 경우
                     ui_status = getattr(order, 'status', '기타')
+                    logger.info(f"로컬 DB 주문 상태: {ui_status}")
 
                 if ui_status in order_counts:
                     order_counts[ui_status] += 1
+                else:
+                    logger.warning(f"매핑되지 않은 주문 상태: {ui_status}")
 
             logger.info(f"대시보드 데이터 조회 완료: {order_counts}")
             return order_counts
