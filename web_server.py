@@ -478,6 +478,58 @@ async def test_discord():
         logger.error(f"Discord 테스트 오류: {e}")
         return {"success": False, "error": str(e)}
 
+@app.get("/api/current-ip")
+async def get_current_server_ip():
+    """서버의 현재 공인 IP 확인 (네이버 API 호출용)"""
+    try:
+        import requests
+
+        # 여러 IP 확인 서비스 시도
+        services = [
+            'https://api.ipify.org?format=json',
+            'https://ipapi.co/json/',
+            'https://httpbin.org/ip'
+        ]
+
+        for service in services:
+            try:
+                response = requests.get(service, timeout=10)
+                if response.status_code == 200:
+                    data = response.json()
+
+                    # 서비스별 응답 형식 처리
+                    if 'ip' in data:
+                        ip = data['ip']
+                    elif 'origin' in data:  # httpbin
+                        ip = data['origin']
+                    else:
+                        continue
+
+                    # IP 형식 검증
+                    import re
+                    pattern = r'^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$'
+                    if re.match(pattern, ip):
+                        # 허가 여부 확인
+                        allowed_ips = config.get('ALLOWED_IPS', '121.190.40.153,175.125.204.97').split(',')
+                        allowed_ips = [ip.strip() for ip in allowed_ips if ip.strip()]
+                        is_allowed = ip in allowed_ips
+
+                        return {
+                            "success": True,
+                            "ip": ip,
+                            "is_allowed": is_allowed,
+                            "service_used": service
+                        }
+            except Exception as e:
+                logger.warning(f"IP 서비스 {service} 실패: {e}")
+                continue
+
+        return {"success": False, "error": "모든 IP 확인 서비스에서 실패했습니다"}
+
+    except Exception as e:
+        logger.error(f"서버 IP 확인 오류: {e}")
+        return {"success": False, "error": str(e)}
+
 if __name__ == "__main__":
     # 개발용 서버 실행
     port = int(os.environ.get("PORT", 8000))
