@@ -65,7 +65,7 @@ class NaverShoppingAPI:
                 "client_id": str(self.client_id),
                 "timestamp": timestamp,
                 "client_secret_sign": str(client_secret_sign),
-                "grant_type": "client_credentials",  # 공백 제거
+                "grant_type": "client_credentials ",  # 예제와 동일하게 공백 포함
                 "type": "SELF"
             }
 
@@ -87,8 +87,10 @@ class NaverShoppingAPI:
             print(f"[DEBUG] 응답 내용: {response.text}")
             
             if response.status_code == 200:
-                token_data = response.json()
-                self.access_token = token_data.get('access_token')
+                # 예제와 동일한 방식으로 JSON 파싱
+                json_data = json.loads(response.text)
+                self.access_token = json_data.get('access_token')
+                print(f"[DEBUG] 토큰 발급 성공: {self.access_token[:10]}..." if self.access_token else "[DEBUG] access_token 없음")
                 return True
             else:
                 error_detail = response.text
