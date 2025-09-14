@@ -1,14 +1,14 @@
 # WithUs Order Management System
 
-네이버 쇼핑몰 주문 관리를 위한 경량 웹 시스템입니다. 기존 GUI 기반 프로그램을 웹 인터페이스로 전환하여 어디서든 접근 가능하며, EC2 t2.micro 인스턴스에서 안정적으로 운영할 수 있도록 최적화되었습니다.
+네이버 쇼핑몰 주문 관리를 위한 듀얼 시스템입니다. GUI 앱과 웹 인터페이스를 병행 운영하여 로컬에서는 빠른 작업을, 원격에서는 어디서든 접근 가능하며, EC2 t2.micro 인스턴스에서 안정적으로 운영할 수 있도록 최적화되었습니다.
 
 ## 🎯 주요 특징
 
-- **경량 웹 인터페이스**: 기존 tkinter GUI를 웹 버전으로 완전 전환
-- **t2.micro 최적화**: 메모리 사용량 ~150MB로 EC2 무료 티어에서 안정 운영
+- **듀얼 인터페이스**: GUI 앱과 웹 인터페이스 병행 지원으로 최적의 사용 환경 제공
+- **t2.micro 최적화**: 웹서버 메모리 사용량 ~150MB로 EC2 무료 티어에서 안정 운영
 - **실시간 모니터링**: 백그라운드에서 주문 상태 자동 감시
 - **개선된 Discord 알림**: 상태변화 + 현재 총건수 + 조회기간 표시
-- **단일 포트 운영**: 포트 8000 하나로 웹 + API 통합 서비스
+- **공통 데이터**: 동일한 DB와 설정으로 GUI/웹에서 일관된 데이터 관리
 
 ## 🚀 빠른 시작
 
@@ -16,7 +16,7 @@
 
 ```bash
 # 1. 저장소 클론
-git clone https://github.com/your-username/withus_manager.git
+git clone <your-repository-url>
 cd withus_manager
 
 # 2. 가상환경 및 의존성 설치
@@ -25,8 +25,8 @@ source .venv/bin/activate  # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 
 # 3. 환경 변수 설정
-cp .env.example .env
-# .env 파일에서 네이버 API 키, Discord 웹훅 등 설정
+# .env 파일 생성 후 네이버 API 키, Discord 웹훅 등 설정
+# (환경 변수 설정 섹션 참조)
 
 # 4. GUI 앱 실행 (로컬 작업용)
 python main.py
@@ -57,11 +57,13 @@ python web_server.py
 
 ```bash
 # EC2 인스턴스에서 실행
-curl -o deploy.sh https://raw.githubusercontent.com/your-username/withus_manager/main/deploy.sh
+# 1. 저장소 클론 후 배포 스크립트 실행
+git clone <your-repository-url>
+cd withus_manager
 chmod +x deploy.sh
 sudo ./deploy.sh
 
-# 코드 배포 후 서비스 시작
+# 2. 코드 배포 후 서비스 시작
 sudo systemctl start withus-order
 sudo systemctl enable withus-order
 ```
@@ -125,12 +127,13 @@ PORT=8000
 - **디스크 사용**: ~100MB
 - **네트워크**: 포트 8000만 사용
 
-### 기존 구조 대비 개선
-| 항목 | 기존 (Celery) | 현재 (Thread) | 절약률 |
-|------|-------------|-------------|--------|
-| 메모리 | 520MB | 150MB | 71% ↓ |
-| 프로세스 | 5개 | 1개 | 80% ↓ |
-| 복잡도 | 높음 | 낮음 | 대폭 개선 |
+### 듀얼 시스템 리소스 비교
+| 구분 | GUI 앱 | 웹 서버 | 특징 |
+|------|-------|---------|------|
+| 메모리 | ~200MB | ~150MB | 웹서버가 더 경량 |
+| 프로세스 | 1개 | 1개 | 각각 독립 실행 |
+| 복잡도 | 중간 | 낮음 | 공통 로직 재사용 |
+| 적합성 | 로컬 작업 | 원격 운영 | 상황별 최적화 |
 
 ## 🔄 듀얼 시스템 구조
 
