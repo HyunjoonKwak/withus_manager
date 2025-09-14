@@ -31,7 +31,21 @@ class NaverShoppingAPI:
             print(f"[DEBUG] client_secret: {self.client_secret}")
 
             try:
-                # bcrypt 해싱 (사용자 제공 방식과 동일)
+                # bcrypt salt 검증
+                print(f"[DEBUG] bcrypt salt 검증 시작...")
+                if not self.client_secret.startswith(('$2a$', '$2b$', '$2y$')):
+                    print(f"[DEBUG] 경고: 클라이언트 시크릿이 bcrypt 형식이 아닙니다")
+
+                # 테스트용 간단한 bcrypt 검증
+                test_password = "test"
+                try:
+                    test_hashed = bcrypt.hashpw(test_password.encode('utf-8'), self.client_secret.encode('utf-8'))
+                    print(f"[DEBUG] bcrypt salt 검증 성공 - salt가 유효함")
+                except Exception as test_e:
+                    print(f"[DEBUG] bcrypt salt 검증 실패: {test_e}")
+                    return False
+
+                # 실제 bcrypt 해싱 (사용자 제공 방식과 동일)
                 hashed = bcrypt.hashpw(password.encode('utf-8'), self.client_secret.encode('utf-8'))
                 # base64 인코딩
                 client_secret_sign = pybase64.standard_b64encode(hashed).decode('utf-8')
@@ -41,6 +55,7 @@ class NaverShoppingAPI:
                 print(f"[DEBUG] bcrypt 해싱 실패: {e}")
                 print(f"[DEBUG] 클라이언트 시크릿 길이: {len(self.client_secret)}")
                 print(f"[DEBUG] 클라이언트 시크릿 형식: {self.client_secret}")
+                print(f"[DEBUG] password 길이: {len(password)}")
                 return False
 
             # 인증
@@ -60,7 +75,16 @@ class NaverShoppingAPI:
             }
 
             print(f"[DEBUG] 토큰 발급 요청 전송")
+            print(f"[DEBUG] URL: {url}")
+            print(f"[DEBUG] Headers: {headers}")
+            print(f"[DEBUG] Data: {data}")
+            print(f"[DEBUG] client_secret_sign 길이: {len(client_secret_sign)}")
+
             response = requests.post(url, data=data, headers=headers, timeout=30)
+
+            print(f"[DEBUG] 응답 상태코드: {response.status_code}")
+            print(f"[DEBUG] 응답 헤더: {response.headers}")
+            print(f"[DEBUG] 응답 내용: {response.text}")
             
             if response.status_code == 200:
                 token_data = response.json()
