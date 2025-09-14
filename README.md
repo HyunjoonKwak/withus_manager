@@ -25,7 +25,8 @@ source .venv/bin/activate  # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 
 # 3. 환경 변수 설정
-# .env 파일 생성 후 네이버 API 키, Discord 웹훅 등 설정
+cp .env.example .env
+# .env 파일에서 네이버 API 키, Discord 웹훅 등 실제 값으로 변경
 # (환경 변수 설정 섹션 참조)
 
 # 4. GUI 앱 실행 (로컬 작업용)

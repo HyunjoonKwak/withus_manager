@@ -66,6 +66,9 @@ sudo ./deploy.sh
 # 애플리케이션 디렉토리로 이동
 cd /opt/withus-order-lightweight
 
+# 환경 변수 템플릿 복사
+cp .env.example .env
+
 # 환경 변수 파일 편집
 sudo nano .env
 ```
