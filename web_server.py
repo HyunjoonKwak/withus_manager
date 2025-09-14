@@ -813,7 +813,8 @@ async def refresh_products_from_api():
             }
 
         # 상품 데이터 처리 및 DB 저장
-        products_data = response.get('data', [])
+        api_data = response.get('data', {})
+        products_data = api_data.get('contents', []) if isinstance(api_data, dict) else []
         logger.info(f"네이버 API에서 {len(products_data)}개 상품 조회됨")
 
         # 데이터베이스에 상품 저장
@@ -825,26 +826,26 @@ async def refresh_products_from_api():
                     if channel_products and len(channel_products) > 0:
                         channel_product = channel_products[0]
 
-                        # 상품 정보 추출
+                        # 상품 정보 추출 (실제 API 응답 구조에 맞게 수정)
                         product_data = {
                             'channel_product_no': str(channel_product.get('channelProductNo', '')),
                             'origin_product_no': str(product.get('originProductNo', '')),
-                            'product_name': product.get('productName', ''),
+                            'product_name': channel_product.get('name', ''),  # name은 channelProduct에 있음
                             'status_type': channel_product.get('statusType', ''),
                             'sale_price': channel_product.get('salePrice', 0),
                             'discounted_price': channel_product.get('discountedPrice', 0),
                             'stock_quantity': channel_product.get('stockQuantity', 0),
-                            'category_id': product.get('categoryId', ''),
-                            'category_name': product.get('categoryName', ''),
-                            'brand_name': product.get('brandName', ''),
-                            'manufacturer_name': product.get('manufacturerName', ''),
-                            'model_name': product.get('modelName', ''),
-                            'seller_management_code': product.get('sellerManagementCode', ''),
-                            'reg_date': product.get('regDate', ''),
-                            'modified_date': product.get('modifiedDate', ''),
-                            'representative_image_url': product.get('representativeImageUrl', ''),
-                            'whole_category_name': product.get('wholeCategoryName', ''),
-                            'whole_category_id': product.get('wholeCategoryId', ''),
+                            'category_id': channel_product.get('categoryId', ''),
+                            'category_name': channel_product.get('wholeCategoryName', '').split('>')[-1] if channel_product.get('wholeCategoryName') else '',
+                            'brand_name': channel_product.get('brandName', ''),
+                            'manufacturer_name': channel_product.get('manufacturerName', ''),
+                            'model_name': channel_product.get('modelName', ''),
+                            'seller_management_code': channel_product.get('sellerManagementCode', ''),
+                            'reg_date': channel_product.get('regDate', ''),
+                            'modified_date': channel_product.get('modifiedDate', ''),
+                            'representative_image_url': channel_product.get('representativeImage', {}).get('url', '') if isinstance(channel_product.get('representativeImage'), dict) else '',
+                            'whole_category_name': channel_product.get('wholeCategoryName', ''),
+                            'whole_category_id': channel_product.get('wholeCategoryId', ''),
                             'delivery_fee': channel_product.get('deliveryFee', 0),
                             'return_fee': channel_product.get('returnFee', 0),
                             'exchange_fee': channel_product.get('exchangeFee', 0),
@@ -855,6 +856,7 @@ async def refresh_products_from_api():
                         # 데이터베이스에 저장
                         order_manager.db_manager.save_product(product_data)
                         saved_count += 1
+                        logger.debug(f"상품 저장 완료: {product_data['product_name']}")
 
             except Exception as save_error:
                 logger.warning(f"상품 저장 오류: {save_error}")
