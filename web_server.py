@@ -144,18 +144,44 @@ class LightweightOrderManager:
             logger.error(f"모니터링 체크 오류: {e}")
 
     def _get_dashboard_data(self) -> Dict[str, int]:
-        """대시보드 데이터 조회"""
+        """대시보드 데이터 조회 - 네이버 API에서 실시간 데이터 가져오기"""
         try:
-            period_days = config.get_int('DASHBOARD_PERIOD_DAYS', 5)
-            end_date = datetime.now()
-            start_date = end_date - timedelta(days=period_days)
+            if not self.naver_api:
+                logger.warning("네이버 API가 초기화되지 않아 로컬 데이터 사용")
+                orders = self.db_manager.get_all_orders()
+            else:
+                # 네이버 API에서 최신 주문 데이터 조회
+                logger.info("네이버 API에서 최신 주문 데이터 조회 중...")
+                period_days = config.get_int('DASHBOARD_PERIOD_DAYS', 5)
+                end_date = datetime.now()
+                start_date = end_date - timedelta(days=period_days)
 
-            # 기존 홈탭 로직 활용
-            from tabs.home_tab import HomeTab
+                # 모든 주문 상태로 조회 (중복조합)
+                order_status_types = config.get('ORDER_STATUS_TYPES', 'PAYMENT_WAITING,PAYED,DELIVERING,DELIVERED,PURCHASE_DECIDED,EXCHANGED,CANCELED,RETURNED,CANCELED_BY_NOPAYMENT').split(',')
 
-            # 임시 홈탭 인스턴스로 데이터 조회
-            # 실제로는 데이터베이스에서 직접 조회하도록 최적화 필요
-            orders = self.db_manager.get_all_orders()
+                all_orders = []
+                for status in order_status_types:
+                    try:
+                        # 각 상태별로 주문 조회
+                        response = self.naver_api.get_orders(
+                            start_date=start_date.strftime('%Y-%m-%d'),
+                            end_date=end_date.strftime('%Y-%m-%d'),
+                            order_status=status.strip()
+                        )
+
+                        if response and response.get('success'):
+                            orders_data = response.get('data', [])
+                            if isinstance(orders_data, list):
+                                all_orders.extend(orders_data)
+                            elif isinstance(orders_data, dict) and 'contents' in orders_data:
+                                all_orders.extend(orders_data.get('contents', []))
+
+                    except Exception as e:
+                        logger.warning(f"주문 상태 {status} 조회 중 오류: {e}")
+                        continue
+
+                orders = all_orders
+                logger.info(f"네이버 API에서 {len(orders)}개 주문 조회 완료")
 
             # 상태별 카운팅
             order_counts = {
@@ -169,11 +195,32 @@ class LightweightOrderManager:
                 '교환주문': 0
             }
 
-            for order in orders:
-                status = getattr(order, 'status', '기타')
-                if status in order_counts:
-                    order_counts[status] += 1
+            # 네이버 API 상태와 UI 상태 매핑
+            status_mapping = {
+                'PAYMENT_WAITING': '신규주문',
+                'PAYED': '발송대기',
+                'DELIVERING': '배송중',
+                'DELIVERED': '배송완료',
+                'PURCHASE_DECIDED': '구매확정',
+                'CANCELED': '취소주문',
+                'RETURNED': '반품주문',
+                'EXCHANGED': '교환주문',
+                'CANCELED_BY_NOPAYMENT': '취소주문'
+            }
 
+            for order in orders:
+                if isinstance(order, dict):
+                    # 네이버 API 응답의 경우
+                    naver_status = order.get('orderStatus', order.get('status', '기타'))
+                    ui_status = status_mapping.get(naver_status, '기타')
+                else:
+                    # 로컬 DB 데이터의 경우
+                    ui_status = getattr(order, 'status', '기타')
+
+                if ui_status in order_counts:
+                    order_counts[ui_status] += 1
+
+            logger.info(f"대시보드 데이터 조회 완료: {order_counts}")
             return order_counts
 
         except Exception as e:
