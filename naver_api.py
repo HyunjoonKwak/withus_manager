@@ -21,24 +21,34 @@ class NaverShoppingAPI:
         """네이버 쇼핑 API 액세스 토큰 발급"""
         try:
             url = f"{self.base_url}/external/v1/oauth2/token"
-            
-            # 현재 시간의 타임스탬프 생성 (밀리초 단위)
-            timestamp = int(time.time() * 1000)
-            
+
+            # 타임스탬프 생성 (현재 시간에서 3초 전, 밀리초 단위)
+            timestamp = int((time.time() - 3) * 1000)
+
             # 클라이언트 ID와 타임스탬프를 결합하여 비밀번호 생성
             password = self.client_id + "_" + str(timestamp)
-            
-            # bcrypt 해싱
-            hashed = bcrypt.hashpw(password.encode('utf-8'), self.client_secret.encode('utf-8'))
-            
-            # base64 인코딩
-            client_secret_sign = pybase64.standard_b64encode(hashed).decode('utf-8')
-            
+
+            print(f"[DEBUG] 토큰 발급 시도 - client_id: {self.client_id}, timestamp: {timestamp}")
+            print(f"[DEBUG] password: {password}")
+
+            try:
+                # 네이버 API 표준 방식: bcrypt 해싱 (클라이언트 시크릿을 salt로 사용)
+                hashed = bcrypt.hashpw(password.encode('utf-8'), self.client_secret.encode('utf-8'))
+                client_secret_sign = pybase64.standard_b64encode(hashed).decode('utf-8')
+                print(f"[DEBUG] bcrypt 해싱 성공")
+
+            except Exception as e:
+                print(f"[DEBUG] bcrypt 해싱 실패: {e}")
+                print(f"[DEBUG] 클라이언트 시크릿 형식: {self.client_secret[:10]}...")
+
+                # 클라이언트 시크릿이 올바르지 않은 경우의 대안 처리
+                return False
+
             headers = {
                 'Content-Type': 'application/x-www-form-urlencoded',
                 'Accept': 'application/json'
             }
-            
+
             data = {
                 'client_id': str(self.client_id),
                 'timestamp': timestamp,
@@ -46,8 +56,9 @@ class NaverShoppingAPI:
                 'grant_type': 'client_credentials',
                 'type': 'SELF'
             }
-            
-            response = requests.post(url, headers=headers, data=data)
+
+            print(f"[DEBUG] 토큰 발급 요청 전송")
+            response = requests.post(url, headers=headers, data=data, timeout=30)
             
             if response.status_code == 200:
                 token_data = response.json()

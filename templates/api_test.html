@@ -86,7 +86,13 @@
                     </tr>
                     <tr>
                         <th>Client Secret</th>
-                        <td id="currentClientSecret">-</td>
+                        <td>
+                            <span id="currentClientSecret">-</span>
+                            <div id="clientSecretInfo" style="display: none;" class="small text-info mt-1">
+                                <i class="fas fa-info-circle"></i>
+                                네이버 커머스 API용 bcrypt 형식 시크릿이 설정되어 있습니다.
+                            </div>
+                        </td>
                     </tr>
                     <tr>
                         <th>서버 IP</th>
@@ -280,8 +286,28 @@ async function loadCurrentSettings() {
             const settings = data.settings;
             document.getElementById('currentClientId').textContent =
                 settings.NAVER_CLIENT_ID ? maskString(settings.NAVER_CLIENT_ID) : '설정되지 않음';
-            document.getElementById('currentClientSecret').textContent =
-                settings.NAVER_CLIENT_SECRET ? '설정됨 ****' : '설정되지 않음';
+
+            // 클라이언트 시크릿 상태 및 정보 표시
+            const clientSecret = settings.NAVER_CLIENT_SECRET;
+            const clientSecretElement = document.getElementById('currentClientSecret');
+            const infoElement = document.getElementById('clientSecretInfo');
+
+            if (clientSecret) {
+                // bcrypt 형식인지 확인 ($2a$ 또는 $2b$로 시작)
+                if (clientSecret.startsWith('$2a$') || clientSecret.startsWith('$2b$')) {
+                    clientSecretElement.textContent = '설정됨 (네이버 커머스 API 형식)';
+                    clientSecretElement.className = 'text-success';
+                    infoElement.style.display = 'block';
+                } else {
+                    clientSecretElement.textContent = '설정됨 ****';
+                    clientSecretElement.className = '';
+                    infoElement.style.display = 'none';
+                }
+            } else {
+                clientSecretElement.textContent = '설정되지 않음';
+                clientSecretElement.className = 'text-danger';
+                infoElement.style.display = 'none';
+            }
 
             updateConnectionStatus(settings.NAVER_CLIENT_ID && settings.NAVER_CLIENT_SECRET);
         }

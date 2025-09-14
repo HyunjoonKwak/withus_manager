@@ -15,7 +15,7 @@ import json
 
 # FastAPI 및 웹 관련
 from fastapi import FastAPI, Request, HTTPException, BackgroundTasks
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 import uvicorn
@@ -396,15 +396,10 @@ async def api_test_page(request: Request):
     }
     return templates.TemplateResponse("api_test.html", context)
 
-@app.get("/advanced-settings", response_class=HTMLResponse)
-async def advanced_settings_page(request: Request):
-    """고급 설정 페이지"""
-    context = {
-        "request": request,
-        "title": "조건설정 - " + get_full_title(),
-        "version_info": get_detailed_version_info()
-    }
-    return templates.TemplateResponse("advanced_settings.html", context)
+@app.get("/advanced-settings")
+async def advanced_settings_redirect():
+    """조건설정 페이지 리다이렉트 (통합된 설정 페이지로)"""
+    return RedirectResponse(url="/settings#conditions", status_code=301)
 
 @app.get("/help", response_class=HTMLResponse)
 async def help_page(request: Request):
