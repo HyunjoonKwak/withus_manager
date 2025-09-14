@@ -754,7 +754,12 @@ async def perform_order_action(action_data: dict):
 async def get_products():
     """상품 목록 조회 API"""
     try:
+        logger.info("상품 목록 조회 API 호출")
         products = order_manager.db_manager.get_all_products()
+        logger.info(f"데이터베이스에서 조회된 상품 수: {len(products)}")
+
+        if products:
+            logger.info(f"첫 번째 상품 데이터: {products[0]}")
 
         products_data = []
         for product in products:
