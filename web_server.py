@@ -475,7 +475,8 @@ async def settings_page(request: Request):
     context = {
         "request": request,
         "title": "설정 - " + get_full_title(),
-        "version_info": get_detailed_version_info()
+        "version_info": get_detailed_version_info(),
+        "config": config
     }
     return templates.TemplateResponse("settings.html", context)
 

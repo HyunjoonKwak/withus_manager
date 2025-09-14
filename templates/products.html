@@ -46,40 +46,18 @@
     <h5 class="mb-3"><i class="fas fa-filter"></i> 상품 필터</h5>
     <div class="row">
         <div class="col-md-3">
-            <label class="form-label">상품명 검색</label>
-            <input type="text" class="form-control" id="productNameFilter" placeholder="상품명을 입력하세요">
-        </div>
-        <div class="col-md-2">
-            <label class="form-label">카테고리</label>
-            <select class="form-select" id="categoryFilter">
-                <option value="">전체</option>
-                <option value="fashion">패션</option>
-                <option value="beauty">뷰티</option>
-                <option value="home">홈/리빙</option>
-                <option value="food">식품</option>
-                <option value="digital">디지털</option>
-            </select>
-        </div>
-        <div class="col-md-2">
-            <label class="form-label">재고 상태</label>
-            <select class="form-select" id="stockFilter">
-                <option value="">전체</option>
-                <option value="high">충분 (100+)</option>
-                <option value="medium">보통 (50-99)</option>
-                <option value="low">부족 (1-49)</option>
-                <option value="out">품절 (0)</option>
-            </select>
-        </div>
-        <div class="col-md-2">
             <label class="form-label">판매 상태</label>
             <select class="form-select" id="statusFilter">
                 <option value="">전체</option>
-                <option value="active">판매중</option>
-                <option value="inactive">판매중지</option>
-                <option value="pending">검토중</option>
+                <option value="SALE">판매중</option>
+                <option value="WAIT">승인대기</option>
+                <option value="OUTOFSTOCK">품절</option>
+                <option value="SUSPENSION">판매중지</option>
+                <option value="CLOSE">종료</option>
+                <option value="PROHIBITION">판매금지</option>
             </select>
         </div>
-        <div class="col-md-3 d-flex align-items-end gap-2">
+        <div class="col-md-9 d-flex align-items-end gap-2">
             <button type="button" class="btn btn-primary" onclick="filterProducts()">
                 <i class="fas fa-search"></i> 검색
             </button>
@@ -113,13 +91,15 @@
                 <tr>
                     <th width="5%">이미지</th>
                     <th width="15%">상품명</th>
-                    <th width="12%">상품ID</th>
-                    <th width="10%">카테고리</th>
-                    <th width="10%">가격</th>
-                    <th width="8%">재고</th>
-                    <th width="8%">상태</th>
-                    <th width="12%">등록일</th>
-                    <th width="12%">판매량</th>
+                    <th width="10%">상품ID</th>
+                    <th width="8%">카테고리</th>
+                    <th width="8%">원래판매가</th>
+                    <th width="8%">셀러할인가</th>
+                    <th width="8%">실제판매가</th>
+                    <th width="6%">재고</th>
+                    <th width="6%">상태</th>
+                    <th width="10%">등록일</th>
+                    <th width="8%">판매량</th>
                     <th width="8%">액션</th>
                 </tr>
             </thead>
@@ -209,41 +189,9 @@ async function loadProducts() {
 
 // 상품 필터링
 function filterProducts() {
-    const nameFilter = document.getElementById('productNameFilter').value.toLowerCase();
-    const categoryFilter = document.getElementById('categoryFilter').value;
-    const stockFilter = document.getElementById('stockFilter').value;
     const statusFilter = document.getElementById('statusFilter').value;
 
     filteredProducts = products.filter(product => {
-        // 상품명 필터
-        if (nameFilter && !product.name.toLowerCase().includes(nameFilter)) {
-            return false;
-        }
-
-        // 카테고리 필터
-        if (categoryFilter && product.category !== categoryFilter) {
-            return false;
-        }
-
-        // 재고 필터
-        if (stockFilter) {
-            const stock = product.stock || 0;
-            switch(stockFilter) {
-                case 'high':
-                    if (stock < 100) return false;
-                    break;
-                case 'medium':
-                    if (stock < 50 || stock >= 100) return false;
-                    break;
-                case 'low':
-                    if (stock < 1 || stock >= 50) return false;
-                    break;
-                case 'out':
-                    if (stock > 0) return false;
-                    break;
-            }
-        }
-
         // 상태 필터
         if (statusFilter && product.status !== statusFilter) {
             return false;
@@ -296,7 +244,13 @@ function renderProducts(productList) {
                 <span class="badge bg-light text-dark">${getCategoryText(product.category)}</span>
             </td>
             <td class="text-end">
-                <strong>${formatPrice(product.price)}</strong>
+                <small class="text-muted">${formatPrice(product.price || product.sale_price)}</small>
+            </td>
+            <td class="text-end">
+                <small class="text-success">${formatPrice(product.discounted_price)}</small>
+            </td>
+            <td class="text-end">
+                <strong class="text-primary">${formatPrice(product.actual_price || product.sale_price - (product.discounted_price || 0))}</strong>
             </td>
             <td class="text-center">
                 <span class="stock-badge ${getStockBadgeClass(product.stock)}">
@@ -336,9 +290,6 @@ function renderProducts(productList) {
 
 // 필터 초기화
 function resetFilters() {
-    document.getElementById('productNameFilter').value = '';
-    document.getElementById('categoryFilter').value = '';
-    document.getElementById('stockFilter').value = '';
     document.getElementById('statusFilter').value = '';
 
     filteredProducts = [...products];
@@ -443,8 +394,16 @@ function showProductDetail(productId) {
                         <td>${getCategoryText(product.category)}</td>
                     </tr>
                     <tr>
-                        <th>판매가격</th>
-                        <td><strong class="text-primary">${formatPrice(product.price)}</strong></td>
+                        <th>원래판매가</th>
+                        <td><span class="text-muted">${formatPrice(product.price || product.sale_price)}</span></td>
+                    </tr>
+                    <tr>
+                        <th>셀러할인가</th>
+                        <td><span class="text-success">${formatPrice(product.discounted_price)}</span></td>
+                    </tr>
+                    <tr>
+                        <th>실제판매가</th>
+                        <td><strong class="text-primary">${formatPrice(product.actual_price || product.sale_price - (product.discounted_price || 0))}</strong></td>
                     </tr>
                     <tr>
                         <th>현재재고</th>
@@ -518,18 +477,24 @@ function getStockBadgeClass(stock) {
 
 function getStatusBadgeClass(status) {
     switch(status) {
-        case 'active': return 'bg-success';
-        case 'inactive': return 'bg-secondary';
-        case 'pending': return 'bg-warning';
+        case 'SALE': return 'bg-success';
+        case 'WAIT': return 'bg-warning';
+        case 'OUTOFSTOCK': return 'bg-danger';
+        case 'SUSPENSION': return 'bg-secondary';
+        case 'CLOSE': return 'bg-dark';
+        case 'PROHIBITION': return 'bg-danger';
         default: return 'bg-light text-dark';
     }
 }
 
 function getStatusText(status) {
     switch(status) {
-        case 'active': return '판매중';
-        case 'inactive': return '판매중지';
-        case 'pending': return '검토중';
+        case 'SALE': return '판매중';
+        case 'WAIT': return '승인대기';
+        case 'OUTOFSTOCK': return '품절';
+        case 'SUSPENSION': return '판매중지';
+        case 'CLOSE': return '종료';
+        case 'PROHIBITION': return '판매금지';
         default: return status || '-';
     }
 }
