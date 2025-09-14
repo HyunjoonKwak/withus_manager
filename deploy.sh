@@ -29,7 +29,7 @@ info() {
 }
 
 # 변수 설정
-PROJECT_NAME="withus-order-lightweight"
+PROJECT_NAME="withus-order"
 APP_DIR="/opt/$PROJECT_NAME"
 SERVICE_NAME="withus-order"
 SERVICE_PORT=8000
@@ -193,7 +193,7 @@ log "경량 웹서버 배포 준비 완료!"
 
 echo ""
 echo "================================================"
-echo "🎉 WithUs Order Management 경량 배포 완료!"
+echo "🎉 WithUs Order Management 배포 완료!"
 echo "================================================"
 echo ""
 echo "📋 다음 단계:"

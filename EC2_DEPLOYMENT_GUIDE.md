@@ -64,7 +64,7 @@ sudo ./deploy.sh
 ### Step 5: 환경 변수 설정
 ```bash
 # 애플리케이션 디렉토리로 이동
-cd /opt/withus-order-lightweight
+cd /opt/withus-order
 
 # 환경 변수 템플릿 복사
 cp .env.example .env
@@ -140,7 +140,7 @@ curl http://localhost:8000/health
 sudo journalctl -u withus-order -n 50
 
 # 수동으로 실행해보기
-cd /opt/withus-order-lightweight
+cd /opt/withus-order
 source venv/bin/activate
 python web_server.py
 ```
@@ -154,7 +154,7 @@ python3 --version
 sudo pip3 install --upgrade pip
 
 # 의존성 재설치
-cd /opt/withus-order-lightweight
+cd /opt/withus-order
 source venv/bin/activate
 pip install -r requirements.txt
 ```
@@ -223,7 +223,7 @@ ps aux --sort=-%mem | head -10
 
 ```bash
 # 프로젝트 디렉토리로 이동
-cd /opt/withus-order-lightweight
+cd /opt/withus-order
 
 # 최신 코드 가져오기
 sudo git pull origin stage_2
@@ -244,10 +244,10 @@ sudo systemctl status withus-order
 ### 1. 환경 변수 보안
 ```bash
 # .env 파일 권한 제한
-sudo chmod 600 /opt/withus-order-lightweight/.env
+sudo chmod 600 /opt/withus-order/.env
 
 # 파일 소유자 확인
-ls -la /opt/withus-order-lightweight/.env
+ls -la /opt/withus-order/.env
 ```
 
 ### 2. 방화벽 설정
