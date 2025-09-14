@@ -498,58 +498,36 @@ async def get_orders(
             start_date_str = start_date
             end_date_str = end_date
 
-        # 네이버 API에서 주문 조회
-        if order_manager.naver_api and order_status:
-            api_response = order_manager.naver_api.get_orders(
-                start_date=start_date_str,
-                end_date=end_date_str,
-                order_status=order_status,
-                limit=limit
-            )
-
-            if api_response and api_response.get('success'):
-                api_data = api_response.get('data', {})
-                orders_list = api_data.get('orders', [])
-
-                return {
-                    "success": True,
-                    "orders": orders_list,
-                    "count": len(orders_list),
-                    "filter": {
-                        "start_date": start_date_str,
-                        "end_date": end_date_str,
-                        "status": order_status
-                    }
-                }
+        # 네이버 API에서 주문 조회 (백그라운드에서 이미 데이터베이스에 저장됨)
+        # API 조회는 백그라운드 프로세스에서 처리되므로 여기서는 DB만 조회
 
         # 로컬 DB에서 필터링하여 조회 (API 조회 후에도 DB에서 최신 데이터 가져옴)
         orders = order_manager.db_manager.get_all_orders()
+
         order_list = []
 
         for order in orders:
             # 상태 필터링
-            if order_status and hasattr(order, 'status') and order.status != order_status:
+            if order_status and order.get('status') != order_status:
                 continue
 
-            # 날짜 필터링 (간단하게 날짜 문자열 비교)
-            if start_date and hasattr(order, 'order_date'):
-                order_date_str = str(order.order_date)[:10]  # YYYY-MM-DD 형태로 자르기
-                if order_date_str < start_date_str:
+            # 날짜 필터링
+            if start_date or end_date:
+                order_date_str = str(order.get('order_date', ''))[:10]
+                if start_date and order_date_str < start_date_str:
                     continue
-            if end_date and hasattr(order, 'order_date'):
-                order_date_str = str(order.order_date)[:10]
-                if order_date_str > end_date_str:
+                if end_date and order_date_str > end_date_str:
                     continue
 
             order_data = {
-                "order_id": getattr(order, 'order_id', ''),
-                "customer_name": getattr(order, 'customer_name', ''),
-                "product_name": getattr(order, 'product_name', ''),
-                "status": getattr(order, 'status', ''),
-                "order_date": getattr(order, 'order_date', ''),
-                "price": getattr(order, 'price', 0),
-                "shipping_address": getattr(order, 'shipping_address', ''),
-                "quantity": getattr(order, 'quantity', 1)
+                "order_id": order.get('order_id', ''),
+                "customer_name": order.get('customer_name', ''),
+                "product_name": order.get('product_name', ''),
+                "status": order.get('status', ''),
+                "order_date": order.get('order_date', ''),
+                "price": order.get('price', 0),
+                "shipping_address": order.get('shipping_address', ''),
+                "quantity": order.get('quantity', 1)
             }
             order_list.append(order_data)
 
