@@ -497,6 +497,7 @@ async def settings_page(request: Request):
 async def refresh_dashboard():
     """대시보드 수동 새로고침 - 네이버 API 호출하여 최신 데이터 갱신"""
     try:
+        # 조회기간 설정 (한 번만 계산)
         period_days = web_config.get_int('DASHBOARD_PERIOD_DAYS', 5)
         end_date = datetime.now()
         start_date = end_date - timedelta(days=period_days)
@@ -505,47 +506,38 @@ async def refresh_dashboard():
 
         logger.info(f"🔄 대시보드 새로고침: {start_date_str} ~ {end_date_str} ({period_days}일)")
 
-        # 네이버 API에서 모든 상태의 주문 데이터 갱신
+        total_refreshed = 0
+
+        # 네이버 API에서 최신 데이터 갱신
         if order_manager.naver_api:
-            logger.info("📡 네이버 API에서 최신 주문 데이터 갱신 중...")
+            logger.info("📡 네이버 API 갱신 중...")
 
-            # 주요 상태별로 API 호출하여 데이터 갱신
-            status_list = ['PAYMENT_WAITING', 'PAYED', 'DELIVERING', 'DELIVERED', 'PURCHASE_DECIDED', 'CANCELED']
-            total_refreshed = 0
+            # 단일 API 호출로 모든 상태 주문 한번에 조회 (더 효율적)
+            try:
+                api_response = order_manager.naver_api.get_orders(
+                    start_date=start_date_str,
+                    end_date=end_date_str,
+                    limit=200  # 기간내 모든 주문 조회
+                )
 
-            for status in status_list:
-                try:
-                    api_response = order_manager.naver_api.get_orders(
-                        start_date=start_date_str,
-                        end_date=end_date_str,
-                        order_status=status,
-                        limit=100
-                    )
-
-                    if api_response and api_response.get('success'):
-                        orders_data = api_response.get('data', {}).get('data', [])
-                        if orders_data:
-                            saved_count = order_manager.naver_api.save_orders_to_database(
-                                order_manager.db_manager, orders_data
-                            )
-                            total_refreshed += saved_count
-                            logger.info(f"  ✅ {status}: {saved_count}건 갱신")
-                        else:
-                            logger.info(f"  📝 {status}: 새 주문 없음")
+                if api_response and api_response.get('success'):
+                    orders_data = api_response.get('data', {}).get('data', [])
+                    if orders_data:
+                        total_refreshed = order_manager.naver_api.save_orders_to_database(
+                            order_manager.db_manager, orders_data
+                        )
+                        logger.info(f"📊 네이버 API 갱신 완료: {total_refreshed}건 갱신됨")
                     else:
-                        logger.warning(f"  ❌ {status}: API 응답 실패")
-
-                except Exception as status_error:
-                    logger.error(f"  ⚠️  {status} 갱신 오류: {status_error}")
-                    continue
-
-            logger.info(f"📊 네이버 API 갱신 완료: 총 {total_refreshed}건 갱신됨")
+                        logger.info("📝 새 주문 없음")
+                else:
+                    logger.warning("❌ API 응답 실패")
+            except Exception as api_error:
+                logger.error(f"⚠️ API 갱신 오류: {api_error}")
         else:
             logger.warning("⚠️ 네이버 API 미설정 - 로컬 데이터만 반환")
 
-        # 갱신된 데이터로 대시보드 데이터 생성 (현재 설정된 기간 사용)
-        current_period = web_config.get_int('DASHBOARD_PERIOD_DAYS', 5)
-        order_counts = order_manager._get_dashboard_data(current_period)
+        # 갱신된 데이터로 대시보드 생성
+        order_counts = order_manager._get_dashboard_data(period_days)
 
         return {
             "success": True,
