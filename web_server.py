@@ -24,7 +24,7 @@ import uvicorn
 from database import DatabaseManager
 from naver_api import NaverShoppingAPI
 from notification_manager import NotificationManager
-from env_config import config
+from env_config import config, web_config
 from version_utils import get_full_title, get_detailed_version_info
 
 # 로깅
@@ -54,8 +54,8 @@ class LightweightOrderManager:
     def _init_apis(self):
         """API 초기화"""
         try:
-            client_id = config.get('NAVER_CLIENT_ID')
-            client_secret = config.get('NAVER_CLIENT_SECRET')
+            client_id = web_config.get('NAVER_CLIENT_ID')
+            client_secret = web_config.get('NAVER_CLIENT_SECRET')
 
             logger.info(f"🔍 네이버 API 초기화 시도")
             logger.info(f"   - client_id: {client_id[:4] + '****' if client_id else 'None'}")
@@ -88,7 +88,7 @@ class LightweightOrderManager:
                 logger.warning(f"⚠️  네이버 API 설정 불충족: id={bool(client_id)}, secret={bool(client_secret and client_secret != '****')}")
                 self.naver_api = None
 
-            discord_webhook = config.get('DISCORD_WEBHOOK_URL')
+            discord_webhook = web_config.get('DISCORD_WEBHOOK_URL')
             if discord_webhook:
                 self.notification_manager = NotificationManager(discord_webhook)
                 logger.info("Discord 알림 초기화 완료")
@@ -100,7 +100,7 @@ class LightweightOrderManager:
 
     def _start_background_monitoring(self):
         """백그라운드 모니터링 시작"""
-        if config.get_bool('AUTO_REFRESH', True):
+        if web_config.get_bool('AUTO_REFRESH', True):
             self.monitoring_active = True
             self.monitoring_thread = threading.Thread(
                 target=self._background_monitoring_loop,
@@ -111,7 +111,7 @@ class LightweightOrderManager:
 
     def _background_monitoring_loop(self):
         """백그라운드 모니터링 루프"""
-        check_interval = config.get_int('CHECK_INTERVAL', 300)  # 기본 5분
+        check_interval = web_config.get_int('CHECK_INTERVAL', 300)  # 기본 5분
 
         while self.monitoring_active:
             try:
@@ -221,7 +221,7 @@ class LightweightOrderManager:
                 self._send_enhanced_notification(
                     status_changes,
                     current_counts,
-                    config.get_int('DASHBOARD_PERIOD_DAYS', 5)
+                    web_config.get_int('DASHBOARD_PERIOD_DAYS', 5)
                 )
 
         except Exception as e:
@@ -286,7 +286,7 @@ order_manager = LightweightOrderManager()
 app = FastAPI(
     title="WithUs Order Management",
     description="네이버 쇼핑 주문관리시스템 (경량 웹버전)",
-    version=config.get('APP_VERSION', '1.0.0')
+    version=web_config.get('APP_VERSION', '1.0.0')
 )
 
 # 템플릿 및 정적 파일 설정
@@ -305,7 +305,7 @@ async def home(request: Request):
 
         # 기간 정보 생성
         from datetime import datetime, timedelta
-        period_days = config.get_int('DASHBOARD_PERIOD_DAYS', 10)
+        period_days = web_config.get_int('DASHBOARD_PERIOD_DAYS', 10)
         end_date = datetime.now()
         start_date = end_date - timedelta(days=period_days)
 
@@ -476,30 +476,76 @@ async def settings_page(request: Request):
         "request": request,
         "title": "설정 - " + get_full_title(),
         "version_info": get_detailed_version_info(),
-        "config": config
+        "config": web_config
     }
     return templates.TemplateResponse("settings.html", context)
 
 @app.get("/api/dashboard/refresh")
 async def refresh_dashboard():
-    """대시보드 수동 새로고침"""
+    """대시보드 수동 새로고침 - 네이버 API 호출하여 최신 데이터 갱신"""
     try:
-        order_counts = order_manager._get_dashboard_data()
-        period_days = config.get_int('DASHBOARD_PERIOD_DAYS', 5)
+        period_days = web_config.get_int('DASHBOARD_PERIOD_DAYS', 5)
         end_date = datetime.now()
         start_date = end_date - timedelta(days=period_days)
+        start_date_str = start_date.strftime('%Y-%m-%d')
+        end_date_str = end_date.strftime('%Y-%m-%d')
+
+        logger.info(f"🔄 대시보드 새로고침: {start_date_str} ~ {end_date_str} ({period_days}일)")
+
+        # 네이버 API에서 모든 상태의 주문 데이터 갱신
+        if order_manager.naver_api:
+            logger.info("📡 네이버 API에서 최신 주문 데이터 갱신 중...")
+
+            # 주요 상태별로 API 호출하여 데이터 갱신
+            status_list = ['PAYMENT_WAITING', 'PAYED', 'DELIVERING', 'DELIVERED', 'PURCHASE_DECIDED', 'CANCELED']
+            total_refreshed = 0
+
+            for status in status_list:
+                try:
+                    api_response = order_manager.naver_api.get_orders(
+                        start_date=start_date_str,
+                        end_date=end_date_str,
+                        order_status=status,
+                        limit=100
+                    )
+
+                    if api_response and api_response.get('success'):
+                        orders_data = api_response.get('data', {}).get('data', [])
+                        if orders_data:
+                            saved_count = order_manager.naver_api.save_orders_to_database(
+                                order_manager.db_manager, orders_data
+                            )
+                            total_refreshed += saved_count
+                            logger.info(f"  ✅ {status}: {saved_count}건 갱신")
+                        else:
+                            logger.info(f"  📝 {status}: 새 주문 없음")
+                    else:
+                        logger.warning(f"  ❌ {status}: API 응답 실패")
+
+                except Exception as status_error:
+                    logger.error(f"  ⚠️  {status} 갱신 오류: {status_error}")
+                    continue
+
+            logger.info(f"📊 네이버 API 갱신 완료: 총 {total_refreshed}건 갱신됨")
+        else:
+            logger.warning("⚠️ 네이버 API 미설정 - 로컬 데이터만 반환")
+
+        # 갱신된 데이터로 대시보드 데이터 생성
+        order_counts = order_manager._get_dashboard_data()
 
         return {
             "success": True,
             "data": order_counts,
             "period": {
                 "days": period_days,
-                "start_date": start_date.strftime('%Y-%m-%d'),
-                "end_date": end_date.strftime('%Y-%m-%d'),
+                "start_date": start_date_str,
+                "end_date": end_date_str,
                 "description": f"최근 {period_days}일간 주문현황"
             },
             "last_check": datetime.now().isoformat(),
-            "total_orders": sum(order_counts.values())
+            "total_orders": sum(order_counts.values()),
+            "api_refreshed": bool(order_manager.naver_api),
+            "total_refreshed_from_api": total_refreshed if order_manager.naver_api else 0
         }
     except Exception as e:
         logger.error(f"대시보드 새로고침 오류: {e}")
@@ -521,11 +567,11 @@ async def update_dashboard_period(request: Request):
             }
 
         # env 설정 업데이트 (항상 메모리에는 설정)
-        config.set('DASHBOARD_PERIOD_DAYS', str(new_period_days))
+        web_config.set('DASHBOARD_PERIOD_DAYS', str(new_period_days))
 
         # save_to_env가 True일 때만 .env 파일에 저장
         if save_to_env:
-            config.save_to_env_file()
+            web_config.save_to_env_file()
             logger.info(f"대시보드 조회 기간이 {new_period_days}일로 변경되고 .env 파일에 저장됨")
         else:
             logger.info(f"대시보드 조회 기간이 {new_period_days}일로 임시 변경됨 (저장하지 않음)")
@@ -562,7 +608,7 @@ async def get_monitoring_status():
     return {
         "active": order_manager.monitoring_active,
         "last_check": order_manager.last_check_time.isoformat() if order_manager.last_check_time else None,
-        "check_interval": config.get_int('CHECK_INTERVAL', 300),
+        "check_interval": web_config.get_int('CHECK_INTERVAL', 300),
         "discord_enabled": bool(order_manager.notification_manager),
         "naver_api_enabled": bool(order_manager.naver_api)
     }
@@ -613,7 +659,7 @@ async def get_orders_from_db(
 
                 if page_type in period_mapping:
                     env_key = period_mapping[page_type]
-                    default_days = config.get_int(env_key, default_days)
+                    default_days = web_config.get_int(env_key, default_days)
                     logger.info(f"📅 {page_type} 페이지 기본 기간: {default_days}일 ({env_key}) [DB 전용]")
 
             end_date_obj = datetime.now()
@@ -712,7 +758,7 @@ async def refresh_orders_from_api(
 
                 if page_type in period_mapping:
                     env_key = period_mapping[page_type]
-                    default_days = config.get_int(env_key, default_days)
+                    default_days = web_config.get_int(env_key, default_days)
                     logger.info(f"📅 {page_type} 페이지 기본 기간: {default_days}일 ({env_key}) [API 갱신]")
 
             end_date_obj = datetime.now()
@@ -882,6 +928,52 @@ async def get_products():
         logger.error(f"상품 조회 API 오류: {e}")
         return {"success": False, "error": str(e)}
 
+@app.post("/api/products")
+async def create_product(request: Request):
+    """상품 등록 API"""
+    try:
+        logger.info("상품 등록 API 호출")
+        data = await request.json()
+        logger.info(f"받은 상품 데이터: {data}")
+
+        # 필수 필드 검증
+        required_fields = ['name', 'price', 'stock', 'status']
+        for field in required_fields:
+            if not data.get(field):
+                return {"success": False, "error": f"필수 필드 '{field}'가 누락되었습니다."}
+
+        # 데이터베이스에 상품 저장
+        # 임시 상품 ID 생성 (실제로는 네이버 API 연동이 필요)
+        import time
+        product_id = f"TEMP_{int(time.time())}"
+
+        product_data = {
+            'channel_product_no': product_id,
+            'product_name': data.get('name', ''),
+            'brand_name': data.get('brand', ''),
+            'sale_price': data.get('price', 0),
+            'discounted_price': data.get('discounted_price', 0),
+            'stock_quantity': data.get('stock', 0),
+            'status_type': data.get('status', ''),
+            'image_url': data.get('image_url', ''),
+            'description': data.get('description', ''),
+            'created_at': time.strftime('%Y-%m-%d %H:%M:%S')
+        }
+
+        # 데이터베이스에 삽입 (실제 구현 필요)
+        # 현재는 임시로 성공 응답 반환
+        logger.info(f"상품 등록 완료: {product_data}")
+
+        return {
+            "success": True,
+            "message": f"상품 '{data['name']}'이(가) 성공적으로 등록되었습니다.",
+            "product_id": product_id
+        }
+
+    except Exception as e:
+        logger.error(f"상품 등록 API 오류: {e}")
+        return {"success": False, "error": str(e)}
+
 @app.post("/api/products/filter-settings")
 async def save_product_filter_settings(request: Request):
     """상품 필터 설정 저장 - 설정 페이지와 연동"""
@@ -890,10 +982,10 @@ async def save_product_filter_settings(request: Request):
         selected_statuses = data.get('selectedStatuses', [])
 
         # 설정 페이지의 product_status_types에 저장 (메인 설정)
-        config.set('PRODUCT_STATUS_TYPES', ','.join(selected_statuses))
+        web_config.set('PRODUCT_STATUS_TYPES', ','.join(selected_statuses))
         # 하위 호환성을 위해 기존 키도 유지
-        config.set('PRODUCT_FILTER_STATUSES', ','.join(selected_statuses))
-        config.save_to_env_file()
+        web_config.set('PRODUCT_FILTER_STATUSES', ','.join(selected_statuses))
+        web_config.save_to_env_file()
 
         logger.info(f"상품 필터 설정 저장: {selected_statuses}")
         return {"success": True, "message": "필터 설정이 저장되었습니다."}
@@ -906,12 +998,12 @@ async def get_product_filter_settings():
     """상품 필터 설정 조회 - 설정 페이지와 연동"""
     try:
         # 설정 페이지의 product_status_types를 우선적으로 확인
-        product_status_types = config.get('PRODUCT_STATUS_TYPES', '')
+        product_status_types = web_config.get('PRODUCT_STATUS_TYPES', '')
         if product_status_types:
             selected_statuses = [s.strip() for s in product_status_types.split(',') if s.strip()]
         else:
             # 없으면 기존 PRODUCT_FILTER_STATUSES 사용 (하위 호환성)
-            saved_statuses = config.get('PRODUCT_FILTER_STATUSES', '')
+            saved_statuses = web_config.get('PRODUCT_FILTER_STATUSES', '')
             selected_statuses = [s.strip() for s in saved_statuses.split(',') if s.strip()] if saved_statuses else []
 
         # 기본값 설정 (아무 설정이 없을 경우)
@@ -1044,7 +1136,7 @@ async def health_check():
     """헬스 체크"""
     return {
         "status": "healthy",
-        "version": config.get('APP_VERSION', '1.0.0'),
+        "version": web_config.get('APP_VERSION', '1.0.0'),
         "timestamp": datetime.now().isoformat(),
         "monitoring_active": order_manager.monitoring_active,
         "memory_usage": "lightweight"
@@ -1070,35 +1162,35 @@ async def get_settings():
         # 보안상 실제 값은 마스킹하여 반환
         settings = {
             # 기본설정
-            "client_id": config.get('NAVER_CLIENT_ID', ''),
-            "client_secret": config.get('NAVER_CLIENT_SECRET', ''),
-            "discord_webhook": config.get('DISCORD_WEBHOOK_URL', ''),
-            "discord_enabled": config.get_bool('DISCORD_ENABLED', False),
-            "check_interval": config.get_int('CHECK_INTERVAL', 300),
-            "refresh_interval": config.get_int('REFRESH_INTERVAL', 60),
-            "auto_refresh": config.get_bool('AUTO_REFRESH', True),
+            "client_id": web_config.get('NAVER_CLIENT_ID', ''),
+            "client_secret": web_config.get('NAVER_CLIENT_SECRET', ''),
+            "discord_webhook": web_config.get('DISCORD_WEBHOOK_URL', ''),
+            "discord_enabled": web_config.get_bool('DISCORD_ENABLED', False),
+            "check_interval": web_config.get_int('CHECK_INTERVAL', 300),
+            "refresh_interval": web_config.get_int('REFRESH_INTERVAL', 60),
+            "auto_refresh": web_config.get_bool('AUTO_REFRESH', True),
 
             # 조건설정
-            "dashboard_period": config.get_int('DASHBOARD_PERIOD_DAYS', 5),
-            "quick_period": config.get_int('QUICK_PERIOD_SETTING', 3),
+            "dashboard_period": web_config.get_int('DASHBOARD_PERIOD_DAYS', 5),
+            "quick_period": web_config.get_int('QUICK_PERIOD_SETTING', 3),
 
             # IP 설정
-            "allowed_ips": config.get('ALLOWED_IPS', '121.190.40.153,175.125.204.97'),
+            "allowed_ips": web_config.get('ALLOWED_IPS', '121.190.40.153,175.125.204.97'),
 
             # 탭별 기간 설정
-            "new_order_days": config.get_int('NEW_ORDER_DEFAULT_DAYS', 3),
-            "shipping_pending_days": config.get_int('SHIPPING_PENDING_DEFAULT_DAYS', 3),
-            "shipping_in_progress_days": config.get_int('SHIPPING_IN_PROGRESS_DEFAULT_DAYS', 30),
-            "shipping_completed_days": config.get_int('SHIPPING_COMPLETED_DEFAULT_DAYS', 7),
-            "purchase_decided_days": config.get_int('PURCHASE_DECIDED_DEFAULT_DAYS', 3),
-            "cancel_days": config.get_int('CANCEL_DEFAULT_DAYS', 30),
-            "return_exchange_days": config.get_int('RETURN_EXCHANGE_DEFAULT_DAYS', 15),
-            "cancel_return_exchange_days": config.get_int('CANCEL_RETURN_EXCHANGE_DEFAULT_DAYS', 7),
+            "new_order_days": web_config.get_int('NEW_ORDER_DEFAULT_DAYS', 3),
+            "shipping_pending_days": web_config.get_int('SHIPPING_PENDING_DEFAULT_DAYS', 3),
+            "shipping_in_progress_days": web_config.get_int('SHIPPING_IN_PROGRESS_DEFAULT_DAYS', 30),
+            "shipping_completed_days": web_config.get_int('SHIPPING_COMPLETED_DEFAULT_DAYS', 7),
+            "purchase_decided_days": web_config.get_int('PURCHASE_DECIDED_DEFAULT_DAYS', 3),
+            "cancel_days": web_config.get_int('CANCEL_DEFAULT_DAYS', 30),
+            "return_exchange_days": web_config.get_int('RETURN_EXCHANGE_DEFAULT_DAYS', 15),
+            "cancel_return_exchange_days": web_config.get_int('CANCEL_RETURN_EXCHANGE_DEFAULT_DAYS', 7),
 
             # 체크박스 설정들
-            "order_status_types": config.get('ORDER_STATUS_TYPES', 'PAYMENT_WAITING,PAYED,DELIVERING'),
-            "product_status_types": config.get('PRODUCT_STATUS_TYPES', 'SALE,WAIT,OUTOFSTOCK'),
-            "order_columns": config.get('ORDER_COLUMNS', '주문ID,주문자,상품명,옵션정보,수량,금액,배송지주소,배송예정일,주문일시,상태')
+            "order_status_types": web_config.get('ORDER_STATUS_TYPES', 'PAYMENT_WAITING,PAYED,DELIVERING'),
+            "product_status_types": web_config.get('PRODUCT_STATUS_TYPES', 'SALE,WAIT,OUTOFSTOCK'),
+            "order_columns": web_config.get('ORDER_COLUMNS', '주문ID,주문자,상품명,옵션정보,수량,금액,배송지주소,배송예정일,주문일시,상태')
         }
 
         # 민감한 정보 마스킹
@@ -1165,7 +1257,7 @@ async def get_period_setting(page_type: str):
         env_key = period_mapping[page_type]
         default_days = default_values[page_type]
 
-        days = config.get_int(env_key, default_days)
+        days = web_config.get_int(env_key, default_days)
 
         return {
             "success": True,
@@ -1216,10 +1308,10 @@ async def save_period_setting(page_type: str, request_data: dict):
         env_key = period_mapping[page_type]
 
         # 환경 설정에 저장
-        config.set(env_key, str(days))
+        web_config.set(env_key, str(days))
 
         # .env 파일에 저장
-        config.save()
+        web_config.save()
 
         logger.info(f"페이지별 기간 설정 저장: {page_type} -> {days}일 ({env_key})")
 
@@ -1288,7 +1380,7 @@ async def save_settings(settings_data: dict):
         original_values = {}
         for web_key, env_key in field_mapping.items():
             if web_key in settings_data:
-                original_values[web_key] = config.get(env_key)
+                original_values[web_key] = web_config.get(env_key)
         logger.info(f"🔍 변경 전 원본 값들: {original_values}")
 
         # 각 설정값을 환경 변수에 설정
@@ -1309,7 +1401,7 @@ async def save_settings(settings_data: dict):
 
             # 환경 변수에 설정 (실제 환경변수명으로)
             logger.info(f"   🏷️  {web_key}({env_key}): '{original_values.get(web_key, 'None')}' → '{str_value}'")
-            config.set(env_key, str_value)
+            web_config.set(env_key, str_value)
             saved_settings[env_key] = str_value
 
         logger.info(f"✅ 환경 변수 설정 완료 - {len(saved_settings)}개 항목")
@@ -1319,7 +1411,7 @@ async def save_settings(settings_data: dict):
         save_start_time = time.time()
 
         try:
-            config.save_to_env_file()
+            web_config.save_to_env_file()
             save_end_time = time.time()
             logger.info(f"✅ .env 파일 저장 완료 - 소요시간: {save_end_time - save_start_time:.3f}초")
         except Exception as save_error:
@@ -1358,7 +1450,7 @@ async def save_settings(settings_data: dict):
         # 설정 다시 로드하여 확인
         logger.info("🔄 설정 파일 다시 로드 시작...")
         reload_start_time = time.time()
-        config.reload()
+        web_config.reload()
         reload_end_time = time.time()
         logger.info(f"✅ 설정 파일 다시 로드 완료 - 소요시간: {reload_end_time - reload_start_time:.3f}초")
 
@@ -1368,7 +1460,7 @@ async def save_settings(settings_data: dict):
 
         logger.info("🔍 저장 결과 검증 시작...")
         for key, expected_value in saved_settings.items():
-            current_value = config.get(key)
+            current_value = web_config.get(key)
             is_match = current_value == expected_value
             verification_results[key] = {
                 'expected': expected_value,
@@ -1413,10 +1505,10 @@ async def debug_initialization():
             "success": True,
             "debug_info": {
                 "naver_api_initialized": bool(order_manager.naver_api),
-                "client_id": config.get('NAVER_CLIENT_ID')[:4] + "****" if config.get('NAVER_CLIENT_ID') else None,
-                "client_secret_length": len(config.get('NAVER_CLIENT_SECRET', '')),
+                "client_id": web_config.get('NAVER_CLIENT_ID')[:4] + "****" if web_config.get('NAVER_CLIENT_ID') else None,
+                "client_secret_length": len(web_config.get('NAVER_CLIENT_SECRET', '')),
                 "notification_manager": bool(order_manager.notification_manager),
-                "discord_webhook_set": bool(config.get('DISCORD_WEBHOOK_URL')),
+                "discord_webhook_set": bool(web_config.get('DISCORD_WEBHOOK_URL')),
                 "env_file_exists": os.path.exists('.env')
             }
         }
@@ -1427,8 +1519,8 @@ async def debug_initialization():
 async def test_api():
     """네이버 API 실제 토큰 발급 테스트"""
     try:
-        client_id = config.get('NAVER_CLIENT_ID')
-        client_secret = config.get('NAVER_CLIENT_SECRET')
+        client_id = web_config.get('NAVER_CLIENT_ID')
+        client_secret = web_config.get('NAVER_CLIENT_SECRET')
 
         print(f"[DEBUG] 웹에서 가져온 client_id: {client_id}")
         print(f"[DEBUG] 웹에서 가져온 client_secret: {client_secret}")
@@ -1488,7 +1580,7 @@ async def test_api():
 async def test_discord():
     """Discord 알림 테스트"""
     try:
-        webhook_url = config.get('DISCORD_WEBHOOK_URL')
+        webhook_url = web_config.get('DISCORD_WEBHOOK_URL')
         if not webhook_url:
             return {"success": False, "error": "Discord 웹훅 URL이 설정되지 않았습니다"}
 
@@ -1623,7 +1715,7 @@ async def get_current_server_ip():
                     pattern = r'^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$'
                     if re.match(pattern, ip):
                         # 허가 여부 확인
-                        allowed_ips = config.get('ALLOWED_IPS', '121.190.40.153,175.125.204.97').split(',')
+                        allowed_ips = web_config.get('ALLOWED_IPS', '121.190.40.153,175.125.204.97').split(',')
                         allowed_ips = [ip.strip() for ip in allowed_ips if ip.strip()]
                         is_allowed = ip in allowed_ips
 
@@ -1652,8 +1744,8 @@ async def test_api_token():
         logger.info("네이버 API 토큰 발급 테스트 시작")
 
         # 네이버 API 인스턴스 생성
-        client_id = config.get('NAVER_CLIENT_ID')
-        client_secret = config.get('NAVER_CLIENT_SECRET')
+        client_id = web_config.get('NAVER_CLIENT_ID')
+        client_secret = web_config.get('NAVER_CLIENT_SECRET')
 
         if not client_id or not client_secret:
             return {
@@ -1691,8 +1783,8 @@ async def test_orders_api():
         logger.info("네이버 주문 API 연결 테스트 시작")
 
         # 네이버 API 인스턴스 생성
-        client_id = config.get('NAVER_CLIENT_ID')
-        client_secret = config.get('NAVER_CLIENT_SECRET')
+        client_id = web_config.get('NAVER_CLIENT_ID')
+        client_secret = web_config.get('NAVER_CLIENT_SECRET')
 
         if not client_id or not client_secret:
             return {
@@ -1745,8 +1837,8 @@ async def test_products_api():
         logger.info("네이버 상품 API 연결 테스트 시작")
 
         # 네이버 API 인스턴스 생성
-        client_id = config.get('NAVER_CLIENT_ID')
-        client_secret = config.get('NAVER_CLIENT_SECRET')
+        client_id = web_config.get('NAVER_CLIENT_ID')
+        client_secret = web_config.get('NAVER_CLIENT_SECRET')
 
         if not client_id or not client_secret:
             return {

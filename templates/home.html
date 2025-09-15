@@ -258,10 +258,17 @@ async function refreshDashboard() {
         const result = await response.json();
 
         if (result.success) {
+            // API 갱신 정보 표시
+            const refreshMessage = result.api_refreshed
+                ? `네이버 API에서 ${result.total_refreshed_from_api}건 갱신됨`
+                : '로컬 데이터만 새로고침됨';
+
+            button.innerHTML = `<i class="fas fa-check"></i> ${refreshMessage}`;
+
             // 성공적으로 새로고침되면 페이지 리로드
             setTimeout(() => {
                 location.reload();
-            }, 1000);
+            }, 1500);
         } else {
             throw new Error(result.error || '알 수 없는 오류');
         }

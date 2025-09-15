@@ -6,8 +6,17 @@ import os
 from typing import Tuple, Optional
 from env_config import config
 
+# 캐시 변수들
+_cached_version_info: Optional[Tuple[str, str]] = None
+_cached_git_version: Optional[str] = None
+_cached_git_build_date: Optional[str] = None
+
 def get_git_version() -> Optional[str]:
-    """Git 태그에서 버전 정보를 가져옴"""
+    """Git 태그에서 버전 정보를 가져옴 (캐싱 적용)"""
+    global _cached_git_version
+    if _cached_git_version is not None:
+        return _cached_git_version
+
     try:
         # 현재 HEAD의 태그를 찾기
         result = subprocess.run(
@@ -19,7 +28,8 @@ def get_git_version() -> Optional[str]:
         if result.returncode == 0:
             tag = result.stdout.strip()
             # v1.0.0 -> 1.0.0 형태로 변환 (v 제거)
-            return tag.lstrip('v')
+            _cached_git_version = tag.lstrip('v')
+            return _cached_git_version
 
         # 정확한 태그가 없으면 가장 최근 태그와 커밋 정보
         result = subprocess.run(
@@ -36,8 +46,10 @@ def get_git_version() -> Optional[str]:
                 if len(parts) >= 3:
                     tag = parts[0].lstrip('v')
                     commits = parts[1]
-                    return f"{tag}+{commits}"
-            return desc.lstrip('v')
+                    _cached_git_version = f"{tag}+{commits}"
+                    return _cached_git_version
+            _cached_git_version = desc.lstrip('v')
+            return _cached_git_version
 
     except (subprocess.CalledProcessError, FileNotFoundError, Exception):
         pass
@@ -45,7 +57,10 @@ def get_git_version() -> Optional[str]:
     return None
 
 def get_git_build_date() -> Optional[str]:
-    """Git에서 현재 커밋의 날짜를 가져옴"""
+    """Git에서 현재 커밋의 날짜를 가져옴 (캐싱 적용)"""
+    global _cached_git_build_date
+    if _cached_git_build_date is not None:
+        return _cached_git_build_date
     try:
         result = subprocess.run(
             ['git', 'log', '-1', '--format=%cd', '--date=short'],
@@ -54,17 +69,23 @@ def get_git_build_date() -> Optional[str]:
             cwd=os.path.dirname(os.path.abspath(__file__))
         )
         if result.returncode == 0:
-            return result.stdout.strip()
+            _cached_git_build_date = result.stdout.strip()
+            return _cached_git_build_date
     except (subprocess.CalledProcessError, FileNotFoundError, Exception):
         pass
 
+    _cached_git_build_date = None
     return None
 
 def get_app_version_info() -> Tuple[str, str]:
     """
-    애플리케이션 버전과 빌드 날짜를 반환
+    애플리케이션 버전과 빌드 날짜를 반환 (캐싱 적용)
     우선순위: Git 태그 > 환경변수 > 기본값
     """
+    global _cached_version_info
+    if _cached_version_info is not None:
+        return _cached_version_info
+
     # Git에서 버전 정보 시도
     git_version = get_git_version()
     git_build_date = get_git_build_date()
@@ -85,7 +106,8 @@ def get_app_version_info() -> Tuple[str, str]:
         build_date = config.get('APP_BUILD_DATE', '2025-09-14')
         print(f"환경변수에서 빌드 날짜 읽기: {build_date}")
 
-    return version, build_date
+    _cached_version_info = (version, build_date)
+    return _cached_version_info
 
 def get_version_string() -> str:
     """표시용 버전 문자열 반환 (v1.0.0 형태)"""

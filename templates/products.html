@@ -112,6 +112,9 @@
             <span id="productCount" class="badge bg-primary fs-6 me-2">
                 총 <span id="totalProductCount">0</span>건
             </span>
+            <button class="btn btn-success btn-sm me-2" onclick="showProductRegistration()">
+                <i class="fas fa-plus"></i> 상품등록
+            </button>
             <button class="btn btn-outline-primary btn-sm" onclick="exportProducts()">
                 <i class="fas fa-download"></i> 내보내기
             </button>
@@ -123,17 +126,16 @@
             <thead class="bg-light">
                 <tr>
                     <th width="5%">이미지</th>
-                    <th width="15%">상품명</th>
+                    <th width="20%">상품명</th>
                     <th width="10%">상품ID</th>
-                    <th width="8%">카테고리</th>
-                    <th width="8%">원래판매가</th>
-                    <th width="8%">셀러할인가</th>
-                    <th width="8%">실제판매가</th>
-                    <th width="6%">재고</th>
-                    <th width="6%">상태</th>
+                    <th width="10%">원래판매가</th>
+                    <th width="10%">셀러할인가</th>
+                    <th width="10%">실제판매가</th>
+                    <th width="8%">재고</th>
+                    <th width="8%">상태</th>
                     <th width="10%">등록일</th>
                     <th width="8%">판매량</th>
-                    <th width="8%">액션</th>
+                    <th width="11%">액션</th>
                 </tr>
             </thead>
             <tbody id="productsTableBody">
@@ -167,6 +169,96 @@
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">닫기</button>
                 <button type="button" class="btn btn-primary" onclick="editProduct()">수정</button>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- 상품 등록 모달 -->
+<div class="modal fade" id="productRegistrationModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-plus"></i> 새 상품 등록
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="productRegistrationForm">
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="productName" class="form-label">상품명 <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="productName" name="name" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="productBrand" class="form-label">브랜드</label>
+                                <input type="text" class="form-control" id="productBrand" name="brand">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="productPrice" class="form-label">원래판매가 <span class="text-danger">*</span></label>
+                                <input type="number" class="form-control" id="productPrice" name="price" required min="0">
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="productDiscountedPrice" class="form-label">셀러할인가</label>
+                                <input type="number" class="form-control" id="productDiscountedPrice" name="discounted_price" min="0">
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="productStock" class="form-label">재고수량 <span class="text-danger">*</span></label>
+                                <input type="number" class="form-control" id="productStock" name="stock" required min="0">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="productStatus" class="form-label">판매상태 <span class="text-danger">*</span></label>
+                                <select class="form-select" id="productStatus" name="status" required>
+                                    <option value="">선택하세요</option>
+                                    <option value="SALE">판매중</option>
+                                    <option value="WAIT">승인대기</option>
+                                    <option value="OUTOFSTOCK">품절</option>
+                                    <option value="SUSPENSION">판매중지</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="productImageUrl" class="form-label">상품 이미지 URL</label>
+                                <input type="url" class="form-control" id="productImageUrl" name="image_url">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="productDescription" class="form-label">상품설명</label>
+                        <textarea class="form-control" id="productDescription" name="description" rows="3"></textarea>
+                    </div>
+
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i>
+                        <strong>참고:</strong> 상품 등록 후 네이버 쇼핑 API를 통해 동기화됩니다.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-save"></i> 등록
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
@@ -411,9 +503,6 @@ function renderProducts(productList) {
             <td>
                 <small class="text-muted">${product.product_id || '-'}</small>
             </td>
-            <td>
-                <span class="badge bg-light text-dark">${getCategoryText(product.category)}</span>
-            </td>
             <td class="text-end">
                 <small class="text-muted">${formatPrice(product.price || product.sale_price)}</small>
             </td>
@@ -570,10 +659,6 @@ function showProductDetail(productId) {
 
                 <table class="table table-sm">
                     <tr>
-                        <th width="30%">카테고리</th>
-                        <td>${getCategoryText(product.category)}</td>
-                    </tr>
-                    <tr>
                         <th>원래판매가</th>
                         <td><span class="text-muted">${formatPrice(product.price || product.sale_price)}</span></td>
                     </tr>
@@ -700,6 +785,88 @@ function showLoading(show) {
         document.body.style.cursor = 'wait';
     } else {
         document.body.style.cursor = 'default';
+    }
+}
+
+// 상품 등록 모달 표시
+function showProductRegistration() {
+    // 폼 초기화
+    document.getElementById('productRegistrationForm').reset();
+
+    // 모달 표시
+    const modal = new bootstrap.Modal(document.getElementById('productRegistrationModal'));
+    modal.show();
+}
+
+// 상품 등록 폼 제출 처리
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('productRegistrationForm');
+    if (form) {
+        form.addEventListener('submit', handleProductRegistration);
+    }
+});
+
+async function handleProductRegistration(event) {
+    event.preventDefault();
+
+    try {
+        showLoading(true);
+
+        const formData = new FormData(event.target);
+        const productData = Object.fromEntries(formData.entries());
+
+        // 숫자 필드 변환
+        if (productData.price) productData.price = parseInt(productData.price);
+        if (productData.discounted_price) productData.discounted_price = parseInt(productData.discounted_price);
+        if (productData.stock) productData.stock = parseInt(productData.stock);
+
+        console.log('상품 등록 데이터:', productData);
+
+        const response = await fetch('/api/products', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(productData)
+        });
+
+        const result = await response.json();
+        console.log('상품 등록 응답:', result);
+
+        if (result.success) {
+            // 성공 시 모달 닫기
+            const modal = bootstrap.Modal.getInstance(document.getElementById('productRegistrationModal'));
+            modal.hide();
+
+            // 성공 메시지 표시
+            const alertDiv = document.createElement('div');
+            alertDiv.className = 'alert alert-success alert-dismissible fade show mt-3';
+            alertDiv.innerHTML = `
+                <i class="fas fa-check-circle"></i> 상품이 성공적으로 등록되었습니다.
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            document.querySelector('.container').prepend(alertDiv);
+
+            // 3초 후 자동 제거
+            setTimeout(() => {
+                if (alertDiv.parentNode) {
+                    alertDiv.remove();
+                }
+            }, 3000);
+
+            // 상품 목록 새로고침
+            await loadProducts();
+            filterProducts(); // 현재 필터 적용
+
+        } else {
+            throw new Error(result.error || '상품 등록 실패');
+        }
+
+    } catch (error) {
+        console.error('상품 등록 오류:', error);
+        alert('상품 등록 중 오류가 발생했습니다: ' + error.message);
+    } finally {
+        showLoading(false);
     }
 }
 </script>

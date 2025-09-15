@@ -132,8 +132,12 @@
 
                                 <div class="row">
                                     <div class="col-md-6">
-                                        <label class="form-label">허가된 IP 목록 (최대 5개)</label>
-                                        <select class="form-control" id="ipList" size="5" style="height: 120px;">
+                                        <label class="form-label">허가된 IP 목록 (최대 5개)
+                                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="toggleIPList()">
+                                                <i id="ipListIcon" class="fas fa-eye"></i> <span id="ipListText">목록 보기</span>
+                                            </button>
+                                        </label>
+                                        <select class="form-control" id="ipList" size="5" style="height: 120px; display: none;">
                                         </select>
                                         <small class="form-text text-muted">기본값: 121.190.40.153, 175.125.204.97</small>
                                     </div>
@@ -1145,6 +1149,23 @@ async function updateSystemStatus() {
         }
     } catch (error) {
         console.error('시스템 상태 업데이트 오류:', error);
+    }
+}
+
+// IP 목록 토글 함수
+function toggleIPList() {
+    const ipList = document.getElementById('ipList');
+    const icon = document.getElementById('ipListIcon');
+    const text = document.getElementById('ipListText');
+
+    if (ipList.style.display === 'none') {
+        ipList.style.display = 'block';
+        icon.className = 'fas fa-eye-slash';
+        text.textContent = '목록 숨기기';
+    } else {
+        ipList.style.display = 'none';
+        icon.className = 'fas fa-eye';
+        text.textContent = '목록 보기';
     }
 }
 </script>

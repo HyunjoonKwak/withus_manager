@@ -6,9 +6,16 @@ import os
 from typing import Optional
 
 class EnvConfig:
-    """환경 변수 설정 클래스 - 성능 최적화된 캐싱 버전"""
+    """환경 변수 설정 클래스 - 성능 최적화된 캐싱 버전 + 앱별 구분 지원"""
 
-    def __init__(self):
+    def __init__(self, app_type='common'):
+        """
+        app_type: 'gui', 'web', 'common'
+        - gui: GUI 앱 전용 설정
+        - web: 웹 앱 전용 설정
+        - common: 공통 설정 (기본값)
+        """
+        self.app_type = app_type.lower()
         self._cache = {}  # 설정값 캐시
         self._file_mtime = 0  # 파일 수정 시간 캐시
         self._loaded = False
@@ -56,11 +63,23 @@ class EnvConfig:
         self.load_env_file()
     
     def get(self, key: str, default: str = '') -> str:
-        """환경 변수 값 가져오기 - 캐시 우선 사용"""
-        # 캐시에서 먼저 찾기
+        """환경 변수 값 가져우기 - 앱별 설정 우선, 공통 설정 후순위"""
+        # 1. 앱별 설정 우선 확인 (GUI_, WEB_ 접두사)
+        if self.app_type in ['gui', 'web']:
+            app_key = f"{self.app_type.upper()}_{key}"
+            # 캐시에서 앱별 설정 찾기
+            if app_key in self._cache:
+                return self._cache[app_key]
+            # os.environ에서 앱별 설정 찾기
+            app_value = os.environ.get(app_key)
+            if app_value is not None:
+                return app_value
+
+        # 2. 공통 설정 확인
+        # 캐시에서 공통 설정 찾기
         if key in self._cache:
             return self._cache[key]
-        # os.environ에서 찾기
+        # os.environ에서 공통 설정 찾기
         return os.environ.get(key, default)
 
     def get_bool(self, key: str, default: bool = False) -> bool:
@@ -75,10 +94,17 @@ class EnvConfig:
         except (ValueError, TypeError):
             return default
     
-    def set(self, key: str, value: str):
-        """환경 변수 설정 - 캐시도 함께 업데이트"""
-        os.environ[key] = value
-        self._cache[key] = value
+    def set(self, key: str, value: str, use_app_prefix: bool = True):
+        """환경 변수 설정 - 앱별 접두사 지원"""
+        # 앱별 설정을 사용하고 GUI/웹 앱인 경우 접두사 추가
+        if use_app_prefix and self.app_type in ['gui', 'web']:
+            app_key = f"{self.app_type.upper()}_{key}"
+            os.environ[app_key] = value
+            self._cache[app_key] = value
+        else:
+            # 공통 설정으로 저장
+            os.environ[key] = value
+            self._cache[key] = value
     
     def save(self):
         """환경 변수를 파일에 저장 (save_to_env_file의 별칭)"""
@@ -108,7 +134,10 @@ class EnvConfig:
             print(f"[ENV_CONFIG] 원본 민감 정보 읽기 실패: {e}")
 
         # 추가된 설정들도 포함하여 저장 (민감한 정보는 원본 유지)
-        env_vars = {
+        env_vars = {}
+
+        # 공통 설정
+        env_vars.update({
             'APP_VERSION': self.get('APP_VERSION', '1.0.0'),
             'APP_BUILD_DATE': self.get('APP_BUILD_DATE', '2025-09-14'),
             'NAVER_CLIENT_ID': original_client_id or self.get('NAVER_CLIENT_ID'),
@@ -120,12 +149,10 @@ class EnvConfig:
             'CHECK_INTERVAL': str(self.get_int('CHECK_INTERVAL', 300)),
             'AUTO_REFRESH': str(self.get_bool('AUTO_REFRESH', True)).lower(),
             'REFRESH_INTERVAL': str(self.get_int('REFRESH_INTERVAL', 60)),
-            'PRODUCT_STATUS_TYPES': self.get('PRODUCT_STATUS_TYPES', 'SALE,WAIT,OUTOFSTOCK,SUSPENSION,CLOSE,PROHIBITION'),
-            'ORDER_COLUMNS': self.get('ORDER_COLUMNS', '주문ID,상품주문ID,주문자,상품명,옵션정보,판매자상품코드,수량,단가,할인금액,금액,결제방법,배송지주소,배송예정일,주문일시,상태'),
             'ALLOWED_IPS': self.get('ALLOWED_IPS', '121.190.40.153,175.125.204.97'),
             'QUICK_PERIOD_SETTING': str(self.get_int('QUICK_PERIOD_SETTING', 7)),
-            'ORDER_STATUS_TYPES': self.get('ORDER_STATUS_TYPES', 'PAYMENT_WAITING,PAYED,DELIVERING,DELIVERED,PURCHASE_DECIDED,EXCHANGED,CANCELED,RETURNED,CANCELED_BY_NOPAYMENT'),
             'DASHBOARD_PERIOD_DAYS': str(self.get_int('DASHBOARD_PERIOD_DAYS', 5)),
+            # 탭별 기본 기간 설정 (공통)
             'NEW_ORDER_DEFAULT_DAYS': str(self.get_int('NEW_ORDER_DEFAULT_DAYS', 7)),
             'SHIPPING_PENDING_DEFAULT_DAYS': str(self.get_int('SHIPPING_PENDING_DEFAULT_DAYS', 7)),
             'SHIPPING_IN_PROGRESS_DEFAULT_DAYS': str(self.get_int('SHIPPING_IN_PROGRESS_DEFAULT_DAYS', 7)),
@@ -134,7 +161,7 @@ class EnvConfig:
             'CANCEL_DEFAULT_DAYS': str(self.get_int('CANCEL_DEFAULT_DAYS', 30)),
             'RETURN_EXCHANGE_DEFAULT_DAYS': str(self.get_int('RETURN_EXCHANGE_DEFAULT_DAYS', 30)),
             'CANCEL_RETURN_EXCHANGE_DEFAULT_DAYS': str(self.get_int('CANCEL_RETURN_EXCHANGE_DEFAULT_DAYS', 30)),
-            # 웹에서 추가한 고급 설정들
+            # 고급 설정 (공통)
             'NOTIFY_NEW_ORDERS': str(self.get_bool('NOTIFY_NEW_ORDERS', True)).lower(),
             'NOTIFY_SHIPPED': str(self.get_bool('NOTIFY_SHIPPED', True)).lower(),
             'NOTIFY_DELIVERED': str(self.get_bool('NOTIFY_DELIVERED', True)).lower(),
@@ -147,7 +174,31 @@ class EnvConfig:
             'EXCLUDE_END_TIME': self.get('EXCLUDE_END_TIME', '09:00'),
             'STOCK_ALERTS': str(self.get_bool('STOCK_ALERTS')).lower(),
             'STOCK_THRESHOLD': str(self.get_int('STOCK_THRESHOLD', 10))
-        }
+        })
+
+        # GUI 전용 설정
+        if 'GUI_PRODUCT_STATUS_TYPES' in self._cache or 'GUI_PRODUCT_STATUS_TYPES' in os.environ:
+            env_vars['GUI_PRODUCT_STATUS_TYPES'] = self._cache.get('GUI_PRODUCT_STATUS_TYPES') or os.environ.get('GUI_PRODUCT_STATUS_TYPES', 'SALE,WAIT,OUTOFSTOCK')
+        if 'GUI_ORDER_STATUS_TYPES' in self._cache or 'GUI_ORDER_STATUS_TYPES' in os.environ:
+            env_vars['GUI_ORDER_STATUS_TYPES'] = self._cache.get('GUI_ORDER_STATUS_TYPES') or os.environ.get('GUI_ORDER_STATUS_TYPES', 'PAYMENT_WAITING,PAYED,DELIVERING')
+        if 'GUI_ORDER_COLUMNS' in self._cache or 'GUI_ORDER_COLUMNS' in os.environ:
+            env_vars['GUI_ORDER_COLUMNS'] = self._cache.get('GUI_ORDER_COLUMNS') or os.environ.get('GUI_ORDER_COLUMNS', '주문ID,주문자,상품명,옵션정보,수량,금액,배송지주소,배송예정일,주문일시,상태')
+
+        # 웹 전용 설정
+        if 'WEB_PRODUCT_STATUS_TYPES' in self._cache or 'WEB_PRODUCT_STATUS_TYPES' in os.environ:
+            env_vars['WEB_PRODUCT_STATUS_TYPES'] = self._cache.get('WEB_PRODUCT_STATUS_TYPES') or os.environ.get('WEB_PRODUCT_STATUS_TYPES', 'SALE,WAIT,OUTOFSTOCK')
+        if 'WEB_ORDER_STATUS_TYPES' in self._cache or 'WEB_ORDER_STATUS_TYPES' in os.environ:
+            env_vars['WEB_ORDER_STATUS_TYPES'] = self._cache.get('WEB_ORDER_STATUS_TYPES') or os.environ.get('WEB_ORDER_STATUS_TYPES', 'PAYMENT_WAITING,PAYED,DELIVERING')
+        if 'WEB_ORDER_COLUMNS' in self._cache or 'WEB_ORDER_COLUMNS' in os.environ:
+            env_vars['WEB_ORDER_COLUMNS'] = self._cache.get('WEB_ORDER_COLUMNS') or os.environ.get('WEB_ORDER_COLUMNS', '주문ID,주문자,상품명,옵션정보,수량,금액,배송지주소,배송예정일,주문일시,상태')
+
+        # 공통 설정 (하위 호환성)
+        if 'PRODUCT_STATUS_TYPES' in self._cache or 'PRODUCT_STATUS_TYPES' in os.environ:
+            env_vars['PRODUCT_STATUS_TYPES'] = self._cache.get('PRODUCT_STATUS_TYPES') or os.environ.get('PRODUCT_STATUS_TYPES', 'SALE,WAIT,OUTOFSTOCK')
+        if 'ORDER_STATUS_TYPES' in self._cache or 'ORDER_STATUS_TYPES' in os.environ:
+            env_vars['ORDER_STATUS_TYPES'] = self._cache.get('ORDER_STATUS_TYPES') or os.environ.get('ORDER_STATUS_TYPES', 'PAYMENT_WAITING,PAYED,DELIVERING')
+        if 'ORDER_COLUMNS' in self._cache or 'ORDER_COLUMNS' in os.environ:
+            env_vars['ORDER_COLUMNS'] = self._cache.get('ORDER_COLUMNS') or os.environ.get('ORDER_COLUMNS', '주문ID,주문자,상품명,옵션정보,수량,금액,배송지주소,배송예정일,주문일시,상태')
 
         print(f"[ENV_CONFIG] {len(env_vars)}개 설정 항목을 .env 파일에 기록")
         
@@ -182,20 +233,40 @@ class EnvConfig:
                 f.write(f"AUTO_REFRESH={env_vars['AUTO_REFRESH']}\n")
                 f.write(f"REFRESH_INTERVAL={env_vars['REFRESH_INTERVAL']}\n")
 
-                f.write("\n# 상품상태 조회 설정\n")
-                f.write(f"PRODUCT_STATUS_TYPES={env_vars['PRODUCT_STATUS_TYPES']}\n")
+                # GUI 전용 설정
+                if any(key.startswith('GUI_') for key in env_vars):
+                    f.write("\n# GUI 앱 전용 설정\n")
+                    if 'GUI_PRODUCT_STATUS_TYPES' in env_vars:
+                        f.write(f"GUI_PRODUCT_STATUS_TYPES={env_vars['GUI_PRODUCT_STATUS_TYPES']}\n")
+                    if 'GUI_ORDER_STATUS_TYPES' in env_vars:
+                        f.write(f"GUI_ORDER_STATUS_TYPES={env_vars['GUI_ORDER_STATUS_TYPES']}\n")
+                    if 'GUI_ORDER_COLUMNS' in env_vars:
+                        f.write(f"GUI_ORDER_COLUMNS={env_vars['GUI_ORDER_COLUMNS']}\n")
 
-                f.write("\n# 주문 컬럼 설정\n")
-                f.write(f"ORDER_COLUMNS={env_vars['ORDER_COLUMNS']}\n")
+                # 웹 전용 설정
+                if any(key.startswith('WEB_') for key in env_vars):
+                    f.write("\n# 웹 앱 전용 설정\n")
+                    if 'WEB_PRODUCT_STATUS_TYPES' in env_vars:
+                        f.write(f"WEB_PRODUCT_STATUS_TYPES={env_vars['WEB_PRODUCT_STATUS_TYPES']}\n")
+                    if 'WEB_ORDER_STATUS_TYPES' in env_vars:
+                        f.write(f"WEB_ORDER_STATUS_TYPES={env_vars['WEB_ORDER_STATUS_TYPES']}\n")
+                    if 'WEB_ORDER_COLUMNS' in env_vars:
+                        f.write(f"WEB_ORDER_COLUMNS={env_vars['WEB_ORDER_COLUMNS']}\n")
+
+                # 공통 설정 (하위 호환성)
+                f.write("\n# 공통 설정 (하위 호환성)\n")
+                if 'PRODUCT_STATUS_TYPES' in env_vars:
+                    f.write(f"PRODUCT_STATUS_TYPES={env_vars['PRODUCT_STATUS_TYPES']}\n")
+                if 'ORDER_STATUS_TYPES' in env_vars:
+                    f.write(f"ORDER_STATUS_TYPES={env_vars['ORDER_STATUS_TYPES']}\n")
+                if 'ORDER_COLUMNS' in env_vars:
+                    f.write(f"ORDER_COLUMNS={env_vars['ORDER_COLUMNS']}\n")
 
                 f.write("\n# IP 관리 설정\n")
                 f.write(f"ALLOWED_IPS={env_vars['ALLOWED_IPS']}\n")
 
                 f.write("\n# 기간 설정\n")
                 f.write(f"QUICK_PERIOD_SETTING={env_vars['QUICK_PERIOD_SETTING']}\n")
-
-                f.write("\n# 주문 상태 조회 설정\n")
-                f.write(f"ORDER_STATUS_TYPES={env_vars['ORDER_STATUS_TYPES']}\n")
 
                 f.write("\n# 대시보드 설정\n")
                 f.write(f"DASHBOARD_PERIOD_DAYS={env_vars['DASHBOARD_PERIOD_DAYS']}\n")
@@ -237,25 +308,39 @@ class EnvConfig:
             print(f"[ENV_CONFIG] .env 파일 저장 실패: {e}")
             raise
 
-# 전역 설정 인스턴스 (지연 로딩)
-_global_config = None
+# 앱별 전역 설정 인스턴스 (지연 로딩)
+_global_configs = {}
 
-def get_config():
-    """전역 설정 인스턴스 반환 (싱글톤 패턴)"""
-    global _global_config
-    if _global_config is None:
-        _global_config = EnvConfig()
-    return _global_config
+def get_config(app_type='common'):
+    """앱별 설정 인스턴스 반환 (싱글톤 패턴)"""
+    global _global_configs
+    if app_type not in _global_configs:
+        _global_configs[app_type] = EnvConfig(app_type)
+    return _global_configs[app_type]
+
+# 앱별 설정 인스턴스 생성 헬퍼 함수들
+def get_gui_config():
+    """GUI 앱 전용 설정 인스턴스 반환"""
+    return get_config('gui')
+
+def get_web_config():
+    """웹 앱 전용 설정 인스턴스 반환"""
+    return get_config('web')
+
+def get_common_config():
+    """공통 설정 인스턴스 반환"""
+    return get_config('common')
 
 # 프록시 클래스를 통한 지연 로딩 (싱글톤 최적화)
 class _ConfigProxy:
-    def __init__(self):
+    def __init__(self, app_type='common'):
+        self.app_type = app_type
         self._config_instance = None
 
     def _get_config_cached(self):
         """캐시된 설정 인스턴스 반환"""
         if self._config_instance is None:
-            self._config_instance = get_config()
+            self._config_instance = get_config(self.app_type)
         return self._config_instance
 
     def __getattr__(self, name):
@@ -264,5 +349,9 @@ class _ConfigProxy:
     def __call__(self, *args, **kwargs):
         return self._get_config_cached()(*args, **kwargs)
 
-# 하위 호환성을 위한 프록시
-config = _ConfigProxy()
+# 하위 호환성을 위한 프록시 (기본값은 common)
+config = _ConfigProxy('common')
+
+# 앱별 프록시 인스턴스
+gui_config = _ConfigProxy('gui')
+web_config = _ConfigProxy('web')
