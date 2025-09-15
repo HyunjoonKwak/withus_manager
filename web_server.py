@@ -972,6 +972,8 @@ async def get_products():
                 'product_id': product.get('channel_product_no', ''),
                 'name': product.get('product_name', ''),
                 'price': product.get('sale_price', 0),
+                'sale_price': product.get('sale_price', 0),
+                'discounted_price': product.get('discounted_price', 0),
                 'stock': product.get('stock_quantity', 0),
                 'category': product.get('category_name', ''),
                 'status': product.get('status_type', ''),
