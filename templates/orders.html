@@ -5,10 +5,18 @@
     <div class="row">
         <div class="col-12">
             <div class="d-flex justify-content-between align-items-center mb-4">
-                <h2><i class="fas fa-shopping-cart text-primary"></i> 주문 관리</h2>
-                <button class="btn btn-primary" onclick="refreshOrders()">
-                    <i class="fas fa-sync-alt"></i> 새로고침
-                </button>
+                <h2><i class="fas fa-shopping-cart text-primary"></i> 전체주문</h2>
+                <div>
+                    <button class="btn btn-success me-2" onclick="savePeriodSettings()">
+                        <i class="fas fa-save"></i> 기간설정 저장
+                    </button>
+                    <button class="btn btn-outline-secondary me-2" onclick="toggleColumnManager()">
+                        <i class="fas fa-columns"></i> 컬럼 관리
+                    </button>
+                    <button class="btn btn-primary" onclick="refreshOrders()">
+                        <i class="fas fa-sync-alt"></i> 새로고침
+                    </button>
+                </div>
             </div>
 
             <!-- 필터링 옵션 -->
@@ -37,9 +45,89 @@
                             <label for="dateTo" class="form-label">종료일</label>
                             <input type="date" class="form-control" id="dateTo" onchange="filterOrders()">
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-md-2">
                             <label for="searchText" class="form-label">검색</label>
                             <input type="text" class="form-control" id="searchText" placeholder="주문자명 또는 상품명" onkeyup="filterOrders()">
+                        </div>
+                        <div class="col-md-1">
+                            <label class="form-label">&nbsp;</label>
+                            <div>
+                                <button class="btn btn-outline-secondary" onclick="loadPeriodSettings()" title="저장된 기간 설정 불러오기">
+                                    <i class="fas fa-folder-open"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 컬럼 관리자 -->
+            <div class="card mb-4" id="columnManager" style="display: none;">
+                <div class="card-header">
+                    <h6 class="card-title mb-0"><i class="fas fa-columns"></i> 컬럼 관리</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-12">
+                            <p class="text-muted mb-3">표시할 컬럼을 선택하세요:</p>
+                            <div class="row" id="columnCheckboxes">
+                                <div class="col-md-3 mb-2">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="col_order_id" checked>
+                                        <label class="form-check-label" for="col_order_id">주문ID</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-3 mb-2">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="col_customer_name" checked>
+                                        <label class="form-check-label" for="col_customer_name">주문자</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-3 mb-2">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="col_product_name" checked>
+                                        <label class="form-check-label" for="col_product_name">상품명</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-3 mb-2">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="col_quantity" checked>
+                                        <label class="form-check-label" for="col_quantity">수량</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-3 mb-2">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="col_price" checked>
+                                        <label class="form-check-label" for="col_price">금액</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-3 mb-2">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="col_order_status" checked>
+                                        <label class="form-check-label" for="col_order_status">상태</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-3 mb-2">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="col_order_date" checked>
+                                        <label class="form-check-label" for="col_order_date">주문일시</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-3 mb-2">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="col_delivery_address" checked>
+                                        <label class="form-check-label" for="col_delivery_address">배송지</label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mt-3">
+                                <button class="btn btn-primary" onclick="applyColumnSettings()">
+                                    <i class="fas fa-check"></i> 적용
+                                </button>
+                                <button class="btn btn-secondary" onclick="resetColumns()">
+                                    <i class="fas fa-undo"></i> 초기화
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -82,6 +170,7 @@
 
 <script>
 let allOrders = [];
+let visibleColumns = ['order_id', 'customer_name', 'product_name', 'quantity', 'price', 'order_status', 'order_date', 'delivery_address'];
 
 async function refreshOrders() {
     try {
@@ -102,24 +191,66 @@ async function refreshOrders() {
 
 function displayOrders(orders) {
     const tbody = document.getElementById('ordersTableBody');
+    const thead = document.querySelector('#ordersTableBody').closest('table').querySelector('thead tr');
+
+    // 헤더 업데이트
+    updateTableHeader();
 
     if (orders.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">주문 데이터가 없습니다.</td></tr>';
+        tbody.innerHTML = `<tr><td colspan="${visibleColumns.length}" class="text-center text-muted">주문 데이터가 없습니다.</td></tr>`;
         return;
     }
 
-    tbody.innerHTML = orders.map(order => `
-        <tr>
-            <td><span class="badge bg-secondary">${order.order_id || '-'}</span></td>
-            <td><strong>${order.customer_name || '-'}</strong></td>
-            <td>${order.product_name || '-'}</td>
-            <td><span class="badge bg-info">${order.quantity || 0}</span></td>
-            <td><strong>${formatPrice(order.price)}</strong></td>
-            <td>${getStatusBadge(order.order_status)}</td>
-            <td>${formatDate(order.order_date)}</td>
-            <td class="text-truncate" style="max-width: 200px;" title="${order.delivery_address || ''}">${order.delivery_address || '-'}</td>
-        </tr>
-    `).join('');
+    tbody.innerHTML = orders.map(order => {
+        let cells = [];
+
+        visibleColumns.forEach(column => {
+            switch(column) {
+                case 'order_id':
+                    cells.push(`<td><span class="badge bg-secondary">${order.order_id || '-'}</span></td>`);
+                    break;
+                case 'customer_name':
+                    cells.push(`<td><strong>${order.customer_name || '-'}</strong></td>`);
+                    break;
+                case 'product_name':
+                    cells.push(`<td>${order.product_name || '-'}</td>`);
+                    break;
+                case 'quantity':
+                    cells.push(`<td><span class="badge bg-info">${order.quantity || 0}</span></td>`);
+                    break;
+                case 'price':
+                    cells.push(`<td><strong>${formatPrice(order.price)}</strong></td>`);
+                    break;
+                case 'order_status':
+                    cells.push(`<td>${getStatusBadge(order.order_status)}</td>`);
+                    break;
+                case 'order_date':
+                    cells.push(`<td>${formatDate(order.order_date)}</td>`);
+                    break;
+                case 'delivery_address':
+                    cells.push(`<td class="text-truncate" style="max-width: 200px;" title="${order.delivery_address || ''}">${order.delivery_address || '-'}</td>`);
+                    break;
+            }
+        });
+
+        return `<tr>${cells.join('')}</tr>`;
+    }).join('');
+}
+
+function updateTableHeader() {
+    const thead = document.querySelector('#ordersTableBody').closest('table').querySelector('thead tr');
+    const columnHeaders = {
+        'order_id': '주문ID',
+        'customer_name': '주문자',
+        'product_name': '상품명',
+        'quantity': '수량',
+        'price': '금액',
+        'order_status': '상태',
+        'order_date': '주문일시',
+        'delivery_address': '배송지'
+    };
+
+    thead.innerHTML = visibleColumns.map(column => `<th>${columnHeaders[column]}</th>`).join('');
 }
 
 function getStatusBadge(status) {
@@ -207,8 +338,145 @@ function showError(message) {
         </tr>`;
 }
 
+// 컬럼 관리 함수들
+function toggleColumnManager() {
+    const manager = document.getElementById('columnManager');
+    manager.style.display = manager.style.display === 'none' ? 'block' : 'none';
+}
+
+function applyColumnSettings() {
+    visibleColumns = [];
+
+    // 체크된 컬럼들만 수집
+    const checkboxes = document.querySelectorAll('#columnCheckboxes input[type="checkbox"]');
+    checkboxes.forEach(checkbox => {
+        if (checkbox.checked) {
+            const columnName = checkbox.id.replace('col_', '');
+            visibleColumns.push(columnName);
+        }
+    });
+
+    // 적어도 하나의 컬럼은 보이게 함
+    if (visibleColumns.length === 0) {
+        alert('적어도 하나의 컬럼은 선택해야 합니다.');
+        document.getElementById('col_order_id').checked = true;
+        visibleColumns = ['order_id'];
+    }
+
+    // 테이블 다시 그리기
+    displayOrders(allOrders.filter(order => {
+        // 현재 필터 조건 적용
+        const statusFilter = document.getElementById('statusFilter').value;
+        const dateFrom = document.getElementById('dateFrom').value;
+        const dateTo = document.getElementById('dateTo').value;
+        const searchText = document.getElementById('searchText').value.toLowerCase();
+
+        if (statusFilter && order.order_status !== statusFilter) return false;
+        if (dateFrom) {
+            const orderDate = new Date(order.order_date);
+            const fromDate = new Date(dateFrom);
+            if (orderDate < fromDate) return false;
+        }
+        if (dateTo) {
+            const orderDate = new Date(order.order_date);
+            const toDate = new Date(dateTo);
+            toDate.setDate(toDate.getDate() + 1);
+            if (orderDate >= toDate) return false;
+        }
+        if (searchText) {
+            const customerName = (order.customer_name || '').toLowerCase();
+            const productName = (order.product_name || '').toLowerCase();
+            if (!customerName.includes(searchText) && !productName.includes(searchText)) return false;
+        }
+        return true;
+    }));
+
+    // 컬럼 설정 저장
+    localStorage.setItem('orders_visible_columns', JSON.stringify(visibleColumns));
+
+    // 컬럼 관리자 숨기기
+    document.getElementById('columnManager').style.display = 'none';
+
+    alert('컬럼 설정이 적용되었습니다.');
+}
+
+function resetColumns() {
+    // 모든 컬럼 체크
+    const checkboxes = document.querySelectorAll('#columnCheckboxes input[type="checkbox"]');
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = true;
+    });
+
+    // 기본 컬럼으로 재설정
+    visibleColumns = ['order_id', 'customer_name', 'product_name', 'quantity', 'price', 'order_status', 'order_date', 'delivery_address'];
+
+    alert('컬럼 설정이 초기화되었습니다.');
+}
+
+// 기간 설정 저장/불러오기 함수들
+function savePeriodSettings() {
+    const dateFrom = document.getElementById('dateFrom').value;
+    const dateTo = document.getElementById('dateTo').value;
+    const statusFilter = document.getElementById('statusFilter').value;
+
+    if (!dateFrom && !dateTo) {
+        alert('저장할 기간 설정이 없습니다.');
+        return;
+    }
+
+    const periodSettings = {
+        dateFrom: dateFrom,
+        dateTo: dateTo,
+        statusFilter: statusFilter,
+        savedAt: new Date().toISOString()
+    };
+
+    localStorage.setItem('orders_period_settings', JSON.stringify(periodSettings));
+    alert('기간 설정이 저장되었습니다.');
+}
+
+function loadPeriodSettings() {
+    const saved = localStorage.getItem('orders_period_settings');
+    if (!saved) {
+        alert('저장된 기간 설정이 없습니다.');
+        return;
+    }
+
+    try {
+        const settings = JSON.parse(saved);
+
+        if (settings.dateFrom) document.getElementById('dateFrom').value = settings.dateFrom;
+        if (settings.dateTo) document.getElementById('dateTo').value = settings.dateTo;
+        if (settings.statusFilter) document.getElementById('statusFilter').value = settings.statusFilter;
+
+        // 필터 적용
+        filterOrders();
+
+        const savedDate = new Date(settings.savedAt).toLocaleDateString('ko-KR');
+        alert(`저장된 기간 설정을 불러왔습니다. (저장일: ${savedDate})`);
+    } catch (error) {
+        alert('저장된 설정을 불러오는 중 오류가 발생했습니다.');
+    }
+}
+
 // 페이지 로드 시 실행
 document.addEventListener('DOMContentLoaded', function() {
+    // 저장된 컬럼 설정 불러오기
+    const savedColumns = localStorage.getItem('orders_visible_columns');
+    if (savedColumns) {
+        try {
+            visibleColumns = JSON.parse(savedColumns);
+            // 체크박스 상태 업데이트
+            const checkboxes = document.querySelectorAll('#columnCheckboxes input[type="checkbox"]');
+            checkboxes.forEach(checkbox => {
+                const columnName = checkbox.id.replace('col_', '');
+                checkbox.checked = visibleColumns.includes(columnName);
+            });
+        } catch (error) {
+            console.error('저장된 컬럼 설정 불러오기 실패:', error);
+        }
+    }
+
     // 기본 날짜 설정 (최근 7일)
     const today = new Date();
     const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
