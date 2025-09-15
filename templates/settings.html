@@ -99,15 +99,35 @@
                                 <h5><i class="fas fa-bell text-info"></i> 알림 설정</h5>
                             </div>
                             <div class="card-body">
+                                <!-- Discord 설정 안내 -->
+                                <div class="alert alert-warning mb-3">
+                                    <div class="d-flex align-items-start">
+                                        <i class="fas fa-exclamation-triangle text-warning me-2 mt-1"></i>
+                                        <div>
+                                            <h6 class="alert-heading mb-2">🔒 Discord Webhook URL 변경 방법</h6>
+                                            <p class="mb-2">보안상 웹에서는 확인 및 테스트만 가능합니다. 변경은 서버에서 직접 하세요:</p>
+                                            <ol class="mb-2">
+                                                <li><strong>SSH 접근:</strong> <code>nano .env</code> 또는 <code>vi .env</code></li>
+                                                <li><strong>파일 수정:</strong> DISCORD_WEBHOOK_URL 값 변경</li>
+                                                <li><strong>서비스 재시작:</strong> <code>python web_server.py</code> 재실행</li>
+                                            </ol>
+                                            <small class="text-muted">⚠️ Webhook URL 노출 시 외부에서 Discord 서버에 스팸 메시지 전송 가능</small>
+                                        </div>
+                                    </div>
+                                </div>
+
                                 <div class="row">
                                     <div class="col-md-8">
-                                        <label for="discordWebhook" class="form-label">Discord 웹훅 URL</label>
+                                        <label for="discordWebhook" class="form-label">Discord 웹훅 URL
+                                            <span class="badge bg-info">확인용</span>
+                                        </label>
                                         <div class="input-group">
                                             <input type="password" class="form-control" id="discordWebhook" placeholder="Discord 웹훅 URL">
                                             <button class="btn btn-outline-secondary" type="button" onclick="togglePassword('discordWebhook')">
                                                 <i class="fas fa-eye"></i>
                                             </button>
                                         </div>
+                                        <small class="form-text text-muted">현재 설정된 값 확인용</small>
                                     </div>
                                     <div class="col-md-4">
                                         <label class="form-label">Discord 알림 활성화</label>
@@ -784,10 +804,10 @@ function showIPHelp() {
 async function saveAllSettings() {
     try {
         const settings = {
-            // 기본설정 (API 자격증명은 보안상 제외)
+            // 기본설정 (보안 관련 자격증명은 모두 제외)
             // client_id: document.getElementById('clientId').value,  // 읽기 전용
             // client_secret: document.getElementById('clientSecret').value,  // 읽기 전용
-            discord_webhook: document.getElementById('discordWebhook').value,
+            // discord_webhook: document.getElementById('discordWebhook').value,  // 읽기 전용
             discord_enabled: document.getElementById('discordEnabled').checked,
             check_interval: parseInt(document.getElementById('checkInterval').value),
             refresh_interval: parseInt(document.getElementById('refreshInterval').value),
