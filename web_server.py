@@ -1405,10 +1405,10 @@ async def save_settings(settings_data: dict):
         else:
             logger.warning(f"⚠️  .env 파일이 존재하지 않음: {env_file_path}")
 
-        # 웹 폼 필드명을 환경변수명에 매핑
+        # 웹 폼 필드명을 환경변수명에 매핑 (API 자격증명 제외하여 덮어쓰기 방지)
         field_mapping = {
-            'client_id': 'NAVER_CLIENT_ID',
-            'client_secret': 'NAVER_CLIENT_SECRET',
+            # 'client_id': 'NAVER_CLIENT_ID',  # 보안상 설정 화면에서 변경 불가
+            # 'client_secret': 'NAVER_CLIENT_SECRET',  # 보안상 설정 화면에서 변경 불가
             'discord_webhook': 'DISCORD_WEBHOOK_URL',
             'discord_enabled': 'DISCORD_ENABLED',
             'check_interval': 'CHECK_INTERVAL',

@@ -48,17 +48,23 @@
                             <div class="card-body">
                                 <div class="row">
                                     <div class="col-md-6">
-                                        <label for="clientId" class="form-label">클라이언트 ID</label>
-                                        <input type="text" class="form-control" id="clientId" placeholder="네이버 클라이언트 ID">
+                                        <label for="clientId" class="form-label">클라이언트 ID
+                                            <span class="badge bg-warning text-dark">읽기 전용</span>
+                                        </label>
+                                        <input type="text" class="form-control" id="clientId" placeholder="네이버 클라이언트 ID" readonly>
+                                        <small class="form-text text-muted">보안상 .env 파일에서만 수정 가능</small>
                                     </div>
                                     <div class="col-md-6">
-                                        <label for="clientSecret" class="form-label">클라이언트 시크릿</label>
+                                        <label for="clientSecret" class="form-label">클라이언트 시크릿
+                                            <span class="badge bg-warning text-dark">읽기 전용</span>
+                                        </label>
                                         <div class="input-group">
-                                            <input type="password" class="form-control" id="clientSecret" placeholder="네이버 클라이언트 시크릿">
+                                            <input type="password" class="form-control" id="clientSecret" placeholder="네이버 클라이언트 시크릿" readonly>
                                             <button class="btn btn-outline-secondary" type="button" onclick="togglePassword('clientSecret')">
                                                 <i class="fas fa-eye"></i>
                                             </button>
                                         </div>
+                                        <small class="form-text text-muted">보안상 .env 파일에서만 수정 가능</small>
                                     </div>
                                 </div>
                                 <div class="mt-3">
@@ -761,9 +767,9 @@ function showIPHelp() {
 async function saveAllSettings() {
     try {
         const settings = {
-            // 기본설정
-            client_id: document.getElementById('clientId').value,
-            client_secret: document.getElementById('clientSecret').value,
+            // 기본설정 (API 자격증명은 보안상 제외)
+            // client_id: document.getElementById('clientId').value,  // 읽기 전용
+            // client_secret: document.getElementById('clientSecret').value,  // 읽기 전용
             discord_webhook: document.getElementById('discordWebhook').value,
             discord_enabled: document.getElementById('discordEnabled').checked,
             check_interval: parseInt(document.getElementById('checkInterval').value),
