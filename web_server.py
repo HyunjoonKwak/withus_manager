@@ -1168,8 +1168,8 @@ async def get_settings():
         # 설정값 전체 반환 (웹 관리자용)
         settings = {
             # 기본설정
-            "client_id": web_config.get_raw('NAVER_CLIENT_ID', ''),
-            "client_secret": web_config.get_raw('NAVER_CLIENT_SECRET', ''),
+            "client_id": web_config.get('NAVER_CLIENT_ID', ''),
+            "client_secret": web_config.get('NAVER_CLIENT_SECRET', ''),
             "discord_webhook": web_config.get('DISCORD_WEBHOOK_URL', ''),
             "discord_enabled": web_config.get_bool('DISCORD_ENABLED', False),
             "check_interval": web_config.get_int('CHECK_INTERVAL', 300),
@@ -1763,13 +1763,13 @@ async def test_api_token():
         naver_api = NaverShoppingAPI(client_id, client_secret)
 
         # 토큰 발급 시도
-        token = naver_api.get_access_token()
+        token_success = naver_api.get_access_token()
 
-        if token:
-            logger.info(f"토큰 발급 성공: {token[:20]}...")
+        if token_success and naver_api.access_token:
+            logger.info(f"토큰 발급 성공: {naver_api.access_token[:20]}...")
             return {
                 "success": True,
-                "token": token,
+                "token": naver_api.access_token,
                 "message": "네이버 API 토큰 발급에 성공했습니다."
             }
         else:
