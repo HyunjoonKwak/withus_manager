@@ -126,8 +126,9 @@ class LightweightOrderManager:
         try:
             logger.info("모니터링 체크 시작")
 
-            # 대시보드 데이터 새로고침
-            new_order_counts = self._get_dashboard_data()
+            # 대시보드 데이터 새로고침 (현재 설정된 기간 사용)
+            monitoring_period = web_config.get_int('DASHBOARD_PERIOD_DAYS', 5)
+            new_order_counts = self._get_dashboard_data(monitoring_period)
 
             # 상태 변화 감지 및 알림
             if self.previous_order_counts and new_order_counts:
@@ -143,13 +144,24 @@ class LightweightOrderManager:
         except Exception as e:
             logger.error(f"모니터링 체크 오류: {e}")
 
-    def _get_dashboard_data(self) -> Dict[str, int]:
-        """대시보드 데이터 조회 - 로컬 데이터베이스에서 조회 (웹서버 최적화)"""
+    def _get_dashboard_data(self, period_days: Optional[int] = None) -> Dict[str, int]:
+        """대시보드 데이터 조회 - 조회기간에 따른 필터링 적용"""
         try:
-            # 웹서버에서는 GUI 의존성 없이 로컬 DB만 사용
-            logger.info("로컬 데이터베이스에서 주문 데이터 조회 중...")
-            orders = self.db_manager.get_all_orders()
-            logger.info(f"로컬 DB에서 {len(orders)}개 주문 조회 완료")
+            # 조회기간 설정
+            if period_days is None:
+                period_days = web_config.get_int('DASHBOARD_PERIOD_DAYS', 5)
+
+            # 날짜 범위 계산
+            end_date = datetime.now()
+            start_date = end_date - timedelta(days=period_days)
+            start_date_str = start_date.strftime('%Y-%m-%d')
+            end_date_str = end_date.strftime('%Y-%m-%d')
+
+            logger.info(f"대시보드 데이터 조회 - 기간: {start_date_str} ~ {end_date_str} ({period_days}일)")
+
+            # 기간에 따른 주문 조회
+            orders = self.db_manager.get_orders_by_date_range(start_date_str, end_date_str)
+            logger.info(f"로컬 DB에서 {len(orders)}개 주문 조회 완료 (기간: {period_days}일)")
 
             # 상태별 카운팅
             order_counts = {
@@ -301,11 +313,12 @@ async def home(request: Request):
     """홈 페이지"""
     try:
         # 대시보드 데이터 조회
-        dashboard_data = order_manager._get_dashboard_data()
+        # 현재 설정된 기간 사용
+        period_days = web_config.get_int('DASHBOARD_PERIOD_DAYS', 10)
+        dashboard_data = order_manager._get_dashboard_data(period_days)
 
         # 기간 정보 생성
         from datetime import datetime, timedelta
-        period_days = web_config.get_int('DASHBOARD_PERIOD_DAYS', 10)
         end_date = datetime.now()
         start_date = end_date - timedelta(days=period_days)
 
@@ -530,8 +543,9 @@ async def refresh_dashboard():
         else:
             logger.warning("⚠️ 네이버 API 미설정 - 로컬 데이터만 반환")
 
-        # 갱신된 데이터로 대시보드 데이터 생성
-        order_counts = order_manager._get_dashboard_data()
+        # 갱신된 데이터로 대시보드 데이터 생성 (현재 설정된 기간 사용)
+        current_period = web_config.get_int('DASHBOARD_PERIOD_DAYS', 5)
+        order_counts = order_manager._get_dashboard_data(current_period)
 
         return {
             "success": True,
@@ -577,7 +591,7 @@ async def update_dashboard_period(request: Request):
             logger.info(f"대시보드 조회 기간이 {new_period_days}일로 임시 변경됨 (저장하지 않음)")
 
         # 새로운 기간으로 대시보드 데이터 새로고침
-        order_counts = order_manager._get_dashboard_data()
+        order_counts = order_manager._get_dashboard_data(new_period_days)
         end_date = datetime.now()
         start_date = end_date - timedelta(days=new_period_days)
 

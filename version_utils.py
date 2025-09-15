@@ -93,18 +93,14 @@ def get_app_version_info() -> Tuple[str, str]:
     # 버전 결정
     if git_version:
         version = git_version
-        print(f"Git 태그에서 버전 읽기: {version}")
     else:
         version = config.get('APP_VERSION', '1.0.0')
-        print(f"환경변수에서 버전 읽기: {version}")
 
     # 빌드 날짜 결정
     if git_build_date:
         build_date = git_build_date
-        print(f"Git에서 빌드 날짜 읽기: {build_date}")
     else:
         build_date = config.get('APP_BUILD_DATE', '2025-09-14')
-        print(f"환경변수에서 빌드 날짜 읽기: {build_date}")
 
     _cached_version_info = (version, build_date)
     return _cached_version_info
