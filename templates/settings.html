@@ -46,25 +46,42 @@
                                 <h5><i class="fas fa-plug text-warning"></i> 네이버 API 설정</h5>
                             </div>
                             <div class="card-body">
+                                <!-- API 자격증명 편집 안내 -->
+                                <div class="alert alert-info mb-3">
+                                    <div class="d-flex align-items-start">
+                                        <i class="fas fa-info-circle text-info me-2 mt-1"></i>
+                                        <div>
+                                            <h6 class="alert-heading mb-2">🔐 API 자격증명 변경 방법</h6>
+                                            <p class="mb-2">보안상 웹에서는 확인 및 테스트만 가능합니다. 변경은 서버에서 직접 하세요:</p>
+                                            <ol class="mb-2">
+                                                <li><strong>SSH 접근:</strong> <code>nano .env</code> 또는 <code>vi .env</code></li>
+                                                <li><strong>파일 수정:</strong> NAVER_CLIENT_ID, NAVER_CLIENT_SECRET 값 변경</li>
+                                                <li><strong>서비스 재시작:</strong> <code>python web_server.py</code> 재실행</li>
+                                            </ol>
+                                            <small class="text-muted">💡 현재 값을 확인하고 연결 테스트는 아래에서 가능합니다.</small>
+                                        </div>
+                                    </div>
+                                </div>
+
                                 <div class="row">
                                     <div class="col-md-6">
                                         <label for="clientId" class="form-label">클라이언트 ID
-                                            <span class="badge bg-warning text-dark">읽기 전용</span>
+                                            <span class="badge bg-info">확인용</span>
                                         </label>
-                                        <input type="text" class="form-control" id="clientId" placeholder="네이버 클라이언트 ID" readonly>
-                                        <small class="form-text text-muted">보안상 .env 파일에서만 수정 가능</small>
+                                        <input type="text" class="form-control" id="clientId" placeholder="네이버 클라이언트 ID">
+                                        <small class="form-text text-muted">현재 설정된 값 확인용</small>
                                     </div>
                                     <div class="col-md-6">
                                         <label for="clientSecret" class="form-label">클라이언트 시크릿
-                                            <span class="badge bg-warning text-dark">읽기 전용</span>
+                                            <span class="badge bg-info">확인용</span>
                                         </label>
                                         <div class="input-group">
-                                            <input type="password" class="form-control" id="clientSecret" placeholder="네이버 클라이언트 시크릿" readonly>
+                                            <input type="password" class="form-control" id="clientSecret" placeholder="네이버 클라이언트 시크릿">
                                             <button class="btn btn-outline-secondary" type="button" onclick="togglePassword('clientSecret')">
                                                 <i class="fas fa-eye"></i>
                                             </button>
                                         </div>
-                                        <small class="form-text text-muted">보안상 .env 파일에서만 수정 가능</small>
+                                        <small class="form-text text-muted">현재 설정된 값 확인용</small>
                                     </div>
                                 </div>
                                 <div class="mt-3">

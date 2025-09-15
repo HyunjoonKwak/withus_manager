@@ -1247,13 +1247,8 @@ async def get_settings():
             "order_columns": web_config.get('ORDER_COLUMNS', '주문ID,주문자,상품명,옵션정보,수량,금액,배송지주소,배송예정일,주문일시,상태')
         }
 
-        # 민감한 정보 마스킹
-        if settings["client_id"]:
-            settings["client_id"] = settings["client_id"][-4:] if len(settings["client_id"]) > 4 else "****"
-        if settings["client_secret"]:
-            settings["client_secret"] = "****"
-        if settings["discord_webhook"]:
-            settings["discord_webhook"] = "****"
+        # API 자격증명은 확인용으로 실제 값 표시 (편집은 .env 파일에서만)
+        # 마스킹 제거 - 설정 확인 및 연결 테스트용
 
         return {"success": True, "data": settings}
     except Exception as e:
