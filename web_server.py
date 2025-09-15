@@ -690,10 +690,24 @@ async def get_orders_from_db(
 
         order_list = []
 
+        # Status mapping for filtering
+        korean_to_english_status = {
+            '취소주문': 'CANCELED',
+            '신규주문': 'PAYMENT_WAITING',
+            '발송대기': 'PAYED',
+            '배송중': 'DELIVERING',
+            '배송완료': 'DELIVERED',
+            '구매확정': 'PURCHASE_DECIDED',
+            '반품주문': 'RETURNED',
+            '교환주문': 'EXCHANGED'
+        }
+
         for order in orders:
-            # 상태 필터링
-            if order_status and order.get('status') != order_status:
-                continue
+            # 상태 필터링 - 한국어 상태를 영어 상태로 변환하여 비교
+            if order_status:
+                english_filter_status = korean_to_english_status.get(order_status, order_status)
+                if order.get('status') != english_filter_status:
+                    continue
 
             # 날짜 필터링
             if start_date or end_date:
@@ -703,14 +717,29 @@ async def get_orders_from_db(
                 if end_date and order_date_str > end_date_str:
                     continue
 
+            # Status mapping from English to Korean
+            english_status = order.get('status', '')
+            status_mapping = {
+                'CANCELED': '취소주문',
+                'PAYMENT_WAITING': '신규주문',
+                'PAYED': '발송대기',
+                'DELIVERING': '배송중',
+                'DELIVERED': '배송완료',
+                'PURCHASE_DECIDED': '구매확정',
+                'RETURNED': '반품주문',
+                'EXCHANGED': '교환주문',
+                'CANCELED_BY_NOPAYMENT': '취소주문'
+            }
+            korean_status = status_mapping.get(english_status, english_status)
+
             order_data = {
                 "order_id": order.get('order_id', ''),
                 "customer_name": order.get('customer_name', ''),
                 "product_name": order.get('product_name', ''),
-                "status": order.get('status', ''),
+                "order_status": korean_status,
                 "order_date": order.get('order_date', ''),
                 "price": order.get('price', 0),
-                "shipping_address": order.get('shipping_address', ''),
+                "delivery_address": order.get('shipping_address', ''),
                 "quantity": order.get('quantity', 1)
             }
             order_list.append(order_data)
@@ -825,10 +854,24 @@ async def refresh_orders_from_api(
 
         order_list = []
 
+        # Status mapping for filtering
+        korean_to_english_status = {
+            '취소주문': 'CANCELED',
+            '신규주문': 'PAYMENT_WAITING',
+            '발송대기': 'PAYED',
+            '배송중': 'DELIVERING',
+            '배송완료': 'DELIVERED',
+            '구매확정': 'PURCHASE_DECIDED',
+            '반품주문': 'RETURNED',
+            '교환주문': 'EXCHANGED'
+        }
+
         for order in orders:
-            # 상태 필터링
-            if order_status and order.get('status') != order_status:
-                continue
+            # 상태 필터링 - 한국어 상태를 영어 상태로 변환하여 비교
+            if order_status:
+                english_filter_status = korean_to_english_status.get(order_status, order_status)
+                if order.get('status') != english_filter_status:
+                    continue
 
             # 날짜 필터링
             if start_date or end_date:
@@ -838,14 +881,29 @@ async def refresh_orders_from_api(
                 if end_date and order_date_str > end_date_str:
                     continue
 
+            # Status mapping from English to Korean
+            english_status = order.get('status', '')
+            status_mapping = {
+                'CANCELED': '취소주문',
+                'PAYMENT_WAITING': '신규주문',
+                'PAYED': '발송대기',
+                'DELIVERING': '배송중',
+                'DELIVERED': '배송완료',
+                'PURCHASE_DECIDED': '구매확정',
+                'RETURNED': '반품주문',
+                'EXCHANGED': '교환주문',
+                'CANCELED_BY_NOPAYMENT': '취소주문'
+            }
+            korean_status = status_mapping.get(english_status, english_status)
+
             order_data = {
                 "order_id": order.get('order_id', ''),
                 "customer_name": order.get('customer_name', ''),
                 "product_name": order.get('product_name', ''),
-                "status": order.get('status', ''),
+                "order_status": korean_status,
                 "order_date": order.get('order_date', ''),
                 "price": order.get('price', 0),
-                "shipping_address": order.get('shipping_address', ''),
+                "delivery_address": order.get('shipping_address', ''),
                 "quantity": order.get('quantity', 1)
             }
             order_list.append(order_data)

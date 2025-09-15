@@ -37,11 +37,25 @@
                                 <option value="교환주문">교환주문</option>
                             </select>
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-md-2">
+                            <label for="periodSelect" class="form-label">조회 기간</label>
+                            <select class="form-select" id="periodSelect" onchange="changePeriod()">
+                                <option value="1">1일</option>
+                                <option value="3">3일</option>
+                                <option value="5">5일</option>
+                                <option value="7" selected>7일</option>
+                                <option value="10">10일</option>
+                                <option value="14">14일</option>
+                                <option value="30">30일</option>
+                                <option value="90">90일</option>
+                                <option value="custom">사용자 지정</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2" id="customDateFields" style="display:none;">
                             <label for="dateFrom" class="form-label">시작일</label>
                             <input type="date" class="form-control" id="dateFrom" onchange="filterOrders()">
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-md-2" id="customDateFieldsTo" style="display:none;">
                             <label for="dateTo" class="form-label">종료일</label>
                             <input type="date" class="form-control" id="dateTo" onchange="filterOrders()">
                         </div>
@@ -414,7 +428,37 @@ function resetColumns() {
 }
 
 // 기간 설정 저장/불러오기 함수들
+// 기간 변경 함수
+function changePeriod() {
+    const periodSelect = document.getElementById('periodSelect');
+    const customDateFields = document.getElementById('customDateFields');
+    const customDateFieldsTo = document.getElementById('customDateFieldsTo');
+
+    if (periodSelect.value === 'custom') {
+        // 사용자 지정 선택시 날짜 입력 필드 표시
+        customDateFields.style.display = 'block';
+        customDateFieldsTo.style.display = 'block';
+    } else {
+        // 기간 선택시 날짜 입력 필드 숨기기 및 날짜 자동 설정
+        customDateFields.style.display = 'none';
+        customDateFieldsTo.style.display = 'none';
+
+        const days = parseInt(periodSelect.value);
+        const today = new Date();
+        const startDate = new Date(today);
+        startDate.setDate(today.getDate() - days);
+
+        // 날짜 입력 필드에 자동 설정
+        document.getElementById('dateFrom').value = startDate.toISOString().split('T')[0];
+        document.getElementById('dateTo').value = today.toISOString().split('T')[0];
+
+        // 필터 적용
+        filterOrders();
+    }
+}
+
 function savePeriodSettings() {
+    const periodSelect = document.getElementById('periodSelect');
     const dateFrom = document.getElementById('dateFrom').value;
     const dateTo = document.getElementById('dateTo').value;
     const statusFilter = document.getElementById('statusFilter').value;
@@ -425,6 +469,7 @@ function savePeriodSettings() {
     }
 
     const periodSettings = {
+        period: periodSelect.value,
         dateFrom: dateFrom,
         dateTo: dateTo,
         statusFilter: statusFilter,
@@ -444,6 +489,20 @@ function loadPeriodSettings() {
 
     try {
         const settings = JSON.parse(saved);
+
+        // 기간 선택 복원
+        if (settings.period) {
+            document.getElementById('periodSelect').value = settings.period;
+
+            // 사용자 지정인 경우 커스텀 날짜 필드 보이기
+            if (settings.period === 'custom') {
+                document.getElementById('customDateFields').style.display = 'block';
+                document.getElementById('customDateFieldsTo').style.display = 'block';
+            } else {
+                document.getElementById('customDateFields').style.display = 'none';
+                document.getElementById('customDateFieldsTo').style.display = 'none';
+            }
+        }
 
         if (settings.dateFrom) document.getElementById('dateFrom').value = settings.dateFrom;
         if (settings.dateTo) document.getElementById('dateTo').value = settings.dateTo;
@@ -477,7 +536,16 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // 기본 날짜 설정 (최근 7일)
+    // 기간 드롭다운 초기화
+    const periodSelect = document.getElementById('periodSelect');
+    const customDateFields = document.getElementById('customDateFields');
+    const customDateFieldsTo = document.getElementById('customDateFieldsTo');
+
+    // 초기에는 사용자 지정 필드 숨기기
+    if (customDateFields) customDateFields.style.display = 'none';
+    if (customDateFieldsTo) customDateFieldsTo.style.display = 'none';
+
+    // 기본 날짜 설정 (최근 7일) - 기본 선택된 값
     const today = new Date();
     const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
 
