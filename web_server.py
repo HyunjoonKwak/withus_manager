@@ -678,8 +678,8 @@ async def get_orders_from_db(
 
         logger.info(f"📚 데이터베이스에서 주문 조회 (API 호출 없음): {start_date_str} ~ {end_date_str}")
 
-        # 로컬 DB에서만 조회 (API 호출 없음)
-        orders = order_manager.db_manager.get_all_orders()
+        # 로컬 DB에서 날짜 범위로 조회 (대시보드와 동일한 방식)
+        orders = order_manager.db_manager.get_orders_by_date_range(start_date_str, end_date_str)
 
         # 디버깅 정보 추가
         debug_info = {
@@ -709,13 +709,7 @@ async def get_orders_from_db(
                 if order.get('status') != english_filter_status:
                     continue
 
-            # 날짜 필터링
-            if start_date or end_date:
-                order_date_str = str(order.get('order_date', ''))[:10]
-                if start_date and order_date_str < start_date_str:
-                    continue
-                if end_date and order_date_str > end_date_str:
-                    continue
+            # 날짜 필터링은 이미 데이터베이스에서 처리됨 (get_orders_by_date_range 사용)
 
             # Status mapping from English to Korean
             english_status = order.get('status', '')
@@ -842,8 +836,8 @@ async def refresh_orders_from_api(
         else:
             logger.warning(f"⚠️  네이버 API 호출 조건 불충족: api={bool(order_manager.naver_api)}, status='{order_status}'")
 
-        # 로컬 DB에서 필터링하여 조회 (API 조회 후에도 DB에서 최신 데이터 가져옴)
-        orders = order_manager.db_manager.get_all_orders()
+        # 로컬 DB에서 날짜 범위로 조회 (대시보드와 동일한 방식)
+        orders = order_manager.db_manager.get_orders_by_date_range(start_date_str, end_date_str)
 
         # 디버깅 정보 추가
         debug_info = {
@@ -873,13 +867,7 @@ async def refresh_orders_from_api(
                 if order.get('status') != english_filter_status:
                     continue
 
-            # 날짜 필터링
-            if start_date or end_date:
-                order_date_str = str(order.get('order_date', ''))[:10]
-                if start_date and order_date_str < start_date_str:
-                    continue
-                if end_date and order_date_str > end_date_str:
-                    continue
+            # 날짜 필터링은 이미 데이터베이스에서 처리됨 (get_orders_by_date_range 사용)
 
             # Status mapping from English to Korean
             english_status = order.get('status', '')
