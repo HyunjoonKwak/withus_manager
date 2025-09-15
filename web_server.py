@@ -14,10 +14,11 @@ from typing import Dict, List, Optional
 import json
 
 # FastAPI 및 웹 관련
-from fastapi import FastAPI, Request, HTTPException, BackgroundTasks
+from fastapi import FastAPI, Request, HTTPException, BackgroundTasks, Depends, Cookie
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
+from starlette.middleware.sessions import SessionMiddleware
 import uvicorn
 
 # 기존 모듈들
@@ -301,12 +302,157 @@ app = FastAPI(
     version=web_config.get('APP_VERSION', '1.0.0')
 )
 
+# 세션 미들웨어 추가
+session_secret = web_config.get('SESSION_SECRET_KEY', 'default-secret-key-change-this')
+app.add_middleware(SessionMiddleware, secret_key=session_secret)
+
+# 인증 미들웨어
+@app.middleware("http")
+async def auth_middleware(request: Request, call_next):
+    """모든 요청에 대한 인증 체크"""
+    # 인증이 필요없는 경로들
+    public_paths = ["/login", "/api/login"]
+
+    # 현재 경로가 public_paths에 있으면 통과
+    if request.url.path in public_paths:
+        response = await call_next(request)
+        return response
+
+    # 정적 파일은 통과
+    if request.url.path.startswith("/static"):
+        response = await call_next(request)
+        return response
+
+    # 인증 체크
+    if not is_authenticated(request):
+        # AJAX 요청이면 401 반환
+        if request.headers.get("content-type") == "application/json" or request.url.path.startswith("/api"):
+            return JSONResponse(
+                status_code=401,
+                content={"success": False, "message": "Authentication required"}
+            )
+        # 일반 요청이면 로그인 페이지로 리다이렉트
+        return RedirectResponse(url="/login", status_code=302)
+
+    response = await call_next(request)
+    return response
+
 # 템플릿 및 정적 파일 설정
 templates = Jinja2Templates(directory="templates")
+
+# 인증 관련 함수들
+def is_authenticated(request: Request) -> bool:
+    """세션에서 인증 상태 확인"""
+    try:
+        return request.session.get("authenticated", False)
+    except (AttributeError, AssertionError):
+        # 세션이 없는 경우 인증되지 않은 것으로 처리
+        return False
+
+def require_auth(request: Request):
+    """인증이 필요한 엔드포인트에서 사용하는 의존성"""
+    if not is_authenticated(request):
+        raise HTTPException(status_code=401, detail="Authentication required")
+    return True
+
+def get_users() -> dict:
+    """사용자 목록 가져오기"""
+    users_str = web_config.get('WEB_USERS', '')
+    users = {}
+
+    if users_str:
+        # 다중 사용자 형식: admin:password123,user:pass456
+        for user_pair in users_str.split(','):
+            if ':' in user_pair:
+                username, password = user_pair.strip().split(':', 1)
+                users[username.strip()] = password.strip()
+
+    # 하위 호환성: 기존 WEB_PASSWORD가 있으면 admin 계정으로 추가
+    fallback_password = web_config.get('WEB_PASSWORD', '')
+    if fallback_password and 'admin' not in users:
+        users['admin'] = fallback_password
+
+    return users
+
+def check_user_credentials(username: str, password: str) -> bool:
+    """사용자 자격증명 검증"""
+    users = get_users()
+    return username in users and users[username] == password
+
+def check_password(password: str) -> bool:
+    """패스워드 검증 (하위 호환성)"""
+    correct_password = web_config.get('WEB_PASSWORD', 'admin123')
+    return password == correct_password
 
 # 정적 파일이 있다면 마운트 (선택사항)
 if os.path.exists("static"):
     app.mount("/static", StaticFiles(directory="static"), name="static")
+
+# ==================== 인증 관련 라우트 ====================
+
+@app.get("/login", response_class=HTMLResponse)
+async def login_page(request: Request):
+    """로그인 페이지"""
+    # 이미 로그인된 사용자는 홈으로 리다이렉트
+    if is_authenticated(request):
+        return RedirectResponse(url="/", status_code=302)
+
+    return templates.TemplateResponse("login.html", {"request": request})
+
+@app.post("/api/login")
+async def login(request: Request):
+    """로그인 API (다중 사용자 지원)"""
+    try:
+        data = await request.json()
+        username = data.get("username", "").strip()
+        password = data.get("password", "").strip()
+
+        # 다중 사용자 방식 우선 시도
+        if username and check_user_credentials(username, password):
+            # 로그인 성공 시 세션에 인증 정보 저장
+            request.session["authenticated"] = True
+            request.session["username"] = username
+            request.session["login_time"] = datetime.now().isoformat()
+
+            logger.info(f"사용자 로그인 성공 - 사용자: {username}, IP: {request.client.host}")
+
+            return {
+                "success": True,
+                "message": f"환영합니다, {username}님!",
+                "username": username
+            }
+        # 하위 호환성: 패스워드만 있는 경우 (기존 방식)
+        elif not username and password and check_password(password):
+            request.session["authenticated"] = True
+            request.session["username"] = "admin"  # 기본 사용자명
+            request.session["login_time"] = datetime.now().isoformat()
+
+            logger.info(f"사용자 로그인 성공 (패스워드 모드) - IP: {request.client.host}")
+
+            return {
+                "success": True,
+                "message": "로그인 성공",
+                "username": "admin"
+            }
+        else:
+            logger.warning(f"로그인 실패 시도 - 사용자: {username or '없음'}, IP: {request.client.host}")
+            return {
+                "success": False,
+                "message": "사용자명 또는 패스워드가 잘못되었습니다."
+            }
+    except Exception as e:
+        logger.error(f"로그인 처리 오류: {e}")
+        return {
+            "success": False,
+            "message": "로그인 처리 중 오류가 발생했습니다."
+        }
+
+@app.post("/api/logout")
+async def logout(request: Request):
+    """로그아웃 API"""
+    request.session.clear()
+    logger.info(f"사용자 로그아웃 - IP: {request.client.host}")
+    return {"success": True, "message": "로그아웃 되었습니다."}
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
