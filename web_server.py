@@ -1165,11 +1165,11 @@ async def shutdown_event():
 async def get_settings():
     """설정 조회"""
     try:
-        # 보안상 실제 값은 마스킹하여 반환
+        # 설정값 전체 반환 (웹 관리자용)
         settings = {
             # 기본설정
-            "client_id": web_config.get('NAVER_CLIENT_ID', ''),
-            "client_secret": web_config.get('NAVER_CLIENT_SECRET', ''),
+            "client_id": web_config.get_raw('NAVER_CLIENT_ID', ''),
+            "client_secret": web_config.get_raw('NAVER_CLIENT_SECRET', ''),
             "discord_webhook": web_config.get('DISCORD_WEBHOOK_URL', ''),
             "discord_enabled": web_config.get_bool('DISCORD_ENABLED', False),
             "check_interval": web_config.get_int('CHECK_INTERVAL', 300),

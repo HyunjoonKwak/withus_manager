@@ -1087,6 +1087,50 @@ function resetToDefaults() {
     }
 }
 
+// API 테스트 함수
+async function testApiConnection() {
+    const button = event.target.closest('button');
+    const resultSpan = document.getElementById('apiTestResult');
+    const clientId = document.getElementById('clientId').value;
+    const clientSecret = document.getElementById('clientSecret').value;
+
+    if (!clientId || !clientSecret) {
+        resultSpan.innerHTML = '<span class="text-warning"><i class="fas fa-exclamation-triangle"></i> 클라이언트ID와 시크릿을 입력하세요</span>';
+        return;
+    }
+
+    const originalText = button.innerHTML;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 테스트 중...';
+    button.disabled = true;
+    resultSpan.innerHTML = '';
+
+    try {
+        const response = await fetch('/api/test-api-token', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                client_id: clientId,
+                client_secret: clientSecret
+            })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            resultSpan.innerHTML = '<span class="text-success"><i class="fas fa-check-circle"></i> 연결 성공!</span>';
+        } else {
+            resultSpan.innerHTML = `<span class="text-danger"><i class="fas fa-times-circle"></i> 연결 실패: ${result.message || '알 수 없는 오류'}</span>`;
+        }
+    } catch (error) {
+        resultSpan.innerHTML = `<span class="text-danger"><i class="fas fa-times-circle"></i> 연결 오류: ${error.message}</span>`;
+    } finally {
+        button.innerHTML = originalText;
+        button.disabled = false;
+    }
+}
+
 // 유틸리티 함수들
 function togglePassword(inputId) {
     const input = document.getElementById(inputId);
