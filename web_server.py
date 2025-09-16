@@ -18,7 +18,7 @@ from fastapi import FastAPI, Request, HTTPException, BackgroundTasks, Depends, C
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
-from starlette.middleware.sessions import SessionMiddleware
+# SessionMiddleware 제거 - 쿠키 기반 인증 사용
 import uvicorn
 
 # 기존 모듈들
@@ -30,7 +30,7 @@ from version_utils import get_full_title, get_detailed_version_info
 
 # 로깅
 import logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 class LightweightOrderManager:
@@ -302,9 +302,8 @@ app = FastAPI(
     version=web_config.get('APP_VERSION', '1.0.0')
 )
 
-# 세션 미들웨어 추가
+# 세션 대신 간단한 쿠키 기반 인증 사용
 session_secret = web_config.get('SESSION_SECRET_KEY', 'default-secret-key-change-this')
-app.add_middleware(SessionMiddleware, secret_key=session_secret)
 
 # 인증 미들웨어
 @app.middleware("http")
@@ -342,11 +341,31 @@ templates = Jinja2Templates(directory="templates")
 
 # 인증 관련 함수들
 def is_authenticated(request: Request) -> bool:
-    """세션에서 인증 상태 확인"""
+    """쿠키에서 인증 상태 확인"""
     try:
-        return request.session.get("authenticated", False)
-    except (AttributeError, AssertionError):
-        # 세션이 없는 경우 인증되지 않은 것으로 처리
+        # 인증 쿠키 확인
+        auth_token = request.cookies.get("auth_token")
+        if not auth_token:
+            logger.debug(f"인증 토큰 없음 - 경로: {request.url.path}")
+            return False
+
+        # 간단한 토큰 검증 (실제로는 JWT나 더 안전한 방식 사용 권장)
+        try:
+            import base64
+            import json
+            decoded = base64.b64decode(auth_token.encode()).decode()
+            token_data = json.loads(decoded)
+
+            # 토큰 유효성 검증
+            if token_data.get("authenticated") and token_data.get("username"):
+                logger.debug(f"인증 성공 - 경로: {request.url.path}, 사용자: {token_data.get('username')}")
+                return True
+        except Exception as token_error:
+            logger.warning(f"토큰 디코딩 오류 - 경로: {request.url.path}, 오류: {token_error}")
+
+        return False
+    except Exception as e:
+        logger.warning(f"인증 확인 오류 - 경로: {request.url.path}, 오류: {e}")
         return False
 
 def require_auth(request: Request):
@@ -396,12 +415,20 @@ def check_user_credentials(username: str, password: str) -> Optional[Dict]:
 def get_current_user(request: Request) -> Optional[Dict]:
     """현재 로그인된 사용자 정보 반환"""
     try:
-        username = request.session.get("username")
-        if username:
-            # 세션에 사용자 정보가 있으면 반환
-            return request.session.get("user_info")
+        auth_token = request.cookies.get("auth_token")
+        if not auth_token:
+            return None
+
+        import base64
+        import json
+        decoded = base64.b64decode(auth_token.encode()).decode()
+        token_data = json.loads(decoded)
+
+        if token_data.get("authenticated") and token_data.get("user_info"):
+            return token_data.get("user_info")
         return None
-    except (AttributeError, AssertionError):
+    except Exception as e:
+        logger.debug(f"사용자 정보 조회 오류: {e}")
         return None
 
 def require_admin(request: Request):
@@ -437,6 +464,10 @@ async def register_page(request: Request):
 async def login(request: Request):
     """로그인 API (다중 사용자 지원)"""
     try:
+        from fastapi.responses import JSONResponse
+        import base64
+        import json
+
         data = await request.json()
         username = data.get("username", "").strip()
         password = data.get("password", "").strip()
@@ -445,39 +476,41 @@ async def login(request: Request):
         if username:
             user = check_user_credentials(username, password)
             if user:
-                # 로그인 성공 시 세션에 인증 정보 저장
-                request.session["authenticated"] = True
-                request.session["username"] = username
-                request.session["user_info"] = user
-                request.session["login_time"] = datetime.now().isoformat()
+                # 인증 토큰 생성
+                token_data = {
+                    "authenticated": True,
+                    "username": username,
+                    "user_info": user,
+                    "login_time": datetime.now().isoformat()
+                }
+
+                # Base64로 인코딩 (실제로는 JWT 사용 권장)
+                token = base64.b64encode(json.dumps(token_data).encode()).decode()
 
                 logger.info(f"사용자 로그인 성공 - 사용자: {username}, IP: {request.client.host}")
 
-                return {
+                response = JSONResponse({
                     "success": True,
                     "message": f"환영합니다, {user.get('full_name', username)}님!",
                     "username": username,
                     "is_admin": user.get('is_admin', False)
-                }
-        # 하위 호환성: 패스워드만 있는 경우 (기존 방식)
-        elif not username and password and check_password(password):
-            request.session["authenticated"] = True
-            request.session["username"] = "admin"  # 기본 사용자명
-            request.session["login_time"] = datetime.now().isoformat()
+                })
 
-            logger.info(f"사용자 로그인 성공 (패스워드 모드) - IP: {request.client.host}")
+                # 인증 쿠키 설정
+                response.set_cookie(
+                    key="auth_token",
+                    value=token,
+                    max_age=60*60*24*7,  # 7일
+                    httponly=True,
+                    samesite="lax"
+                )
 
-            return {
-                "success": True,
-                "message": "로그인 성공",
-                "username": "admin"
-            }
-        else:
-            logger.warning(f"로그인 실패 시도 - 사용자: {username or '없음'}, IP: {request.client.host}")
-            return {
-                "success": False,
-                "message": "사용자명 또는 패스워드가 잘못되었습니다."
-            }
+                return response
+        logger.warning(f"로그인 실패 시도 - 사용자: {username or '없음'}, IP: {request.client.host}")
+        return {
+            "success": False,
+            "message": "사용자명 또는 패스워드가 잘못되었습니다."
+        }
     except Exception as e:
         logger.error(f"로그인 처리 오류: {e}")
         return {
@@ -488,9 +521,13 @@ async def login(request: Request):
 @app.post("/api/logout")
 async def logout(request: Request):
     """로그아웃 API"""
-    request.session.clear()
+    from fastapi.responses import JSONResponse
+
     logger.info(f"사용자 로그아웃 - IP: {request.client.host}")
-    return {"success": True, "message": "로그아웃 되었습니다."}
+    response = JSONResponse({"success": True, "message": "로그아웃 되었습니다."})
+    # 인증 쿠키 삭제
+    response.delete_cookie(key="auth_token")
+    return response
 
 # ==================== 사용자 관리 API ====================
 
