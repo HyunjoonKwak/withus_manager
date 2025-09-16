@@ -1444,6 +1444,26 @@ async def save_product_filter_settings(request: Request):
         logger.error(f"상품 필터 설정 저장 실패: {e}")
         return {"success": False, "error": str(e)}
 
+@app.get("/api/products/{origin_product_id}/detail")
+async def get_product_detail(origin_product_id: str):
+    """원상품 상세 정보 조회 API - 네이버 API 원본 응답 반환"""
+    try:
+        logger.info(f"원상품 상세 조회 API 호출: {origin_product_id}")
+
+        # 네이버 API에서 원상품 정보 조회
+        response = order_manager.naver_api.get_origin_product(origin_product_id)
+
+        logger.info(f"네이버 API 응답 성공: {origin_product_id}")
+        return {
+            "success": True,
+            "data": response,
+            "origin_product_id": origin_product_id
+        }
+
+    except Exception as e:
+        logger.error(f"원상품 상세 조회 API 오류: {e}")
+        return {"success": False, "error": str(e)}
+
 @app.get("/api/products/filter-settings")
 async def get_product_filter_settings():
     """상품 필터 설정 조회 - 설정 페이지와 연동"""

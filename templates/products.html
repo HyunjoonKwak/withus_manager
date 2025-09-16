@@ -491,7 +491,7 @@ function renderProducts(productList) {
                 </button>
             </td>
             <td class="text-center">
-                <button class="btn btn-outline-info btn-sm" onclick="openProductView('${product.product_id}', '${product.name}')" title="상품 조회">
+                <button class="btn btn-outline-info btn-sm" onclick="openProductDetailPopup('${product.origin_product_no || product.product_id}', '${product.name}')" title="상품 정보 조회">
                     🔍 조회
                 </button>
             </td>
@@ -763,6 +763,111 @@ function openProductView(productId, productName = "") {
         console.error('상품 조회 페이지 열기 오류:', error);
         alert('상품 조회 페이지를 여는 중 오류가 발생했습니다: ' + error.message);
     }
+}
+
+// 네이버 API 원본 응답을 팝업으로 보여주는 함수
+async function openProductDetailPopup(originProductId, productName = "") {
+    try {
+        console.log('상품 상세 정보 조회:', originProductId, productName);
+
+        if (!originProductId || originProductId === 'undefined' || originProductId === '-') {
+            alert('원상품ID를 찾을 수 없습니다. 상품 정보를 조회할 수 없습니다.');
+            return;
+        }
+
+        // 로딩 표시
+        showStatusMessage('상품 정보를 조회하고 있습니다...', 'info');
+
+        // 서버에서 네이버 API 응답 조회
+        const response = await fetch(`/api/products/${originProductId}/detail`);
+        const result = await response.json();
+
+        if (result.success) {
+            // 응답 데이터를 예쁘게 포맷팅
+            const formattedData = JSON.stringify(result.data, null, 2);
+
+            // 팝업 창 HTML 생성
+            const popupHtml = `
+                <div style="
+                    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+                    background: rgba(0,0,0,0.5); z-index: 10000;
+                    display: flex; align-items: center; justify-content: center;
+                " onclick="closeProductDetailPopup()">
+                    <div style="
+                        background: white; width: 90%; max-width: 800px; max-height: 90%;
+                        border-radius: 8px; padding: 20px; overflow: auto;
+                        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                    " onclick="event.stopPropagation()">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                            <h5 style="margin: 0; color: #333;">🔍 상품 상세 정보 (원본 API 응답)</h5>
+                            <button onclick="closeProductDetailPopup()" style="
+                                background: #dc3545; color: white; border: none;
+                                border-radius: 4px; padding: 8px 12px; cursor: pointer;
+                            ">✕ 닫기</button>
+                        </div>
+                        <div style="margin-bottom: 10px;">
+                            <strong>상품명:</strong> ${productName}<br>
+                            <strong>원상품ID:</strong> ${originProductId}
+                        </div>
+                        <div style="
+                            background: #f8f9fa; border: 1px solid #dee2e6;
+                            border-radius: 4px; padding: 15px;
+                            font-family: 'Courier New', monospace;
+                            white-space: pre-wrap; font-size: 12px;
+                            max-height: 500px; overflow: auto;
+                        ">${formattedData}</div>
+                        <div style="margin-top: 15px; text-align: center;">
+                            <button onclick="copyToClipboard('${formattedData.replace(/'/g, "\\'")}'); showStatusMessage('클립보드에 복사되었습니다!', 'success');" style="
+                                background: #28a745; color: white; border: none;
+                                border-radius: 4px; padding: 8px 16px; cursor: pointer; margin-right: 10px;
+                            ">📋 복사</button>
+                            <button onclick="closeProductDetailPopup()" style="
+                                background: #6c757d; color: white; border: none;
+                                border-radius: 4px; padding: 8px 16px; cursor: pointer;
+                            ">닫기</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // 팝업을 body에 추가
+            const popupDiv = document.createElement('div');
+            popupDiv.id = 'productDetailPopup';
+            popupDiv.innerHTML = popupHtml;
+            document.body.appendChild(popupDiv);
+
+            showStatusMessage('상품 정보 조회 완료', 'success');
+
+        } else {
+            throw new Error(result.error || '상품 정보 조회 실패');
+        }
+
+    } catch (error) {
+        console.error('상품 상세 정보 조회 오류:', error);
+        showStatusMessage(`상품 정보 조회 중 오류가 발생했습니다: ${error.message}`, 'error');
+    }
+}
+
+// 팝업 닫기 함수
+function closeProductDetailPopup() {
+    const popup = document.getElementById('productDetailPopup');
+    if (popup) {
+        popup.remove();
+    }
+}
+
+// 클립보드 복사 함수
+function copyToClipboard(text) {
+    navigator.clipboard.writeText(text).catch(err => {
+        console.error('클립보드 복사 실패:', err);
+        // 폴백: 텍스트 영역 생성해서 복사
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+    });
 }
 
 // 상태 메시지 표시 함수
