@@ -791,8 +791,24 @@ async function openProductViewPopup(originProductId, productName = "") {
         if (result.success) {
             const data = result.data;
 
-            // 데이터를 가독성 좋은 표 형태로 구성
-            const productInfo = generateProductInfoTable(data, productName, originProductId);
+            // optionInfo가 있는지 확인
+            if (!data.optionInfo) {
+                showStatusMessage('이 상품에는 옵션 정보가 없습니다.', 'info');
+                return;
+            }
+
+            // 기본 상품 정보와 optionInfo만 표시
+            const basicInfo = `
+                <div style="background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 4px; padding: 15px; margin-bottom: 15px;">
+                    <h6 style="margin: 0 0 10px 0; color: #495057;">📦 기본 정보</h6>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                        <div><strong>상품명:</strong> ${productName}</div>
+                        <div><strong>원상품ID:</strong> ${originProductId}</div>
+                    </div>
+                </div>
+            `;
+
+            const optionInfoHtml = generateOptionInfoSection(data.optionInfo);
 
             // 팝업 창 HTML 생성
             const popupHtml = `
@@ -807,13 +823,14 @@ async function openProductViewPopup(originProductId, productName = "") {
                         box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
                     " onclick="event.stopPropagation()">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                            <h5 style="margin: 0; color: #333;">🔍 상품 상세 정보</h5>
+                            <h5 style="margin: 0; color: #333;">🎛️ 상품 옵션 정보</h5>
                             <button onclick="closeProductViewPopup()" style="
                                 background: #dc3545; color: white; border: none;
                                 border-radius: 4px; padding: 8px 12px; cursor: pointer;
                             ">✕ 닫기</button>
                         </div>
-                        ${productInfo}
+                        ${basicInfo}
+                        ${optionInfoHtml}
                         <div style="margin-top: 15px; text-align: center;">
                             <button onclick="closeProductViewPopup()" style="
                                 background: #6c757d; color: white; border: none;
