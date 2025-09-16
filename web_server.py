@@ -499,10 +499,10 @@ async def register_user(request: Request):
     """사용자 등록 API"""
     try:
         data = await request.json()
-        username = data.get("username", "").strip()
-        password = data.get("password", "").strip()
-        email = data.get("email", "").strip() or None
-        full_name = data.get("full_name", "").strip() or None
+        username = (data.get("username") or "").strip()
+        password = (data.get("password") or "").strip()
+        email = (data.get("email") or "").strip() or None
+        full_name = (data.get("full_name") or "").strip() or None
 
         # 입력 검증
         if not username or not password:
