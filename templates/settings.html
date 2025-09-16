@@ -205,35 +205,6 @@
                             </div>
                         </div>
 
-                        <!-- 모니터링 설정 -->
-                        <div class="card mb-4">
-                            <div class="card-header">
-                                <h5><i class="fas fa-monitor-heart-rate text-success"></i> 모니터링 설정</h5>
-                            </div>
-                            <div class="card-body">
-                                <div class="row">
-                                    <div class="col-md-4">
-                                        <label for="checkInterval" class="form-label">체크 간격 (초)</label>
-                                        <input type="number" class="form-control" id="checkInterval" min="60" max="3600" value="300">
-                                        <div class="form-text">권장값: 300초 (5분)</div>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <label for="refreshInterval" class="form-label">자동 새로고침 간격 (초)</label>
-                                        <input type="number" class="form-control" id="refreshInterval" min="30" max="600" value="60">
-                                        <div class="form-text">GUI에서 자동 새로고침 간격</div>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <label class="form-label">자동 새로고침</label>
-                                        <div class="form-check form-switch">
-                                            <input class="form-check-input" type="checkbox" id="autoRefresh">
-                                            <label class="form-check-label" for="autoRefresh">
-                                                자동 새로고침 사용
-                                            </label>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
                     </div>
                 </div>
 
@@ -256,6 +227,31 @@
                                         <label for="quickPeriod" class="form-label">빠른 기간 설정 (일)</label>
                                         <input type="number" class="form-control" id="quickPeriod" min="1" max="30" value="3">
                                         <div class="form-text">빠른 조회용 기본 기간</div>
+                                    </div>
+                                </div>
+
+                                <hr class="my-3">
+                                <h6 class="text-muted mb-3"><i class="fas fa-sync-alt"></i> 모니터링 설정</h6>
+
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <label for="checkInterval" class="form-label">체크 간격 (초)</label>
+                                        <input type="number" class="form-control" id="checkInterval" min="60" max="3600" value="300">
+                                        <div class="form-text">권장값: 300초 (5분)</div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label for="refreshInterval" class="form-label">자동 새로고침 간격 (초)</label>
+                                        <input type="number" class="form-control" id="refreshInterval" min="30" max="600" value="60">
+                                        <div class="form-text">GUI에서 자동 새로고침 간격</div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">자동 새로고침</label>
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" id="autoRefresh">
+                                            <label class="form-check-label" for="autoRefresh">
+                                                자동 새로고침 사용
+                                            </label>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
