@@ -729,6 +729,7 @@ class NaverShoppingAPI:
                     product_info.get('productOrderStatus'),
                     product_info.get('placeOrderStatusType')
                 ),  # 두 개 상태 필드 모두 사용
+                'place_order_status': product_info.get('placeOrderStatusType'),  # 발주확인 상태 저장
                 'shipping_company': product_info.get('expectedDeliveryCompany'),  # content.productOrder.expectedDeliveryCompany
                 'tracking_number': '',  # 추후 배송 조회 API에서 가져와야 함
                 'memo': ''  # 기본값
@@ -872,6 +873,67 @@ class NaverShoppingAPI:
         data = {
             'productOrderIds': product_order_ids
         }
-        
+
         response = self.make_authenticated_request('POST', '/external/v1/pay-order/seller/product-orders/query', data)
         return response or {}
+
+    def confirm_orders(self, product_order_ids: list) -> Dict:
+        """발주확인 API 호출 - 네이버 Commerce API"""
+        import http.client
+        import json
+
+        try:
+            # HTTPS 연결 생성
+            conn = http.client.HTTPSConnection("api.commerce.naver.com")
+
+            # 요청 페이로드
+            payload = json.dumps({
+                "productOrderIds": product_order_ids
+            })
+
+            # 요청 헤더
+            headers = {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'Authorization': f'Bearer {self.access_token}'
+            }
+
+            # API 호출
+            conn.request("POST", "/external/v1/pay-order/seller/product-orders/confirm", payload, headers)
+            res = conn.getresponse()
+            data = res.read()
+
+            # 연결 종료
+            conn.close()
+
+            # 응답 파싱
+            response_text = data.decode("utf-8")
+
+            if res.status == 200:
+                try:
+                    response_data = json.loads(response_text)
+                    return {
+                        'success': True,
+                        'data': response_data,
+                        'status_code': res.status
+                    }
+                except json.JSONDecodeError:
+                    return {
+                        'success': True,
+                        'message': response_text,
+                        'status_code': res.status
+                    }
+            else:
+                return {
+                    'success': False,
+                    'message': f'API 호출 실패: {res.status} - {response_text}',
+                    'status_code': res.status,
+                    'response': response_text
+                }
+
+        except Exception as e:
+            return {
+                'success': False,
+                'message': f'발주확인 API 호출 중 오류: {str(e)}',
+                'error': str(e)
+            }

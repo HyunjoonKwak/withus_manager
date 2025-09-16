@@ -6,6 +6,7 @@ WithUs Order Management Web Server (t2.micro 최적화 버전)
 
 import os
 import sys
+import sqlite3
 import threading
 import time
 import asyncio
@@ -718,6 +719,7 @@ async def home(request: Request):
             "last_check": order_manager.last_check_time.strftime('%Y-%m-%d %H:%M:%S') if order_manager.last_check_time else "미확인",
             "monitoring_active": order_manager.monitoring_active,
             "total_orders": sum(dashboard_data.values()),
+            "check_interval": web_config.get_int('CHECK_INTERVAL', 300),  # 모니터링 체크 간격 (초)
             "user_info": get_current_user(request)
         }
 
@@ -738,31 +740,53 @@ async def orders_page(request: Request):
     }
     return templates.TemplateResponse("orders.html", context)
 
-@app.get("/new-orders", response_class=HTMLResponse)
-async def new_orders_page(request: Request):
-    """신규주문 관리 페이지"""
+@app.get("/order-confirmation", response_class=HTMLResponse)
+async def order_confirmation_page(request: Request):
+    """발주확인/발송관리 통합 페이지"""
     context = {
         "request": request,
-        "title": "신규주문 - " + get_full_title(),
+        "title": "발주확인/발송관리 - " + get_full_title(),
         "version_info": get_detailed_version_info(),
-        "page_type": "new_orders",
-        "order_status": "PAYMENT_WAITING",  # 수정: 신규주문 상태는 PAYMENT_WAITING
-        "description": "신규주문이란 구매자가 결제완료후 판매자 주문확인 전 주문건입니다. [주문확인] 또는 [발송지연안내], [판매취소]를 할수 있습니다."
+        "page_type": "order_confirmation",
+        "order_status": "PAYMENT_WAITING,PAYED",  # 신규주문과 발송대기 주문을 모두 표시
+        "description": "결제완료 주문의 발주확인 및 발송관리를 합니다. [발주확인]을 통해 신규주문을 발송대기로 변경하거나 [발송처리]를 할 수 있습니다.",
+        "show_confirmation_status": True  # 발주확인 상태 표시 플래그
     }
     return templates.TemplateResponse("order_management.html", context)
 
+@app.get("/new-orders", response_class=HTMLResponse)
+async def new_orders_page(request: Request):
+    """신규주문 관리 페이지 (리다이렉트)"""
+    # 통합 페이지로 리다이렉트
+    return RedirectResponse(url="/order-confirmation", status_code=302)
+
+    # 기존 코드 (주석 처리)
+    # context = {
+    #     "request": request,
+    #     "title": "신규주문 - " + get_full_title(),
+    #     "version_info": get_detailed_version_info(),
+    #     "page_type": "new_orders",
+    #     "order_status": "PAYMENT_WAITING",  # 수정: 신규주문 상태는 PAYMENT_WAITING
+    #     "description": "신규주문이란 구매자가 결제완료후 판매자 주문확인 전 주문건입니다. [주문확인] 또는 [발송지연안내], [판매취소]를 할수 있습니다."
+    # }
+    # return templates.TemplateResponse("order_management.html", context)
+
 @app.get("/shipping-pending", response_class=HTMLResponse)
 async def shipping_pending_page(request: Request):
-    """발송대기 주문 페이지"""
-    context = {
-        "request": request,
-        "title": "발송대기 - " + get_full_title(),
-        "version_info": get_detailed_version_info(),
-        "page_type": "shipping_pending",
-        "order_status": "CONFIRMED",
-        "description": "발송대기 주문이란 판매자가 [주문확인]후 [발송처리]전 주문건입니다. [발송처리]를 할수 있습니다."
-    }
-    return templates.TemplateResponse("order_management.html", context)
+    """발송대기 주문 페이지 (리다이렉트)"""
+    # 통합 페이지로 리다이렉트
+    return RedirectResponse(url="/order-confirmation", status_code=302)
+
+    # 기존 코드 (주석 처리)
+    # context = {
+    #     "request": request,
+    #     "title": "발송대기 - " + get_full_title(),
+    #     "version_info": get_detailed_version_info(),
+    #     "page_type": "shipping_pending",
+    #     "order_status": "CONFIRMED",
+    #     "description": "발송대기 주문이란 판매자가 [주문확인]후 [발송처리]전 주문건입니다. [발송처리]를 할수 있습니다."
+    # }
+    # return templates.TemplateResponse("order_management.html", context)
 
 @app.get("/shipping-in-progress", response_class=HTMLResponse)
 async def shipping_in_progress_page(request: Request):
@@ -1330,7 +1354,57 @@ async def perform_order_action(action_data: dict):
 
         # 액션별 처리
         if action == "confirm_order":
-            result = {"success": True, "message": f"주문 {order_id} 확인 완료"}
+            # 발주확인: 네이버 Commerce API 호출 후 NOT_YET -> OK 상태 변경
+            try:
+                # 1. 데이터베이스에서 주문 정보 조회
+                conn = sqlite3.connect(order_manager.db_manager.db_path)
+                cursor = conn.cursor()
+
+                cursor.execute('SELECT place_order_status, product_order_id FROM orders WHERE order_id = ?', (order_id,))
+                current_order = cursor.fetchone()
+
+                if not current_order:
+                    conn.close()
+                    result = {"success": False, "message": f"주문 {order_id}를 찾을 수 없습니다"}
+                elif current_order[0] == 'OK':
+                    conn.close()
+                    result = {"success": False, "message": f"주문 {order_id}는 이미 확인된 주문입니다"}
+                else:
+                    product_order_id = current_order[1]
+                    if not product_order_id:
+                        conn.close()
+                        result = {"success": False, "message": f"주문 {order_id}에 product_order_id가 없습니다"}
+                    else:
+                        # 2. 네이버 Commerce API 발주확인 호출
+                        try:
+                            api_response = naver_api.confirm_orders([product_order_id])
+
+                            if api_response.get('success'):
+                                # API 호출 성공 시 데이터베이스 업데이트
+                                cursor.execute('''
+                                    UPDATE orders
+                                    SET place_order_status = ?, updated_at = ?
+                                    WHERE order_id = ?
+                                ''', ('OK', datetime.now().isoformat(), order_id))
+
+                                conn.commit()
+                                conn.close()
+
+                                result = {"success": True, "message": f"주문 {order_id} 발주확인 완료 (NOT_YET → OK)"}
+                                logger.info(f"발주확인 완료: {order_id}, API 응답: {api_response}")
+                            else:
+                                conn.close()
+                                result = {"success": False, "message": f"네이버 API 발주확인 실패: {api_response.get('message', '알 수 없는 오류')}"}
+                                logger.error(f"네이버 API 발주확인 실패: {api_response}")
+                        except Exception as api_error:
+                            conn.close()
+                            result = {"success": False, "message": f"네이버 API 호출 중 오류: {str(api_error)}"}
+                            logger.error(f"네이버 API 호출 오류: {api_error}")
+
+            except Exception as e:
+                result = {"success": False, "message": f"발주확인 처리 중 오류: {str(e)}"}
+                logger.error(f"발주확인 오류: {e}")
+
         elif action == "dispatch_order":
             tracking_number = additional_data.get('tracking_number')
             result = {"success": True, "message": f"주문 {order_id} 발송 처리 완료"}

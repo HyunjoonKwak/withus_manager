@@ -161,7 +161,8 @@ class DatabaseManager:
             missing_order_columns = [
                 ('product_order_id', 'TEXT'),
                 ('shipping_due_date', 'TEXT'),
-                ('product_option', 'TEXT')
+                ('product_option', 'TEXT'),
+                ('place_order_status', 'TEXT')
             ]
             
             for column_name, column_type in missing_order_columns:
@@ -190,8 +191,8 @@ class DatabaseManager:
                 (order_id, order_date, customer_name, customer_phone,
                  product_name, quantity, price, status, shipping_company,
                  tracking_number, memo, product_order_id, shipping_due_date,
-                 product_option, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 product_option, place_order_status, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (
                 order_data.get('order_id'),
                 order_data.get('order_date'),
@@ -207,6 +208,7 @@ class DatabaseManager:
                 order_data.get('product_order_id'),
                 order_data.get('shipping_due_date'),
                 order_data.get('product_option'),
+                order_data.get('place_order_status'),
                 datetime.now().isoformat()
             ))
 

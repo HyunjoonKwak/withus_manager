@@ -10,13 +10,8 @@
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link {% if page_type == 'new_orders' %}active{% endif %}" href="/new-orders">
-                    <i class="fas fa-plus-circle"></i>신규주문
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link {% if page_type == 'shipping_pending' %}active{% endif %}" href="/shipping-pending">
-                    <i class="fas fa-clock"></i>발송대기
+                <a class="nav-link {% if page_type == 'order_confirmation' %}active{% endif %}" href="/order-confirmation">
+                    <i class="fas fa-check-square"></i>발주확인/발송관리
                 </a>
             </li>
             <li class="nav-item">
@@ -202,6 +197,9 @@
                     <th width="8%" data-column="price">금액</th>
                     <th width="8%" data-column="quantity">수량</th>
                     <th width="10%" data-column="status">상태</th>
+                    {% if show_confirmation_status %}
+                    <th width="10%" data-column="confirmation_status">발주확인</th>
+                    {% endif %}
                     <th width="12%" data-column="tracking_number">송장번호</th>
                     <th width="12%" data-column="actions">액션</th>
                 </tr>
@@ -561,6 +559,13 @@ function renderOrders(orderList) {
                     ${getStatusText(order.status)}
                 </span>
             </td>
+            ${currentPageType === 'order_confirmation' ? `
+            <td>
+                <span class="badge ${getConfirmationStatusClass(order.place_order_status)}">
+                    ${getConfirmationStatusText(order.place_order_status)}
+                </span>
+            </td>
+            ` : ''}
             <td>
                 <small>${order.tracking_number || '-'}</small>
             </td>
@@ -599,9 +604,48 @@ function getStatusText(status) {
     }
 }
 
+// 발주확인 상태별 배지 클래스
+function getConfirmationStatusClass(placeOrderStatus) {
+    switch(placeOrderStatus) {
+        case 'NOT_YET': return 'bg-warning text-dark';  // 미확인 (주황)
+        case 'OK': return 'bg-success';                 // 확인완료 (녹색)
+        case null:
+        case undefined: return 'bg-secondary';          // 정보없음 (회색)
+        default: return 'bg-light text-dark';           // 기타
+    }
+}
+
+// 발주확인 상태 텍스트
+function getConfirmationStatusText(placeOrderStatus) {
+    switch(placeOrderStatus) {
+        case 'NOT_YET': return '미확인';
+        case 'OK': return '확인완료';
+        case null:
+        case undefined: return '정보없음';
+        default: return placeOrderStatus || '-';
+    }
+}
+
 // 액션 버튼 생성
 function getActionButtons(order) {
     switch(currentPageType) {
+        case 'order_confirmation':
+            // 발주확인 상태에 따라 다른 버튼 표시
+            if (order.place_order_status === 'NOT_YET') {
+                return `
+                    <button class="btn btn-sm btn-success btn-action" onclick="showActionModal('${order.order_id}', 'confirm_order', '발주 확인')">
+                        발주확인
+                    </button>
+                `;
+            } else if (order.place_order_status === 'OK') {
+                return `
+                    <button class="btn btn-sm btn-primary btn-action" onclick="showActionModal('${order.order_id}', 'dispatch_order', '발송 처리')">
+                        발송처리
+                    </button>
+                `;
+            } else {
+                return '<span class="text-muted">-</span>';
+            }
         case 'new_orders':
             return `
                 <button class="btn btn-sm btn-success btn-action" onclick="showActionModal('${order.order_id}', 'confirm_order', '주문 확인')">

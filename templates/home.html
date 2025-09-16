@@ -329,8 +329,8 @@ async function testNotifications() {
 function navigateToOrderPage(status, count) {
     // 상태별 URL 매핑
     const statusUrlMap = {
-        '신규주문': '/new-orders',
-        '발송대기': '/shipping-pending',
+        '신규주문': '/order-confirmation',
+        '발송대기': '/order-confirmation',
         '배송중': '/shipping-in-progress',
         '배송완료': '/shipping-completed',
         '구매확정': '/purchase-decided',
@@ -492,8 +492,9 @@ function setupAutoRefresh() {
         return;
     }
 
-    // 기본 새로고침 간격 (10분)
-    const refreshInterval = 10 * 60 * 1000; // 10분을 밀리초로
+    // 설정에서 가져온 새로고침 간격 (초 단위를 밀리초로 변환)
+    const checkIntervalSeconds = {{ check_interval }};  // 서버에서 전달받은 체크 간격 (초)
+    const refreshInterval = checkIntervalSeconds * 1000;  // 밀리초로 변환
 
     // 다음 새로고침 시간 계산
     nextRefreshTime = new Date(Date.now() + refreshInterval);
