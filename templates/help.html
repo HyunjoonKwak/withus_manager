@@ -115,9 +115,10 @@
         <div class="col-md-6">
             <ul class="list-unstyled">
                 <li><a href="#api-setup">5. API 설정</a></li>
-                <li><a href="#notifications">6. 알림 설정</a></li>
-                <li><a href="#troubleshooting">7. 문제해결</a></li>
-                <li><a href="#faq">8. 자주 묻는 질문</a></li>
+                <li><a href="#api-references">6. 네이버 API 참고링크</a></li>
+                <li><a href="#notifications">7. 알림 설정</a></li>
+                <li><a href="#troubleshooting">8. 문제해결</a></li>
+                <li><a href="#faq">9. 자주 묻는 질문</a></li>
             </ul>
         </div>
     </div>
@@ -309,11 +310,114 @@
     </div>
 </div>
 
+<!-- 네이버 API 참고링크 -->
+<div class="help-section" id="api-references">
+    <div class="section-header" onclick="toggleSection('api-references-body')">
+        <h5 class="mb-0">
+            <i class="fas fa-external-link-alt"></i> 6. 네이버 API 참고링크
+            <i class="fas fa-chevron-down float-end"></i>
+        </h5>
+    </div>
+    <div class="section-body" id="api-references-body" style="display: none;">
+        <div class="info-box">
+            <strong><i class="fas fa-info-circle"></i> 네이버 커머스 API 공식 문서</strong><br>
+            아래 링크들은 네이버 커머스 API 개발 및 문제해결에 도움이 되는 공식 자료입니다.
+        </div>
+
+        <h6><span class="step-number">1</span>메인 문서</h6>
+        <div class="mb-3">
+            <a href="https://apicenter.commerce.naver.com/docs/commerce-api/current" target="_blank" class="btn btn-primary btn-lg">
+                <i class="fas fa-book"></i> 네이버 커머스 API 메인 문서
+            </a>
+        </div>
+
+        <h6><span class="step-number">2</span>인증 및 기본 설정</h6>
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <a href="https://apicenter.commerce.naver.com/docs/commerce-api/current/o-auth-2-0" target="_blank" class="btn btn-outline-primary w-100 mb-2">
+                    <i class="fas fa-key"></i> OAuth 2.0 인증
+                </a>
+            </div>
+            <div class="col-md-6">
+                <a href="https://apicenter.commerce.naver.com/ko/member/application/manage/list" target="_blank" class="btn btn-outline-primary w-100 mb-2">
+                    <i class="fas fa-cog"></i> API 애플리케이션 관리
+                </a>
+            </div>
+        </div>
+
+        <h6><span class="step-number">3</span>주문 관리 API</h6>
+        <div class="row mb-3">
+            <div class="col-md-4">
+                <a href="https://apicenter.commerce.naver.com/docs/commerce-api/current/%EA%B5%90%ED%99%98" target="_blank" class="btn btn-outline-info w-100 mb-2">
+                    <i class="fas fa-exchange-alt"></i> 교환 관리
+                </a>
+            </div>
+            <div class="col-md-4">
+                <a href="https://apicenter.commerce.naver.com/docs/commerce-api/current/seller-release-exchange-holdback-pay-order-seller" target="_blank" class="btn btn-outline-info w-100 mb-2">
+                    <i class="fas fa-unlock"></i> 교환보류해제
+                </a>
+            </div>
+            <div class="col-md-4">
+                <a href="https://apicenter.commerce.naver.com/docs/commerce-api/current/seller-reject-exchange-pay-order-seller" target="_blank" class="btn btn-outline-info w-100 mb-2">
+                    <i class="fas fa-times-circle"></i> 교환거부(철회)
+                </a>
+            </div>
+        </div>
+
+        <h6><span class="step-number">4</span>상품 및 데이터 관리</h6>
+        <div class="row mb-3">
+            <div class="col-md-4">
+                <a href="https://apicenter.commerce.naver.com/docs/commerce-api/current/%EA%B7%B8%EB%A3%B9%EC%83%81%ED%92%88" target="_blank" class="btn btn-outline-success w-100 mb-2">
+                    <i class="fas fa-tags"></i> 그룹상품 관리
+                </a>
+            </div>
+            <div class="col-md-4">
+                <a href="https://apicenter.commerce.naver.com/docs/commerce-api/current/%EA%B3%A0%EA%B0%9D-%EB%8D%B0%EC%9D%B4%ED%84%B0" target="_blank" class="btn btn-outline-success w-100 mb-2">
+                    <i class="fas fa-chart-bar"></i> 고객 데이터(통계)
+                </a>
+            </div>
+            <div class="col-md-4">
+                <a href="https://apicenter.commerce.naver.com/docs/commerce-api/current/%EA%B3%A0%EA%B0%9D-%EB%AC%B8%EC%9D%98-%EB%8B%B5%EB%B3%80-%EB%93%B1%EB%A1%9D-%EC%88%98%EC%A0%95" target="_blank" class="btn btn-outline-success w-100 mb-2">
+                    <i class="fas fa-question-circle"></i> 고객 문의 관리
+                </a>
+            </div>
+        </div>
+
+        <h6><span class="step-number">5</span>정산 관리</h6>
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <a href="https://apicenter.commerce.naver.com/docs/commerce-api/current/%EB%B6%80%EA%B0%80%EC%84%B8-%EB%82%B4%EC%97%AD" target="_blank" class="btn btn-outline-warning w-100 mb-2">
+                    <i class="fas fa-receipt"></i> 부가세 내역
+                </a>
+            </div>
+        </div>
+
+        <h6><span class="step-number">6</span>커뮤니티 및 지원</h6>
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <a href="https://github.com/commerce-api-naver/commerce-api/discussions" target="_blank" class="btn btn-outline-dark w-100 mb-2">
+                    <i class="fab fa-github"></i> GitHub 커뮤니티
+                </a>
+            </div>
+            <div class="col-md-6">
+                <a href="https://sell.smartstore.naver.com/#/home/dashboard" target="_blank" class="btn btn-outline-dark w-100 mb-2">
+                    <i class="fas fa-store"></i> 스마트스토어 센터
+                </a>
+            </div>
+        </div>
+
+        <div class="warning-box">
+            <strong><i class="fas fa-exclamation-triangle"></i> 중요 안내</strong><br>
+            위 링크들은 네이버 커머스 API 공식 문서입니다. API 사용 중 문제가 발생하면 먼저 해당 문서를 참고하시기 바랍니다.
+        </div>
+    </div>
+</div>
+
 <!-- 알림 설정 -->
 <div class="help-section" id="notifications">
     <div class="section-header" onclick="toggleSection('notifications-body')">
         <h5 class="mb-0">
-            <i class="fas fa-bell"></i> 6. 알림 설정
+            <i class="fas fa-bell"></i> 7. 알림 설정
             <i class="fas fa-chevron-down float-end"></i>
         </h5>
     </div>
@@ -343,7 +447,7 @@
 <div class="help-section" id="troubleshooting">
     <div class="section-header" onclick="toggleSection('troubleshooting-body')">
         <h5 class="mb-0">
-            <i class="fas fa-tools"></i> 7. 문제해결
+            <i class="fas fa-tools"></i> 8. 문제해결
             <i class="fas fa-chevron-down float-end"></i>
         </h5>
     </div>
@@ -382,7 +486,7 @@
 <div class="help-section" id="faq">
     <div class="section-header" onclick="toggleSection('faq-body')">
         <h5 class="mb-0">
-            <i class="fas fa-question"></i> 8. 자주 묻는 질문
+            <i class="fas fa-question"></i> 9. 자주 묻는 질문
             <i class="fas fa-chevron-down float-end"></i>
         </h5>
     </div>
