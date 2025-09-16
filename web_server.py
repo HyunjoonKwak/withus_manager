@@ -1433,7 +1433,8 @@ async def get_products():
 
                             if option_info and option_info.get('optionCombinations'):
                                 # 데이터베이스에 옵션 정보 저장
-                                order_manager.db_manager.save_product_options(origin_product_no, option_info['optionCombinations'])
+                                save_result = order_manager.db_manager.save_product_options(origin_product_no, option_info['optionCombinations'])
+                                logger.info(f"옵션 정보 DB 저장 결과: {save_result}, 상품ID: {origin_product_no}")
 
                                 # 원상품의 실제 판매가 계산 (원가 - 셀러할인가)
                                 original_price = product.get('sale_price', 0)
