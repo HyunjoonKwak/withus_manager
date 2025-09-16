@@ -1123,10 +1123,18 @@ async def get_orders_from_db(
         }
 
         for order in orders:
-            # 상태 필터링 - 한국어 상태를 영어 상태로 변환하여 비교
+            # 상태 필터링 - 쉼표로 구분된 복수 상태 지원
             if order_status:
-                english_filter_status = korean_to_english_status.get(order_status, order_status)
-                if order.get('status') != english_filter_status:
+                # 쉼표로 구분된 상태들을 분리
+                status_list = [status.strip() for status in order_status.split(',')]
+                # 각 상태를 영어로 변환
+                english_filter_statuses = []
+                for status in status_list:
+                    english_status = korean_to_english_status.get(status, status)
+                    english_filter_statuses.append(english_status)
+
+                # 현재 주문 상태가 필터 목록에 있는지 확인
+                if order.get('status') not in english_filter_statuses:
                     continue
 
             # 날짜 필터링은 이미 데이터베이스에서 처리됨 (get_orders_by_date_range 사용)
@@ -1287,10 +1295,18 @@ async def refresh_orders_from_api(
         }
 
         for order in orders:
-            # 상태 필터링 - 한국어 상태를 영어 상태로 변환하여 비교
+            # 상태 필터링 - 쉼표로 구분된 복수 상태 지원
             if order_status:
-                english_filter_status = korean_to_english_status.get(order_status, order_status)
-                if order.get('status') != english_filter_status:
+                # 쉼표로 구분된 상태들을 분리
+                status_list = [status.strip() for status in order_status.split(',')]
+                # 각 상태를 영어로 변환
+                english_filter_statuses = []
+                for status in status_list:
+                    english_status = korean_to_english_status.get(status, status)
+                    english_filter_statuses.append(english_status)
+
+                # 현재 주문 상태가 필터 목록에 있는지 확인
+                if order.get('status') not in english_filter_statuses:
                     continue
 
             # 날짜 필터링은 이미 데이터베이스에서 처리됨 (get_orders_by_date_range 사용)
