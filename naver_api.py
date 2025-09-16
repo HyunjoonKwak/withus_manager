@@ -729,7 +729,7 @@ class NaverShoppingAPI:
                     product_info.get('productOrderStatus'),
                     product_info.get('placeOrderStatusType')
                 ),  # 두 개 상태 필드 모두 사용
-                'place_order_status': product_info.get('placeOrderStatusType'),  # 발주확인 상태 저장
+                'place_order_status': self._get_place_order_status(product_info),  # 발주확인 상태 저장
                 'shipping_company': product_info.get('expectedDeliveryCompany'),  # content.productOrder.expectedDeliveryCompany
                 'tracking_number': '',  # 추후 배송 조회 API에서 가져와야 함
                 'memo': ''  # 기본값
@@ -745,6 +745,20 @@ class NaverShoppingAPI:
                 print(f"❌ 주문 저장 실패: {order_data.get('order_id')}")
 
         return synced_count
+
+    def _get_place_order_status(self, product_info: dict) -> str:
+        """발주확인 상태를 결정하는 메서드"""
+        place_order_status = product_info.get('placeOrderStatusType')
+        product_order_status = product_info.get('productOrderStatus')
+
+        # placeOrderStatusType이 None인 경우 주문 상태에 따라 기본값 설정
+        if place_order_status is None:
+            if product_order_status in ['PAYMENT_WAITING', 'PAYED']:
+                return 'NOT_YET'  # 신규주문은 발주 미확인 상태
+            else:
+                return None  # 다른 상태들은 발주확인 불필요
+        else:
+            return place_order_status
 
     def _map_naver_status_to_local(self, naver_status: str, place_order_status: str = None) -> str:
         """네이버 API 상태를 로컬 상태로 매핑 (대시보드와 일관성 유지)"""
