@@ -209,15 +209,32 @@ class ConditionSettingsTab(BaseTab):
         # 대시보드 조회 기간 설정
         period_setting_frame = ttk.Frame(dashboard_frame)
         period_setting_frame.pack(fill="x", padx=5, pady=5)
-        
+
         ttk.Label(period_setting_frame, text="기본 조회 기간:").pack(side="left", padx=5)
-        
+
         self.dashboard_period_var = tk.StringVar()
-        period_combo = ttk.Combobox(period_setting_frame, textvariable=self.dashboard_period_var, 
+        period_combo = ttk.Combobox(period_setting_frame, textvariable=self.dashboard_period_var,
                                    values=['1', '3', '7'], width=5, state="readonly")
         period_combo.pack(side="left", padx=5)
-        
+
         ttk.Label(period_setting_frame, text="일").pack(side="left", padx=5)
+
+        # 모니터링 설정 추가
+        monitoring_setting_frame = ttk.Frame(dashboard_frame)
+        monitoring_setting_frame.pack(fill="x", padx=5, pady=5)
+
+        self.auto_refresh_var = tk.BooleanVar()
+        auto_refresh_cb = ttk.Checkbutton(monitoring_setting_frame, text="자동 새로고침", variable=self.auto_refresh_var)
+        auto_refresh_cb.pack(side="left", padx=5)
+
+        ttk.Label(monitoring_setting_frame, text="간격:").pack(side="left", padx=5)
+
+        self.refresh_interval_var = tk.StringVar()
+        self.refresh_interval_entry = ttk.Entry(monitoring_setting_frame, textvariable=self.refresh_interval_var, width=5)
+        self.refresh_interval_entry.pack(side="left", padx=5)
+        enable_context_menu(self.refresh_interval_entry)
+
+        ttk.Label(monitoring_setting_frame, text="초").pack(side="left", padx=5)
         
         # 대시보드 설정 버튼
         dashboard_buttons_frame = ttk.Frame(dashboard_frame)
@@ -375,6 +392,9 @@ class ConditionSettingsTab(BaseTab):
             current_period = config.get_int('DASHBOARD_PERIOD_DAYS', 1)
             self.dashboard_period_var.set(str(current_period))
             print(f"대시보드 기간 설정 로드: {current_period}일")
+
+            # 모니터링 설정 로드
+            self.load_monitoring_settings()
         except Exception as e:
             print(f"대시보드 설정 로드 오류: {e}")
             self.dashboard_period_var.set('1')
@@ -384,11 +404,15 @@ class ConditionSettingsTab(BaseTab):
         try:
             new_period = int(self.dashboard_period_var.get())
             config.set('DASHBOARD_PERIOD_DAYS', str(new_period))
+
+            # 모니터링 설정도 함께 저장
+            self.save_monitoring_settings()
+
             config.save()
-            
-            messagebox.showinfo("성공", f"대시보드 조회 기간이 {new_period}일로 설정되었습니다.")
+
+            messagebox.showinfo("성공", f"대시보드 조회 기간이 {new_period}일로 설정되었습니다.\n모니터링 설정도 함께 저장되었습니다.")
             print(f"대시보드 기간 설정 저장: {new_period}일")
-            
+
         except Exception as e:
             messagebox.showerror("오류", f"대시보드 설정 저장 실패: {str(e)}")
     
@@ -574,3 +598,63 @@ class ConditionSettingsTab(BaseTab):
             
         except Exception as e:
             messagebox.showerror("오류", f"상품 상태 설정 저장 실패: {str(e)}")
+
+    # 모니터링 설정 메서드들
+    def load_monitoring_settings(self):
+        """모니터링 설정 로드"""
+        try:
+            # 자동 새로고침 설정 로드
+            auto_refresh = config.get_bool('HOME_AUTO_REFRESH', False)
+            self.auto_refresh_var.set(auto_refresh)
+
+            # 새로고침 간격 설정 로드 (기본값 30초)
+            refresh_interval = config.get_int('HOME_REFRESH_INTERVAL', 30)
+            self.refresh_interval_var.set(str(refresh_interval))
+
+            print(f"모니터링 설정 로드 - 자동새로고침: {auto_refresh}, 간격: {refresh_interval}초")
+
+        except Exception as e:
+            print(f"모니터링 설정 로드 오류: {e}")
+            # 기본값 설정
+            self.auto_refresh_var.set(False)
+            self.refresh_interval_var.set('30')
+
+    def save_monitoring_settings(self):
+        """모니터링 설정 저장 (config.save()는 호출자에서 처리)"""
+        try:
+            # 자동 새로고침 설정
+            auto_refresh = self.auto_refresh_var.get()
+            config.set('HOME_AUTO_REFRESH', str(auto_refresh))
+
+            # 새로고침 간격 설정
+            try:
+                refresh_interval = int(self.refresh_interval_var.get())
+                if refresh_interval < 10:
+                    refresh_interval = 10  # 최소 10초
+                config.set('HOME_REFRESH_INTERVAL', str(refresh_interval))
+            except ValueError:
+                config.set('HOME_REFRESH_INTERVAL', '30')  # 기본값
+
+            print(f"모니터링 설정 저장 - 자동새로고침: {auto_refresh}, 간격: {refresh_interval}초")
+
+            # 홈 탭의 자동 새로고침 재시작 (있는 경우)
+            try:
+                if hasattr(self.app, 'home_tab') and self.app.home_tab:
+                    if hasattr(self.app.home_tab, 'restart_auto_refresh'):
+                        self.app.home_tab.restart_auto_refresh()
+                        print("홈 탭 자동 새로고침 재시작")
+            except Exception as update_error:
+                print(f"홈 탭 업데이트 오류: {update_error}")
+
+        except Exception as e:
+            print(f"모니터링 설정 저장 오류: {e}")
+            raise
+
+    def setup_copy_paste_bindings(self):
+        """키보드 복사/붙여넣기 바인딩 설정"""
+        try:
+            # 새로고침 간격 입력 필드에 바인딩
+            if hasattr(self, 'refresh_interval_entry'):
+                self.refresh_interval_entry.bind('<Control-a>', lambda e: self.refresh_interval_entry.select_range(0, 'end'))
+        except Exception as e:
+            print(f"키보드 바인딩 설정 오류: {e}")

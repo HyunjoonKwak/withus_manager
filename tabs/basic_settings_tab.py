@@ -304,43 +304,6 @@ class BasicSettingsTab(BaseTab):
         # 구분선 추가
         self.add_separator()
 
-        # 홈탭 리프레시 설정
-        refresh_frame = ttk.LabelFrame(self.scrollable_frame, text="⚡ 홈탭 리프레시 설정", style="Section.TLabelframe")
-        refresh_frame.pack(fill="x", padx=5, pady=(5, 10))
-
-        # 자동 리프레시 활성화
-        auto_refresh_frame = ttk.Frame(refresh_frame)
-        auto_refresh_frame.pack(fill="x", padx=5, pady=2)
-
-        self.auto_refresh_var = tk.BooleanVar()
-        self.auto_refresh_cb = ttk.Checkbutton(
-            auto_refresh_frame,
-            text="자동 리프레시 활성화",
-            variable=self.auto_refresh_var
-        )
-        self.auto_refresh_cb.pack(side="left", padx=5)
-
-        # 리프레시 간격 설정
-        interval_frame = ttk.Frame(refresh_frame)
-        interval_frame.pack(fill="x", padx=5, pady=2)
-
-        ttk.Label(interval_frame, text="리프레시 간격 (초):").pack(side="left", padx=5)
-        self.refresh_interval_var = tk.StringVar()
-        self.refresh_interval_entry = ttk.Entry(interval_frame, textvariable=self.refresh_interval_var, width=10)
-        self.refresh_interval_entry.pack(side="left", padx=5)
-
-        ttk.Label(interval_frame, text="권장: 60초 이상 (너무 짧으면 API 제한에 걸릴 수 있습니다)").pack(side="left", padx=10, anchor="w")
-
-        # 리프레시 설정 저장 버튼
-        refresh_buttons_frame = ttk.Frame(refresh_frame)
-        refresh_buttons_frame.pack(fill="x", padx=5, pady=5)
-
-        ttk.Button(refresh_buttons_frame, text="리프레시 설정 저장", command=self.save_refresh_settings).pack(side="left", padx=5)
-        ttk.Button(refresh_buttons_frame, text="지금 새로고침", command=self.manual_refresh).pack(side="left", padx=5)
-
-        # 구분선 추가
-        self.add_separator()
-
         # IP 관리 설정
         ip_management_frame = ttk.LabelFrame(self.scrollable_frame, text="🌐 허가된 공인 IP 관리", style="Section.TLabelframe")
         ip_management_frame.pack(fill="x", padx=5, pady=(5, 10))
@@ -403,7 +366,6 @@ class BasicSettingsTab(BaseTab):
         enable_context_menu(self.client_secret_entry)
         enable_context_menu(self.discord_webhook_entry)
         enable_context_menu(self.new_ip_entry)
-        enable_context_menu(self.refresh_interval_entry)
     
     def setup_keyboard_shortcuts(self):
         """키보드 단축키 설정"""
@@ -412,8 +374,7 @@ class BasicSettingsTab(BaseTab):
                 self.client_id_entry,
                 self.client_secret_entry,
                 self.discord_webhook_entry,
-                self.new_ip_entry,
-                self.refresh_interval_entry
+                self.new_ip_entry
             ]
             
             for widget in entry_widgets:
