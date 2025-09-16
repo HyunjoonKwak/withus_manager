@@ -259,58 +259,42 @@
 
                         <!-- 주문 상태 설정 -->
                         <div class="card mb-3">
-                            <div class="card-header py-2">
-                                <h6 class="mb-0"><i class="fas fa-list-check text-warning"></i> 주문 상태 조회 설정</h6>
+                            <div class="card-header py-1">
+                                <h6 class="mb-0 small"><i class="fas fa-list-check text-warning"></i> 주문 상태 조회 설정</h6>
                             </div>
-                            <div class="card-body py-2">
-                                <div class="row g-2">
-                                    <div class="col-md-2">
-                                        <div class="form-check form-check-inline">
-                                            <input class="form-check-input" type="checkbox" id="orderStatus1" value="PAYMENT_WAITING" checked>
-                                            <label class="form-check-label small" for="orderStatus1">결제대기</label>
-                                        </div>
+                            <div class="card-body py-1">
+                                <div class="d-flex flex-wrap gap-2">
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="checkbox" id="orderStatus1" value="PAYMENT_WAITING" checked>
+                                        <label class="form-check-label small" for="orderStatus1">결제대기</label>
                                     </div>
-                                    <div class="col-md-2">
-                                        <div class="form-check form-check-inline">
-                                            <input class="form-check-input" type="checkbox" id="orderStatus2" value="PAYED" checked>
-                                            <label class="form-check-label small" for="orderStatus2">결제완료</label>
-                                        </div>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="checkbox" id="orderStatus2" value="PAYED" checked>
+                                        <label class="form-check-label small" for="orderStatus2">결제완료</label>
                                     </div>
-                                    <div class="col-md-1">
-                                        <div class="form-check form-check-inline">
-                                            <input class="form-check-input" type="checkbox" id="orderStatus3" value="DELIVERING" checked>
-                                            <label class="form-check-label small" for="orderStatus3">배송중</label>
-                                        </div>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="checkbox" id="orderStatus3" value="DELIVERING" checked>
+                                        <label class="form-check-label small" for="orderStatus3">배송중</label>
                                     </div>
-                                    <div class="col-md-2">
-                                        <div class="form-check form-check-inline">
-                                            <input class="form-check-input" type="checkbox" id="orderStatus4" value="DELIVERED" checked>
-                                            <label class="form-check-label small" for="orderStatus4">배송완료</label>
-                                        </div>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="checkbox" id="orderStatus4" value="DELIVERED" checked>
+                                        <label class="form-check-label small" for="orderStatus4">배송완료</label>
                                     </div>
-                                    <div class="col-md-2">
-                                        <div class="form-check form-check-inline">
-                                            <input class="form-check-input" type="checkbox" id="orderStatus5" value="PURCHASE_DECIDED" checked>
-                                            <label class="form-check-label small" for="orderStatus5">구매확정</label>
-                                        </div>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="checkbox" id="orderStatus5" value="PURCHASE_DECIDED" checked>
+                                        <label class="form-check-label small" for="orderStatus5">구매확정</label>
                                     </div>
-                                    <div class="col-md-1">
-                                        <div class="form-check form-check-inline">
-                                            <input class="form-check-input" type="checkbox" id="orderStatus6" value="CANCELED" checked>
-                                            <label class="form-check-label small" for="orderStatus6">취소</label>
-                                        </div>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="checkbox" id="orderStatus6" value="CANCELED" checked>
+                                        <label class="form-check-label small" for="orderStatus6">취소</label>
                                     </div>
-                                    <div class="col-md-1">
-                                        <div class="form-check form-check-inline">
-                                            <input class="form-check-input" type="checkbox" id="orderStatus7" value="RETURNED" checked>
-                                            <label class="form-check-label small" for="orderStatus7">반품</label>
-                                        </div>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="checkbox" id="orderStatus7" value="RETURNED" checked>
+                                        <label class="form-check-label small" for="orderStatus7">반품</label>
                                     </div>
-                                    <div class="col-md-1">
-                                        <div class="form-check form-check-inline">
-                                            <input class="form-check-input" type="checkbox" id="orderStatus8" value="EXCHANGED" checked>
-                                            <label class="form-check-label small" for="orderStatus8">교환</label>
-                                        </div>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="checkbox" id="orderStatus8" value="EXCHANGED" checked>
+                                        <label class="form-check-label small" for="orderStatus8">교환</label>
                                     </div>
                                 </div>
                             </div>
@@ -318,28 +302,22 @@
 
                         <!-- 상품 상태 설정 -->
                         <div class="card mb-3">
-                            <div class="card-header py-2">
-                                <h6 class="mb-0"><i class="fas fa-box text-info"></i> 상품 상태 조회 설정</h6>
+                            <div class="card-header py-1">
+                                <h6 class="mb-0 small"><i class="fas fa-box text-info"></i> 상품 상태 조회 설정</h6>
                             </div>
-                            <div class="card-body py-2">
-                                <div class="row g-2">
-                                    <div class="col-md-2">
-                                        <div class="form-check form-check-inline">
-                                            <input class="form-check-input" type="checkbox" id="productStatus1" value="SALE" checked>
-                                            <label class="form-check-label small" for="productStatus1">판매중</label>
-                                        </div>
+                            <div class="card-body py-1">
+                                <div class="d-flex flex-wrap gap-2">
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="checkbox" id="productStatus1" value="SALE" checked>
+                                        <label class="form-check-label small" for="productStatus1">판매중</label>
                                     </div>
-                                    <div class="col-md-2">
-                                        <div class="form-check form-check-inline">
-                                            <input class="form-check-input" type="checkbox" id="productStatus2" value="WAIT" checked>
-                                            <label class="form-check-label small" for="productStatus2">판매대기</label>
-                                        </div>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="checkbox" id="productStatus2" value="WAIT" checked>
+                                        <label class="form-check-label small" for="productStatus2">판매대기</label>
                                     </div>
-                                    <div class="col-md-2">
-                                        <div class="form-check form-check-inline">
-                                            <input class="form-check-input" type="checkbox" id="productStatus3" value="OUTOFSTOCK" checked>
-                                            <label class="form-check-label small" for="productStatus3">품절</label>
-                                        </div>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="checkbox" id="productStatus3" value="OUTOFSTOCK" checked>
+                                        <label class="form-check-label small" for="productStatus3">품절</label>
                                     </div>
                                 </div>
                             </div>
@@ -347,72 +325,50 @@
 
                         <!-- 주문 컬럼 설정 -->
                         <div class="card mb-3">
-                            <div class="card-header py-2">
-                                <h6 class="mb-0"><i class="fas fa-columns text-secondary"></i> 주문 컬럼 표시 설정</h6>
+                            <div class="card-header py-1">
+                                <h6 class="mb-0 small"><i class="fas fa-columns text-secondary"></i> 주문 컬럼 표시 설정</h6>
                             </div>
-                            <div class="card-body py-2">
-                                <div class="row g-1">
-                                    <div class="col-md-2">
-                                        <div class="form-check form-check-inline">
-                                            <input class="form-check-input" type="checkbox" id="orderCol1" value="주문ID" checked>
-                                            <label class="form-check-label small" for="orderCol1">주문ID</label>
-                                        </div>
+                            <div class="card-body py-1">
+                                <div class="d-flex flex-wrap gap-2">
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="checkbox" id="orderCol1" value="주문ID" checked>
+                                        <label class="form-check-label small" for="orderCol1">주문ID</label>
                                     </div>
-                                    <div class="col-md-2">
-                                        <div class="form-check form-check-inline">
-                                            <input class="form-check-input" type="checkbox" id="orderCol2" value="주문자" checked>
-                                            <label class="form-check-label small" for="orderCol2">주문자</label>
-                                        </div>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="checkbox" id="orderCol2" value="주문자" checked>
+                                        <label class="form-check-label small" for="orderCol2">주문자</label>
                                     </div>
-                                    <div class="col-md-2">
-                                        <div class="form-check form-check-inline">
-                                            <input class="form-check-input" type="checkbox" id="orderCol3" value="상품명" checked>
-                                            <label class="form-check-label small" for="orderCol3">상품명</label>
-                                        </div>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="checkbox" id="orderCol3" value="상품명" checked>
+                                        <label class="form-check-label small" for="orderCol3">상품명</label>
                                     </div>
-                                    <div class="col-md-2">
-                                        <div class="form-check form-check-inline">
-                                            <input class="form-check-input" type="checkbox" id="orderCol4" value="옵션정보" checked>
-                                            <label class="form-check-label small" for="orderCol4">옵션정보</label>
-                                        </div>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="checkbox" id="orderCol4" value="옵션정보" checked>
+                                        <label class="form-check-label small" for="orderCol4">옵션정보</label>
                                     </div>
-                                    <div class="col-md-1">
-                                        <div class="form-check form-check-inline">
-                                            <input class="form-check-input" type="checkbox" id="orderCol5" value="수량" checked>
-                                            <label class="form-check-label small" for="orderCol5">수량</label>
-                                        </div>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="checkbox" id="orderCol5" value="수량" checked>
+                                        <label class="form-check-label small" for="orderCol5">수량</label>
                                     </div>
-                                    <div class="col-md-1">
-                                        <div class="form-check form-check-inline">
-                                            <input class="form-check-input" type="checkbox" id="orderCol6" value="금액" checked>
-                                            <label class="form-check-label small" for="orderCol6">금액</label>
-                                        </div>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="checkbox" id="orderCol6" value="금액" checked>
+                                        <label class="form-check-label small" for="orderCol6">금액</label>
                                     </div>
-                                    <div class="col-md-2">
-                                        <div class="form-check form-check-inline">
-                                            <input class="form-check-input" type="checkbox" id="orderCol7" value="배송지주소" checked>
-                                            <label class="form-check-label small" for="orderCol7">배송지주소</label>
-                                        </div>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="checkbox" id="orderCol7" value="배송지주소" checked>
+                                        <label class="form-check-label small" for="orderCol7">배송지주소</label>
                                     </div>
-                                </div>
-                                <div class="row g-1 mt-1">
-                                    <div class="col-md-2">
-                                        <div class="form-check form-check-inline">
-                                            <input class="form-check-input" type="checkbox" id="orderCol8" value="배송예정일" checked>
-                                            <label class="form-check-label small" for="orderCol8">배송예정일</label>
-                                        </div>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="checkbox" id="orderCol8" value="배송예정일" checked>
+                                        <label class="form-check-label small" for="orderCol8">배송예정일</label>
                                     </div>
-                                    <div class="col-md-2">
-                                        <div class="form-check form-check-inline">
-                                            <input class="form-check-input" type="checkbox" id="orderCol9" value="주문일시" checked>
-                                            <label class="form-check-label small" for="orderCol9">주문일시</label>
-                                        </div>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="checkbox" id="orderCol9" value="주문일시" checked>
+                                        <label class="form-check-label small" for="orderCol9">주문일시</label>
                                     </div>
-                                    <div class="col-md-1">
-                                        <div class="form-check form-check-inline">
-                                            <input class="form-check-input" type="checkbox" id="orderCol10" value="상태" checked>
-                                            <label class="form-check-label small" for="orderCol10">상태</label>
-                                        </div>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="checkbox" id="orderCol10" value="상태" checked>
+                                        <label class="form-check-label small" for="orderCol10">상태</label>
                                     </div>
                                 </div>
                             </div>
@@ -420,44 +376,42 @@
 
                         <!-- 탭별 기본 기간 설정 -->
                         <div class="card mb-3">
-                            <div class="card-header py-2">
-                                <h6 class="mb-0"><i class="fas fa-calendar-alt text-purple"></i> 탭별 기본 기간 설정 (일)</h6>
+                            <div class="card-header py-1">
+                                <h6 class="mb-0 small"><i class="fas fa-calendar-alt text-purple"></i> 탭별 기본 기간 설정 (일)</h6>
                             </div>
-                            <div class="card-body py-2">
-                                <div class="row g-2">
-                                    <div class="col-md-2">
-                                        <label for="newOrderDays" class="form-label small">신규주문</label>
-                                        <input type="number" class="form-control form-control-sm" id="newOrderDays" min="1" max="90" value="3">
+                            <div class="card-body py-1">
+                                <div class="d-flex flex-wrap gap-2">
+                                    <div class="d-flex align-items-center">
+                                        <label for="newOrderDays" class="form-label small me-1 mb-0">신규주문:</label>
+                                        <input type="number" class="form-control form-control-sm" id="newOrderDays" min="1" max="90" value="3" style="width:50px;">
                                     </div>
-                                    <div class="col-md-2">
-                                        <label for="shippingPendingDays" class="form-label small">발송대기</label>
-                                        <input type="number" class="form-control form-control-sm" id="shippingPendingDays" min="1" max="90" value="3">
+                                    <div class="d-flex align-items-center">
+                                        <label for="shippingPendingDays" class="form-label small me-1 mb-0">발송대기:</label>
+                                        <input type="number" class="form-control form-control-sm" id="shippingPendingDays" min="1" max="90" value="3" style="width:50px;">
                                     </div>
-                                    <div class="col-md-2">
-                                        <label for="shippingInProgressDays" class="form-label small">배송중</label>
-                                        <input type="number" class="form-control form-control-sm" id="shippingInProgressDays" min="1" max="90" value="30">
+                                    <div class="d-flex align-items-center">
+                                        <label for="shippingInProgressDays" class="form-label small me-1 mb-0">배송중:</label>
+                                        <input type="number" class="form-control form-control-sm" id="shippingInProgressDays" min="1" max="90" value="30" style="width:50px;">
                                     </div>
-                                    <div class="col-md-2">
-                                        <label for="shippingCompletedDays" class="form-label small">배송완료</label>
-                                        <input type="number" class="form-control form-control-sm" id="shippingCompletedDays" min="1" max="90" value="7">
+                                    <div class="d-flex align-items-center">
+                                        <label for="shippingCompletedDays" class="form-label small me-1 mb-0">배송완료:</label>
+                                        <input type="number" class="form-control form-control-sm" id="shippingCompletedDays" min="1" max="90" value="7" style="width:50px;">
                                     </div>
-                                    <div class="col-md-2">
-                                        <label for="purchaseDecidedDays" class="form-label small">구매확정</label>
-                                        <input type="number" class="form-control form-control-sm" id="purchaseDecidedDays" min="1" max="90" value="3">
+                                    <div class="d-flex align-items-center">
+                                        <label for="purchaseDecidedDays" class="form-label small me-1 mb-0">구매확정:</label>
+                                        <input type="number" class="form-control form-control-sm" id="purchaseDecidedDays" min="1" max="90" value="3" style="width:50px;">
                                     </div>
-                                    <div class="col-md-2">
-                                        <label for="cancelDays" class="form-label small">취소주문</label>
-                                        <input type="number" class="form-control form-control-sm" id="cancelDays" min="1" max="90" value="30">
+                                    <div class="d-flex align-items-center">
+                                        <label for="cancelDays" class="form-label small me-1 mb-0">취소주문:</label>
+                                        <input type="number" class="form-control form-control-sm" id="cancelDays" min="1" max="90" value="30" style="width:50px;">
                                     </div>
-                                </div>
-                                <div class="row g-2 mt-1">
-                                    <div class="col-md-2">
-                                        <label for="returnExchangeDays" class="form-label small">반품/교환</label>
-                                        <input type="number" class="form-control form-control-sm" id="returnExchangeDays" min="1" max="90" value="15">
+                                    <div class="d-flex align-items-center">
+                                        <label for="returnExchangeDays" class="form-label small me-1 mb-0">반품/교환:</label>
+                                        <input type="number" class="form-control form-control-sm" id="returnExchangeDays" min="1" max="90" value="15" style="width:50px;">
                                     </div>
-                                    <div class="col-md-2">
-                                        <label for="cancelReturnExchangeDays" class="form-label small">취소/반품/교환</label>
-                                        <input type="number" class="form-control form-control-sm" id="cancelReturnExchangeDays" min="1" max="90" value="7">
+                                    <div class="d-flex align-items-center">
+                                        <label for="cancelReturnExchangeDays" class="form-label small me-1 mb-0">취소/반품/교환:</label>
+                                        <input type="number" class="form-control form-control-sm" id="cancelReturnExchangeDays" min="1" max="90" value="7" style="width:50px;">
                                     </div>
                                 </div>
                             </div>
