@@ -455,19 +455,23 @@ let refreshTimer = null;
 let countdownTimer = null;
 let nextRefreshTime = null;
 
-// 현재 시간 업데이트
+// 현재 시간 업데이트 (완전 고정된 24시간 형식)
 function updateCurrentTime() {
     const now = new Date();
 
-    // 더 안정적인 24시간 형식 시간 생성
+    // 완전히 수동으로 24시간 형식 계산 (모든 브라우저 호환성 보장)
     const year = now.getFullYear();
     const month = String(now.getMonth() + 1).padStart(2, '0');
     const date = String(now.getDate()).padStart(2, '0');
-    const hours = String(now.getHours()).padStart(2, '0');
+
+    // getHours()는 항상 0-23을 반환하므로 확실히 24시간 형식
+    const hours24 = now.getHours(); // 0-23
+    const hoursStr = String(hours24).padStart(2, '0');
     const minutes = String(now.getMinutes()).padStart(2, '0');
     const seconds = String(now.getSeconds()).padStart(2, '0');
 
-    const timeString = `${year}.${month}.${date} ${hours}:${minutes}:${seconds}`;
+    // 서버의 strftime('%Y-%m-%d %H:%M:%S')와 동일한 형식
+    const timeString = `${year}-${month}-${date} ${hoursStr}:${minutes}:${seconds}`;
 
     const timeElement = document.querySelector('.current-time');
     if (timeElement && timeElement.textContent !== timeString) {
