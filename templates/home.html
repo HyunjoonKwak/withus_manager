@@ -174,9 +174,6 @@
                 </div>
                 <h5 class="status-count mb-1">{{ "{:,}".format(count) }}</h5>
                 <h6 class="card-title mb-0 small">{{ status }}</h6>
-                <small class="text-muted d-block" style="font-size: 0.7rem;">
-                    {% if count > 0 %}건{% else %}없음{% endif %}
-                </small>
             </div>
         </div>
     </div>
@@ -208,7 +205,7 @@
                     </tr>
                     <tr>
                         <td>현재 시간:</td>
-                        <td class="current-time">-</td>
+                        <td class="current-time" style="min-width: 150px; font-family: monospace;">-</td>
                     </tr>
                     <tr>
                         <td>다음 새로고침:</td>
@@ -444,7 +441,10 @@ function updateCurrentTime() {
         second: '2-digit',
         hour12: false
     });
-    document.querySelector('.current-time').textContent = timeString;
+    const timeElement = document.querySelector('.current-time');
+    if (timeElement && timeElement.textContent !== timeString) {
+        timeElement.textContent = timeString;
+    }
 }
 
 // 리프레시 카운트다운 업데이트
