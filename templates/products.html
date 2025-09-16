@@ -791,8 +791,9 @@ async function openProductViewPopup(originProductId, productName = "") {
         if (result.success) {
             const data = result.data;
 
-            // optionInfo가 있는지 확인
-            if (!data.optionInfo) {
+            // optionInfo 경로 확인 (originProduct.detailAttribute.optionInfo)
+            const optionInfo = data.originProduct?.detailAttribute?.optionInfo;
+            if (!optionInfo) {
                 showStatusMessage('이 상품에는 옵션 정보가 없습니다.', 'info');
                 return;
             }
@@ -808,7 +809,7 @@ async function openProductViewPopup(originProductId, productName = "") {
                 </div>
             `;
 
-            const optionInfoHtml = generateOptionInfoSection(data.optionInfo);
+            const optionInfoHtml = generateOptionInfoSection(optionInfo);
 
             // 팝업 창 HTML 생성
             const popupHtml = `
