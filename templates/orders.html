@@ -1,5 +1,54 @@
 {% extends "base.html" %}
 
+{% block tab_navigation %}
+<div class="order-tabs">
+    <div class="container">
+        <ul class="nav nav-tabs">
+            <li class="nav-item">
+                <a class="nav-link active" href="/orders">
+                    <i class="fas fa-list"></i>전체주문
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="/new-orders">
+                    <i class="fas fa-plus-circle"></i>신규주문
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="/shipping-pending">
+                    <i class="fas fa-clock"></i>발송대기
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="/shipping-in-progress">
+                    <i class="fas fa-shipping-fast"></i>배송중
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="/shipping-completed">
+                    <i class="fas fa-check-circle"></i>배송완료
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="/purchase-decided">
+                    <i class="fas fa-thumbs-up"></i>구매확정
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="/cancel">
+                    <i class="fas fa-ban"></i>취소주문
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="/returns-exchanges">
+                    <i class="fas fa-undo"></i>반품교환
+                </a>
+            </li>
+        </ul>
+    </div>
+</div>
+{% endblock %}
+
 {% block content %}
 <div class="container-fluid">
     <div class="row">

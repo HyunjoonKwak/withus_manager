@@ -1,5 +1,54 @@
 {% extends "base.html" %}
 
+{% block tab_navigation %}
+<div class="order-tabs">
+    <div class="container">
+        <ul class="nav nav-tabs">
+            <li class="nav-item">
+                <a class="nav-link" href="/orders">
+                    <i class="fas fa-list"></i>전체주문
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if page_type == 'new_orders' %}active{% endif %}" href="/new-orders">
+                    <i class="fas fa-plus-circle"></i>신규주문
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if page_type == 'shipping_pending' %}active{% endif %}" href="/shipping-pending">
+                    <i class="fas fa-clock"></i>발송대기
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if page_type == 'shipping_in_progress' %}active{% endif %}" href="/shipping-in-progress">
+                    <i class="fas fa-shipping-fast"></i>배송중
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if page_type == 'shipping_completed' %}active{% endif %}" href="/shipping-completed">
+                    <i class="fas fa-check-circle"></i>배송완료
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if page_type == 'purchase_decided' %}active{% endif %}" href="/purchase-decided">
+                    <i class="fas fa-thumbs-up"></i>구매확정
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if page_type == 'cancel' %}active{% endif %}" href="/cancel">
+                    <i class="fas fa-ban"></i>취소주문
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if page_type == 'returns_exchanges' %}active{% endif %}" href="/returns-exchanges">
+                    <i class="fas fa-undo"></i>반품교환
+                </a>
+            </li>
+        </ul>
+    </div>
+</div>
+{% endblock %}
+
 {% block extra_head %}
 <style>
     .order-description {

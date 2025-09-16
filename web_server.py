@@ -810,7 +810,7 @@ async def cancel_orders_page(request: Request):
         "request": request,
         "title": "취소주문 - " + get_full_title(),
         "version_info": get_detailed_version_info(),
-        "page_type": "cancel_orders",
+        "page_type": "cancel",
         "order_status": "CANCELED",
         "description": "취소주문이란 구매자가 주문을 취소한 주문건입니다."
     }
