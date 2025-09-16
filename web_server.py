@@ -1369,24 +1369,9 @@ async def get_products():
                 'options': []  # 옵션 정보를 저장할 필드
             }
 
-            # 원상품 ID가 있는 경우 옵션 정보 조회
-            origin_product_no = product.get('origin_product_no')
-            if origin_product_no:
-                try:
-                    logger.info(f"상품 {origin_product_no}의 옵션 정보 조회 시작")
-                    option_response = order_manager.naver_api.get_origin_product(origin_product_no)
-
-                    if option_response.get('success') and option_response.get('data'):
-                        option_info = option_response['data'].get('originProduct', {}).get('detailAttribute', {}).get('optionInfo')
-                        if option_info and option_info.get('optionCombinations'):
-                            logger.info(f"상품 {origin_product_no}에서 {len(option_info['optionCombinations'])}개 옵션 발견")
-                            product_dict['options'] = option_info['optionCombinations']
-                        else:
-                            logger.info(f"상품 {origin_product_no}에 옵션 정보 없음")
-                    else:
-                        logger.warning(f"상품 {origin_product_no} 옵션 조회 실패")
-                except Exception as e:
-                    logger.error(f"상품 {origin_product_no} 옵션 조회 중 오류: {e}")
+            # 옵션 정보는 지연 로딩으로 변경 - 초기에는 빈 배열로 설정
+            # 사용자가 옵션 버튼을 클릭할 때만 별도 API로 로드
+            product_dict['has_options'] = bool(product.get('origin_product_no'))  # 원상품ID 있으면 옵션 가능성 표시
 
             products_data.append(product_dict)
 
@@ -1463,6 +1448,40 @@ async def save_product_filter_settings(request: Request):
         return {"success": True, "message": "필터 설정이 저장되었습니다."}
     except Exception as e:
         logger.error(f"상품 필터 설정 저장 실패: {e}")
+        return {"success": False, "error": str(e)}
+
+@app.get("/api/products/{origin_product_id}/options")
+async def get_product_options(origin_product_id: str):
+    """상품 옵션 정보만 조회 API - 지연 로딩용"""
+    try:
+        logger.info(f"상품 옵션 조회 API 호출: {origin_product_id}")
+
+        # 네이버 API에서 원상품 정보 조회
+        response = order_manager.naver_api.get_origin_product(origin_product_id)
+
+        if response.get('success') and response.get('data'):
+            option_info = response['data'].get('originProduct', {}).get('detailAttribute', {}).get('optionInfo')
+
+            if option_info and option_info.get('optionCombinations'):
+                logger.info(f"상품 {origin_product_id}에서 {len(option_info['optionCombinations'])}개 옵션 발견")
+                return {
+                    "success": True,
+                    "options": option_info['optionCombinations'],
+                    "option_group_names": option_info.get('optionCombinationGroupNames', {}),
+                    "origin_product_id": origin_product_id
+                }
+            else:
+                logger.info(f"상품 {origin_product_id}에 옵션 정보 없음")
+                return {
+                    "success": True,
+                    "options": [],
+                    "origin_product_id": origin_product_id
+                }
+        else:
+            raise Exception("네이버 API 호출 실패")
+
+    except Exception as e:
+        logger.error(f"상품 옵션 조회 API 오류: {e}")
         return {"success": False, "error": str(e)}
 
 @app.get("/api/products/{origin_product_id}/detail")

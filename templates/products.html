@@ -505,16 +505,17 @@ function renderProducts(productList) {
     const tableHTML = productList.map((product, index) => {
         const productId = escapeJsString(product.origin_product_no || product.product_id);
         const productName = escapeJsString(product.name);
-        const hasOptions = product.options && product.options.length > 0;
+        const hasOptions = product.has_options; // 옵션 가능성만 체크
+        const optionsLoaded = product.options && product.options.length > 0;
         const rowId = `product-${product.product_id}`;
 
         let html = `
         <tr class="main-product" data-product-id="${product.product_id}">
             <td class="text-center">
                 ${hasOptions ?
-                    `<button class="btn btn-sm btn-outline-primary" onclick="toggleOptions('${product.product_id}')" title="옵션 보기/숨기기">
+                    `<button class="btn btn-sm btn-outline-primary" onclick="loadAndToggleOptions('${product.product_id}', '${productId}')" title="옵션 로드/보기/숨기기">
                         <i class="fas fa-chevron-down" id="arrow-${product.product_id}"></i>
-                        <span class="badge bg-secondary ms-1">${product.options.length}</span>
+                        <span class="badge bg-secondary ms-1" id="badge-${product.product_id}">${optionsLoaded ? product.options.length : '?'}</span>
                     </button>` :
                     '<span class="text-muted">-</span>'
                 }
@@ -584,8 +585,8 @@ function renderProducts(productList) {
             </td>
         </tr>`;
 
-        // 옵션이 있는 경우 하위 옵션 행들 추가
-        if (hasOptions) {
+        // 옵션이 로드된 경우에만 하위 옵션 행들 추가
+        if (optionsLoaded) {
             product.options.forEach((option, optionIndex) => {
                 const optionPrice = option.price || 0;
                 const finalPrice = (product.sale_price || 0) + optionPrice;
@@ -1308,7 +1309,114 @@ function copyToClipboard(text) {
     });
 }
 
-// 옵션 행 토글 함수
+// 옵션 로드 및 토글 함수 (지연 로딩)
+async function loadAndToggleOptions(productId, originProductId) {
+    try {
+        // 이미 로드된 옵션이 있는지 확인
+        const existingRows = document.querySelectorAll(`tr.option-row[data-parent="${productId}"]`);
+
+        if (existingRows.length > 0) {
+            // 이미 옵션이 로드되어 있으면 토글만
+            toggleOptions(productId);
+            return;
+        }
+
+        // 로딩 상태 표시
+        const arrow = document.getElementById(`arrow-${productId}`);
+        const badge = document.getElementById(`badge-${productId}`);
+        const originalArrowClass = arrow.className;
+
+        arrow.className = 'fas fa-spinner fa-spin';
+        badge.textContent = '⏳';
+
+        console.log(`옵션 정보 로드 시작: ${originProductId}`);
+
+        // 서버에서 옵션 정보 조회
+        const response = await fetch(`/api/products/${originProductId}/options`);
+        const result = await response.json();
+
+        if (result.success && result.options && result.options.length > 0) {
+            // 옵션 정보로 하위 행들 동적 생성
+            const parentRow = document.querySelector(`tr.main-product[data-product-id="${productId}"]`);
+            const product = products.find(p => p.product_id === productId);
+
+            if (product) {
+                // 상품 객체에 옵션 정보 저장
+                product.options = result.options;
+
+                // 동적으로 옵션 행들 생성
+                result.options.forEach((option, optionIndex) => {
+                    const optionPrice = option.price || 0;
+                    const finalPrice = (product.sale_price || 0) + optionPrice;
+                    const stockBadge = getOptionStockBadge(option.stockQuantity);
+                    const usableBadge = getOptionUsableBadge(option.usable);
+
+                    const optionRow = document.createElement('tr');
+                    optionRow.className = 'option-row d-none';
+                    optionRow.setAttribute('data-parent', productId);
+                    optionRow.style.backgroundColor = '#f8f9fa';
+
+                    optionRow.innerHTML = `
+                        <td class="text-center"><small class="text-muted">└</small></td>
+                        <td class="text-center"><small class="text-muted">-</small></td>
+                        <td class="text-center"><small class="text-muted">-</small></td>
+                        <td class="text-center"><small class="text-muted">-</small></td>
+                        <td class="text-center"><small class="text-muted">-</small></td>
+                        <td class="ps-4">
+                            <div class="d-flex align-items-center">
+                                <small class="text-primary">📦 ${escapeHtml(option.optionName1 || `옵션 ${optionIndex + 1}`)}</small>
+                                <div class="ms-2">${stockBadge} ${usableBadge}</div>
+                            </div>
+                            <small class="text-muted">관리코드: ${option.sellerManagerCode || '-'} | ID: ${option.id}</small>
+                        </td>
+                        <td><small class="text-muted">${product.product_id}-${optionIndex + 1}</small></td>
+                        <td class="text-end"><small>${formatPrice(product.sale_price)}</small></td>
+                        <td class="text-end">
+                            <small class="text-info">
+                                ${optionPrice === 0 ? '기본가' : (optionPrice > 0 ? `+${formatPrice(optionPrice)}` : formatPrice(optionPrice))}
+                            </small>
+                        </td>
+                        <td class="text-end"><strong class="text-success">${formatPrice(finalPrice)}</strong></td>
+                        <td class="text-center"><strong class="text-primary">${option.stockQuantity.toLocaleString()}</strong></td>
+                        <td class="text-center"><small class="text-muted">-</small></td>
+                        <td><small class="text-muted">-</small></td>
+                        <td class="text-center"><small class="text-muted">-</small></td>
+                        <td><small class="text-muted">-</small></td>
+                    `;
+
+                    // 부모 행 다음에 삽입
+                    parentRow.insertAdjacentElement('afterend', optionRow);
+                });
+
+                // 배지 업데이트
+                badge.textContent = result.options.length;
+
+                // 로딩 완료 후 옵션 표시
+                arrow.className = originalArrowClass;
+                toggleOptions(productId);
+
+                showStatusMessage(`옵션 ${result.options.length}개 로드 완료`, 'success');
+            }
+        } else {
+            // 옵션이 없는 경우
+            arrow.className = originalArrowClass;
+            badge.textContent = '0';
+            showStatusMessage('이 상품에는 옵션이 없습니다.', 'info');
+        }
+
+    } catch (error) {
+        console.error('옵션 로드 오류:', error);
+        showStatusMessage(`옵션 로드 중 오류가 발생했습니다: ${error.message}`, 'error');
+
+        // 오류 시 원래 상태로 복원
+        const arrow = document.getElementById(`arrow-${productId}`);
+        const badge = document.getElementById(`badge-${productId}`);
+        arrow.className = 'fas fa-chevron-down';
+        badge.textContent = '?';
+    }
+}
+
+// 옵션 행 토글 함수 (기존)
 function toggleOptions(productId) {
     const optionRows = document.querySelectorAll(`tr.option-row[data-parent="${productId}"]`);
     const arrow = document.getElementById(`arrow-${productId}`);
