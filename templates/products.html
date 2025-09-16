@@ -791,9 +791,18 @@ async function openProductViewPopup(originProductId, productName = "") {
         if (result.success) {
             const data = result.data;
 
+            // 디버깅: 전체 데이터 구조 확인
+            console.log('전체 API 응답 데이터:', data);
+            console.log('originProduct 존재 여부:', !!data.originProduct);
+            console.log('detailAttribute 존재 여부:', !!data.originProduct?.detailAttribute);
+            console.log('optionInfo 존재 여부:', !!data.originProduct?.detailAttribute?.optionInfo);
+
             // optionInfo 경로 확인 (originProduct.detailAttribute.optionInfo)
             const optionInfo = data.originProduct?.detailAttribute?.optionInfo;
+            console.log('추출된 optionInfo:', optionInfo);
+
             if (!optionInfo) {
+                console.log('optionInfo가 없습니다. 데이터 구조를 확인하세요.');
                 showStatusMessage('이 상품에는 옵션 정보가 없습니다.', 'info');
                 return;
             }
@@ -862,6 +871,12 @@ async function openProductViewPopup(originProductId, productName = "") {
 
 // 옵션 정보를 파싱해서 표시하는 함수
 function generateOptionInfoSection(optionInfo) {
+    console.log('generateOptionInfoSection 호출됨, optionInfo:', optionInfo);
+
+    if (!optionInfo) {
+        console.error('optionInfo가 null 또는 undefined입니다.');
+        return '<div>옵션 정보를 불러올 수 없습니다.</div>';
+    }
     const formatCurrency = (value) => {
         if (!value || value === 0) return '기본가';
         return (value > 0 ? '+' : '') + Number(value).toLocaleString() + '원';
