@@ -6,7 +6,8 @@
       "Bash(pkill:*)",
       "Bash(sqlite3:*)",
       "Bash(lsof:*)",
-      "Bash(xargs kill:*)"
+      "Bash(xargs kill:*)",
+      "Bash(/dev/null)"
     ],
     "deny": [],
     "ask": []

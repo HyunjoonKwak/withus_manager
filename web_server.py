@@ -871,7 +871,7 @@ async def users_page(request: Request):
     context = {
         "request": request,
         "title": "사용자 관리 - " + get_full_title(),
-        "version_info": get_version_info(),
+        "version_info": get_detailed_version_info(),
         "last_check": "방금 전"
     }
     return templates.TemplateResponse("users.html", context)
