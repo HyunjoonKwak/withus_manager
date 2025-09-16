@@ -5,10 +5,10 @@
 {% block extra_head %}
 <style>
     .status-card {
-        height: 100%;
+        height: 120px;
         border: none;
-        border-radius: 10px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         transition: all 0.2s ease;
     }
     .status-card:hover {
@@ -26,8 +26,8 @@
         background: #f8f9fa;
     }
     .status-icon {
-        font-size: 3rem;
-        margin-bottom: 10px;
+        font-size: 1.8rem;
+        margin-bottom: 5px;
     }
     .chart-container {
         position: relative;
@@ -56,6 +56,20 @@
         align-items: center;
         gap: 10px;
         flex-wrap: wrap;
+    }
+
+    /* 8개 카드를 한 줄로 배치하기 위한 커스텀 스타일 */
+    @media (min-width: 1200px) {
+        .col-xl-15 {
+            flex: 0 0 12.5%;
+            max-width: 12.5%;
+        }
+    }
+    @media (min-width: 992px) and (max-width: 1199.98px) {
+        .col-lg-15 {
+            flex: 0 0 12.5%;
+            max-width: 12.5%;
+        }
     }
 </style>
 {% endblock %}
@@ -130,13 +144,13 @@
     </div>
 </div>
 
-<div class="row g-3" id="dashboard-cards">
+<div class="row g-2" id="dashboard-cards">
     {% for status, count in order_counts.items() %}
-    <div class="col-md-3 col-sm-6">
+    <div class="col-xl-15 col-lg-15 col-md-3 col-sm-6">
         <div class="card status-card {% if count > 0 %}has-orders{% else %}no-orders{% endif %}"
              onclick="navigateToOrderPage('{{ status }}', {{ count }})"
              style="cursor: pointer;">
-            <div class="card-body text-center">
+            <div class="card-body text-center p-2">
                 <div class="status-icon">
                     {% if status == '신규주문' %}
                         <i class="fas fa-plus-circle text-success"></i>
@@ -158,13 +172,11 @@
                         <i class="fas fa-question-circle text-secondary"></i>
                     {% endif %}
                 </div>
-                <h3 class="status-count">{{ "{:,}".format(count) }}</h3>
-                <h6 class="card-title mb-0">{{ status }}</h6>
-                {% if count > 0 %}
-                    <small class="text-muted">건이 있습니다</small>
-                {% else %}
-                    <small class="text-muted">없음</small>
-                {% endif %}
+                <h5 class="status-count mb-1">{{ "{:,}".format(count) }}</h5>
+                <h6 class="card-title mb-0 small">{{ status }}</h6>
+                <small class="text-muted d-block" style="font-size: 0.7rem;">
+                    {% if count > 0 %}건{% else %}없음{% endif %}
+                </small>
             </div>
         </div>
     </div>
