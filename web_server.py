@@ -1375,53 +1375,101 @@ async def get_products():
 
             # 원상품ID가 있는 경우 옵션 정보 로드
             if product.get('origin_product_no'):
+                origin_product_no = product.get('origin_product_no')
+
                 try:
-                    # 요청 간 지연시간 추가 (API 레이트 리미트 방지)
-                    if i > 0:
-                        time.sleep(0.5)  # 0.5초 지연
+                    # 먼저 데이터베이스에서 캐시된 옵션 정보 확인
+                    cached_options = order_manager.db_manager.get_product_options(origin_product_no)
 
-                    logger.info(f"상품 {product.get('product_name')}의 옵션 정보 로드 중...")
-                    option_response = order_manager.naver_api.get_origin_product(product.get('origin_product_no'))
+                    if cached_options:
+                        logger.info(f"상품 {product.get('product_name')}의 캐시된 옵션 사용: {len(cached_options)}개")
 
-                    if option_response.get('success') and option_response.get('data'):
-                        option_info = option_response['data'].get('originProduct', {}).get('detailAttribute', {}).get('optionInfo')
+                        # 원상품의 실제 판매가 계산 (원가 - 셀러할인가)
+                        original_price = product.get('sale_price', 0)
+                        seller_discount = product.get('sale_price', 0) - product.get('discounted_price', 0)
+                        actual_selling_price = original_price - seller_discount
 
-                        if option_info and option_info.get('optionCombinations'):
-                            # 원상품의 실제 판매가 계산 (원가 - 셀러할인가)
-                            original_price = product.get('sale_price', 0)
-                            seller_discount = product.get('sale_price', 0) - product.get('discounted_price', 0)
-                            actual_selling_price = original_price - seller_discount
+                        options = []
+                        for option in cached_options:
+                            # 옵션별 실제 판매가 계산 (실제 판매가 + 옵션 가격)
+                            option_price = option.get('price', 0)
+                            option_actual_price = actual_selling_price + option_price
 
-                            options = []
-                            for option in option_info['optionCombinations']:
-                                # 옵션별 실제 판매가 계산 (실제 판매가 + 옵션 가격)
-                                option_price = option.get('price', 0)
-                                option_actual_price = actual_selling_price + option_price
+                            option_data = {
+                                'id': option.get('id', ''),
+                                'name': option.get('optionName', ''),
+                                'optionName1': option.get('optionName1', ''),
+                                'price': option_price,
+                                'actual_price': option_actual_price,  # 계산된 실제 판매가
+                                'stock': option.get('stockQuantity', 0),
+                                'status': option.get('statusType', ''),
+                                'manage_code': option.get('sellerManagerCode', ''),
+                                'option_values': []
+                            }
 
-                                option_data = {
-                                    'id': option.get('id', ''),
-                                    'name': option.get('optionName', ''),
-                                    'optionName1': option.get('optionName1', ''),  # 추가
-                                    'price': option_price,
-                                    'actual_price': option_actual_price,  # 계산된 실제 판매가
-                                    'stock': option.get('stockQuantity', 0),
-                                    'status': option.get('statusType', ''),
-                                    'manage_code': option.get('sellerManageCode', ''),
-                                    'option_values': []
-                                }
+                            # 옵션 값들 추가
+                            if 'optionItems' in option and option['optionItems']:
+                                for item in option['optionItems']:
+                                    option_data['option_values'].append({
+                                        'group_name': item.get('groupName', ''),
+                                        'value': item.get('value', '')
+                                    })
 
-                                # 옵션 값들 추가
-                                if 'optionItems' in option:
-                                    for item in option['optionItems']:
-                                        option_data['option_values'].append({
-                                            'group_name': item.get('groupName', ''),
-                                            'value': item.get('value', '')
-                                        })
+                            options.append(option_data)
 
-                                options.append(option_data)
+                        product_dict['options'] = options
 
-                            product_dict['options'] = options
-                            logger.info(f"상품 {product.get('product_name')}에 {len(options)}개 옵션 로드 완료")
+                    else:
+                        # 캐시된 정보가 없으면 API에서 조회 후 저장
+                        # 요청 간 지연시간 추가 (API 레이트 리미트 방지)
+                        if i > 0:
+                            time.sleep(0.5)  # 0.5초 지연
+
+                        logger.info(f"상품 {product.get('product_name')}의 옵션 정보 API에서 로드 중...")
+                        option_response = order_manager.naver_api.get_origin_product(origin_product_no)
+
+                        if option_response.get('success') and option_response.get('data'):
+                            option_info = option_response['data'].get('originProduct', {}).get('detailAttribute', {}).get('optionInfo')
+
+                            if option_info and option_info.get('optionCombinations'):
+                                # 데이터베이스에 옵션 정보 저장
+                                order_manager.db_manager.save_product_options(origin_product_no, option_info['optionCombinations'])
+
+                                # 원상품의 실제 판매가 계산 (원가 - 셀러할인가)
+                                original_price = product.get('sale_price', 0)
+                                seller_discount = product.get('sale_price', 0) - product.get('discounted_price', 0)
+                                actual_selling_price = original_price - seller_discount
+
+                                options = []
+                                for option in option_info['optionCombinations']:
+                                    # 옵션별 실제 판매가 계산 (실제 판매가 + 옵션 가격)
+                                    option_price = option.get('price', 0)
+                                    option_actual_price = actual_selling_price + option_price
+
+                                    option_data = {
+                                        'id': option.get('id', ''),
+                                        'name': option.get('optionName', ''),
+                                        'optionName1': option.get('optionName1', ''),  # 추가
+                                        'price': option_price,
+                                        'actual_price': option_actual_price,  # 계산된 실제 판매가
+                                        'stock': option.get('stockQuantity', 0),
+                                        'status': option.get('statusType', ''),
+                                        'manage_code': option.get('sellerManageCode', ''),
+                                        'option_values': []
+                                    }
+
+                                    # 옵션 값들 추가
+                                    if 'optionItems' in option:
+                                        for item in option['optionItems']:
+                                            option_data['option_values'].append({
+                                                'group_name': item.get('groupName', ''),
+                                                'value': item.get('value', '')
+                                            })
+
+                                    options.append(option_data)
+
+                                product_dict['options'] = options
+                                logger.info(f"상품 {product.get('product_name')}에 {len(options)}개 옵션 로드 완료 (DB 저장)")
 
                 except Exception as option_error:
                     logger.warning(f"상품 {product.get('product_name')}의 옵션 로드 실패: {option_error}")

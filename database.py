@@ -104,6 +104,26 @@ class DatabaseManager:
                 )
             ''')
 
+            # 상품 옵션 테이블
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS product_options (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    origin_product_no TEXT NOT NULL,
+                    option_id TEXT NOT NULL,
+                    option_name TEXT,
+                    option_name1 TEXT,
+                    price INTEGER DEFAULT 0,
+                    stock_quantity INTEGER DEFAULT 0,
+                    status_type TEXT,
+                    seller_manager_code TEXT,
+                    usable BOOLEAN DEFAULT 1,
+                    option_items TEXT,  -- JSON 형태로 저장
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(origin_product_no, option_id)
+                )
+            ''')
+
             # 기존 테이블에 누락된 컬럼들 추가
             self._add_missing_columns(cursor)
 
@@ -714,4 +734,100 @@ class DatabaseManager:
 
         except Exception as e:
             print(f"기본 관리자 생성 오류: {e}")
+            return False
+
+    def save_product_options(self, origin_product_no: str, options: List[Dict]) -> bool:
+        """상품 옵션 정보 저장"""
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+
+            # 기존 옵션 정보 삭제 (새로 업데이트)
+            cursor.execute('DELETE FROM product_options WHERE origin_product_no = ?', (origin_product_no,))
+
+            # 새로운 옵션 정보 저장
+            for option in options:
+                option_items_json = json.dumps(option.get('optionItems', []), ensure_ascii=False)
+
+                cursor.execute('''
+                    INSERT OR REPLACE INTO product_options (
+                        origin_product_no, option_id, option_name, option_name1,
+                        price, stock_quantity, status_type, seller_manager_code,
+                        usable, option_items
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ''', (
+                    origin_product_no,
+                    option.get('id', ''),
+                    option.get('optionName', ''),
+                    option.get('optionName1', ''),
+                    option.get('price', 0),
+                    option.get('stockQuantity', 0),
+                    option.get('statusType', ''),
+                    option.get('sellerManagerCode', ''),
+                    option.get('usable', True),
+                    option_items_json
+                ))
+
+            conn.commit()
+            conn.close()
+            print(f"옵션 정보 저장 완료: {origin_product_no}, {len(options)}개 옵션")
+            return True
+
+        except Exception as e:
+            print(f"옵션 정보 저장 오류: {e}")
+            return False
+
+    def get_product_options(self, origin_product_no: str) -> List[Dict]:
+        """저장된 상품 옵션 정보 조회"""
+        try:
+            conn = sqlite3.connect(self.db_path)
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+
+            cursor.execute('''
+                SELECT * FROM product_options
+                WHERE origin_product_no = ?
+                ORDER BY created_at ASC
+            ''', (origin_product_no,))
+
+            rows = cursor.fetchall()
+            conn.close()
+
+            options = []
+            for row in rows:
+                option_items = json.loads(row['option_items']) if row['option_items'] else []
+
+                option = {
+                    'id': row['option_id'],
+                    'optionName': row['option_name'],
+                    'optionName1': row['option_name1'],
+                    'price': row['price'],
+                    'stockQuantity': row['stock_quantity'],
+                    'statusType': row['status_type'],
+                    'sellerManagerCode': row['seller_manager_code'],
+                    'usable': bool(row['usable']),
+                    'optionItems': option_items
+                }
+                options.append(option)
+
+            return options
+
+        except Exception as e:
+            print(f"옵션 정보 조회 오류: {e}")
+            return []
+
+    def has_cached_options(self, origin_product_no: str) -> bool:
+        """해당 상품의 캐시된 옵션 정보가 있는지 확인"""
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+
+            cursor.execute('SELECT COUNT(*) FROM product_options WHERE origin_product_no = ?', (origin_product_no,))
+            count = cursor.fetchone()[0]
+            conn.close()
+
+            return count > 0
+
+        except Exception as e:
+            print(f"캐시된 옵션 확인 오류: {e}")
             return False
