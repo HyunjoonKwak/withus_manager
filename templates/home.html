@@ -205,7 +205,7 @@
                     </tr>
                     <tr>
                         <td>현재 시간:</td>
-                        <td class="current-time" style="min-width: 150px; font-family: monospace;">-</td>
+                        <td><strong class="current-time">-</strong></td>
                     </tr>
                     <tr>
                         <td>다음 새로고침:</td>
@@ -252,16 +252,27 @@
 {% block extra_scripts %}
 <script>
 // 대시보드 새로고침
-async function refreshDashboard() {
-    const button = event.target.closest('button');
-    const originalHtml = button.innerHTML;
+async function refreshDashboard(isAutoRefresh = false) {
+    let button = null;
+    let originalHtml = '';
+
+    // 수동 새로고침인 경우에만 버튼 처리
+    if (!isAutoRefresh && event && event.target) {
+        button = event.target.closest('button');
+        originalHtml = button.innerHTML;
+    }
 
     try {
-        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 새로고침 중...';
-        button.disabled = true;
+        // 버튼이 있는 경우 로딩 상태 설정
+        if (button) {
+            button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 새로고침 중...';
+            button.disabled = true;
+        }
 
         // 카드들을 로딩 상태로 변경
         document.getElementById('dashboard-cards').classList.add('loading');
+
+        console.log(`🔄 대시보드 새로고침 ${isAutoRefresh ? '(자동)' : '(수동)'}`);
 
         const response = await fetch('/api/dashboard/refresh');
         const result = await response.json();
@@ -272,19 +283,34 @@ async function refreshDashboard() {
                 ? `네이버 API에서 ${result.total_refreshed_from_api}건 갱신됨`
                 : '로컬 데이터만 새로고침됨';
 
-            button.innerHTML = `<i class="fas fa-check"></i> ${refreshMessage}`;
+            console.log(`✅ ${refreshMessage}`);
+
+            if (button) {
+                button.innerHTML = `<i class="fas fa-check"></i> ${refreshMessage}`;
+            }
 
             // 성공적으로 새로고침되면 페이지 리로드
             setTimeout(() => {
                 location.reload();
-            }, 1500);
+            }, isAutoRefresh ? 500 : 1500); // 자동 새로고침은 더 빨리 리로드
         } else {
             throw new Error(result.error || '알 수 없는 오류');
         }
     } catch (error) {
-        alert('대시보드 새로고침 중 오류가 발생했습니다: ' + error.message);
-        button.innerHTML = originalHtml;
-        button.disabled = false;
+        console.error('❌ 대시보드 새로고침 오류:', error);
+
+        if (isAutoRefresh) {
+            // 자동 새로고침 실패 시 조용히 처리
+            console.warn('⚠️ 자동 새로고침 실패, 다음 주기에 재시도');
+        } else {
+            // 수동 새로고침 실패 시 사용자에게 알림
+            alert('대시보드 새로고침 중 오류가 발생했습니다: ' + error.message);
+        }
+
+        if (button) {
+            button.innerHTML = originalHtml;
+            button.disabled = false;
+        }
         document.getElementById('dashboard-cards').classList.remove('loading');
     }
 }
@@ -432,15 +458,17 @@ let nextRefreshTime = null;
 // 현재 시간 업데이트
 function updateCurrentTime() {
     const now = new Date();
-    const timeString = now.toLocaleString('ko-KR', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: false
-    });
+
+    // 더 안정적인 24시간 형식 시간 생성
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const date = String(now.getDate()).padStart(2, '0');
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const seconds = String(now.getSeconds()).padStart(2, '0');
+
+    const timeString = `${year}.${month}.${date} ${hours}:${minutes}:${seconds}`;
+
     const timeElement = document.querySelector('.current-time');
     if (timeElement && timeElement.textContent !== timeString) {
         timeElement.textContent = timeString;
@@ -464,7 +492,7 @@ function updateRefreshCountdown() {
         countdownElement.textContent = '새로고침 중...';
         countdownElement.className = 'badge bg-warning';
         // 자동 새로고침 실행
-        refreshDashboard();
+        refreshDashboard(true); // isAutoRefresh = true
         return;
     }
 
@@ -510,7 +538,7 @@ function setupAutoRefresh() {
 
     // 새로고침 타이머 설정
     refreshTimer = setTimeout(() => {
-        refreshDashboard();
+        refreshDashboard(true); // isAutoRefresh = true
     }, refreshInterval);
 
     // 카운트다운 타이머 설정 (1초마다)
