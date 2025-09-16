@@ -440,7 +440,7 @@ def require_admin(request: Request):
 
 def check_password(password: str) -> bool:
     """패스워드 검증 (하위 호환성)"""
-    correct_password = web_config.get('WEB_PASSWORD', 'admin123')
+    correct_password = web_config.get('WEB_PASSWORD', 'withus2023')
     return password == correct_password
 
 # 정적 파일이 있다면 마운트 (선택사항)

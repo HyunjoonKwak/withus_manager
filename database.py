@@ -708,7 +708,7 @@ class DatabaseManager:
 
             if admin_count == 0:
                 # 기본 관리자 계정 생성
-                return self.create_user("admin", "admin123", "admin@example.com",
+                return self.create_user("withus", "withus2023", "admin@example.com",
                                       "시스템 관리자", is_admin=True)
             return True
 
