@@ -1365,8 +1365,29 @@ async def get_products():
                 'brand': product.get('brand_name', ''),
                 'image_url': product.get('representative_image_url', ''),
                 'created_at': product.get('reg_date', ''),
-                'sales_count': 0  # This field is not available in the database yet
+                'sales_count': 0,  # This field is not available in the database yet
+                'options': []  # 옵션 정보를 저장할 필드
             }
+
+            # 원상품 ID가 있는 경우 옵션 정보 조회
+            origin_product_no = product.get('origin_product_no')
+            if origin_product_no:
+                try:
+                    logger.info(f"상품 {origin_product_no}의 옵션 정보 조회 시작")
+                    option_response = order_manager.naver_api.get_origin_product(origin_product_no)
+
+                    if option_response.get('success') and option_response.get('data'):
+                        option_info = option_response['data'].get('originProduct', {}).get('detailAttribute', {}).get('optionInfo')
+                        if option_info and option_info.get('optionCombinations'):
+                            logger.info(f"상품 {origin_product_no}에서 {len(option_info['optionCombinations'])}개 옵션 발견")
+                            product_dict['options'] = option_info['optionCombinations']
+                        else:
+                            logger.info(f"상품 {origin_product_no}에 옵션 정보 없음")
+                    else:
+                        logger.warning(f"상품 {origin_product_no} 옵션 조회 실패")
+                except Exception as e:
+                    logger.error(f"상품 {origin_product_no} 옵션 조회 중 오류: {e}")
+
             products_data.append(product_dict)
 
         return {

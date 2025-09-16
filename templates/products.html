@@ -117,11 +117,12 @@
         <table class="table table-hover mb-0">
             <thead class="bg-light">
                 <tr>
+                    <th width="3%">옵션</th>
                     <th width="5%">변경</th>
                     <th width="5%">조회</th>
                     <th width="5%">상세</th>
                     <th width="4%">이미지</th>
-                    <th width="18%">상품명</th>
+                    <th width="16%">상품명</th>
                     <th width="8%">상품ID</th>
                     <th width="8%">원래판매가</th>
                     <th width="8%">셀러할인가</th>
@@ -504,9 +505,20 @@ function renderProducts(productList) {
     const tableHTML = productList.map((product, index) => {
         const productId = escapeJsString(product.origin_product_no || product.product_id);
         const productName = escapeJsString(product.name);
+        const hasOptions = product.options && product.options.length > 0;
+        const rowId = `product-${product.product_id}`;
 
-        return `
-        <tr>
+        let html = `
+        <tr class="main-product" data-product-id="${product.product_id}">
+            <td class="text-center">
+                ${hasOptions ?
+                    `<button class="btn btn-sm btn-outline-primary" onclick="toggleOptions('${product.product_id}')" title="옵션 보기/숨기기">
+                        <i class="fas fa-chevron-down" id="arrow-${product.product_id}"></i>
+                        <span class="badge bg-secondary ms-1">${product.options.length}</span>
+                    </button>` :
+                    '<span class="text-muted">-</span>'
+                }
+            </td>
             <td class="text-center">
                 <button class="btn btn-outline-warning btn-sm" onclick="openProductEdit('${productId}', '${productName}')" title="상품 수정">
                     ⚙️ 변경
@@ -570,8 +582,77 @@ function renderProducts(productList) {
             <td>
                 <small class="text-muted">${product.origin_product_no || '-'}</small>
             </td>
-        </tr>
-        `;
+        </tr>`;
+
+        // 옵션이 있는 경우 하위 옵션 행들 추가
+        if (hasOptions) {
+            product.options.forEach((option, optionIndex) => {
+                const optionPrice = option.price || 0;
+                const finalPrice = (product.sale_price || 0) + optionPrice;
+                const stockBadge = getOptionStockBadge(option.stockQuantity);
+                const usableBadge = getOptionUsableBadge(option.usable);
+
+                html += `
+                <tr class="option-row d-none" data-parent="${product.product_id}" style="background-color: #f8f9fa;">
+                    <td class="text-center">
+                        <small class="text-muted">└</small>
+                    </td>
+                    <td class="text-center">
+                        <small class="text-muted">-</small>
+                    </td>
+                    <td class="text-center">
+                        <small class="text-muted">-</small>
+                    </td>
+                    <td class="text-center">
+                        <small class="text-muted">-</small>
+                    </td>
+                    <td class="text-center">
+                        <small class="text-muted">-</small>
+                    </td>
+                    <td class="ps-4">
+                        <div class="d-flex align-items-center">
+                            <small class="text-primary">📦 ${escapeHtml(option.optionName1 || `옵션 ${optionIndex + 1}`)}</small>
+                            <div class="ms-2">
+                                ${stockBadge}
+                                ${usableBadge}
+                            </div>
+                        </div>
+                        <small class="text-muted">관리코드: ${option.sellerManagerCode || '-'} | ID: ${option.id}</small>
+                    </td>
+                    <td>
+                        <small class="text-muted">${product.product_id}-${optionIndex + 1}</small>
+                    </td>
+                    <td class="text-end">
+                        <small>${formatPrice(product.sale_price)}</small>
+                    </td>
+                    <td class="text-end">
+                        <small class="text-info">
+                            ${optionPrice === 0 ? '기본가' : (optionPrice > 0 ? `+${formatPrice(optionPrice)}` : formatPrice(optionPrice))}
+                        </small>
+                    </td>
+                    <td class="text-end">
+                        <strong class="text-success">${formatPrice(finalPrice)}</strong>
+                    </td>
+                    <td class="text-center">
+                        <strong class="text-primary">${option.stockQuantity.toLocaleString()}</strong>
+                    </td>
+                    <td class="text-center">
+                        <small class="text-muted">-</small>
+                    </td>
+                    <td>
+                        <small class="text-muted">-</small>
+                    </td>
+                    <td class="text-center">
+                        <small class="text-muted">-</small>
+                    </td>
+                    <td>
+                        <small class="text-muted">-</small>
+                    </td>
+                </tr>`;
+            });
+        }
+
+        return html;
     }).join('');
 
     console.log('테이블 HTML 길이:', tableHTML.length);
@@ -1225,6 +1306,38 @@ function copyToClipboard(text) {
         document.execCommand('copy');
         document.body.removeChild(textArea);
     });
+}
+
+// 옵션 행 토글 함수
+function toggleOptions(productId) {
+    const optionRows = document.querySelectorAll(`tr.option-row[data-parent="${productId}"]`);
+    const arrow = document.getElementById(`arrow-${productId}`);
+
+    optionRows.forEach(row => {
+        if (row.classList.contains('d-none')) {
+            row.classList.remove('d-none');
+            arrow.classList.remove('fa-chevron-down');
+            arrow.classList.add('fa-chevron-up');
+        } else {
+            row.classList.add('d-none');
+            arrow.classList.remove('fa-chevron-up');
+            arrow.classList.add('fa-chevron-down');
+        }
+    });
+}
+
+// 옵션 재고 상태 배지
+function getOptionStockBadge(stock) {
+    if (stock === 0) return '<span class="badge bg-danger" style="font-size: 9px;">품절</span>';
+    if (stock < 10) return '<span class="badge bg-warning text-dark" style="font-size: 9px;">부족</span>';
+    return '<span class="badge bg-success" style="font-size: 9px;">재고</span>';
+}
+
+// 옵션 사용 가능 상태 배지
+function getOptionUsableBadge(usable) {
+    return usable
+        ? '<span class="badge bg-info" style="font-size: 9px;">사용가능</span>'
+        : '<span class="badge bg-secondary" style="font-size: 9px;">사용불가</span>';
 }
 
 // 상태 메시지 표시 함수
