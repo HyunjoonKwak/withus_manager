@@ -187,15 +187,7 @@ class NaverShoppingAPI:
         }
         
         if log_details:
-            print(f"\n=== API 요청 상세 정보 ===")
-            print(f"타임스탬프: {request_info['timestamp']}")
-            print(f"메서드: {method}")
-            print(f"URL: {url}")
-            print(f"엔드포인트: {endpoint}")
-            if data:
-                print(f"요청 데이터 크기: {request_info['data_size']} bytes")
-                print(f"요청 데이터: {json.dumps(data, indent=2, ensure_ascii=False) if isinstance(data, dict) else str(data)}")
-            print(f"========================")
+            print(f"🌐 API 호출: {method} {endpoint}")
         
         try:
             if method.upper() == 'GET':
@@ -203,8 +195,6 @@ class NaverShoppingAPI:
                 if data:
                     param_string = '&'.join([f"{k}={v}" for k, v in data.items()])
                     url = f"{url}?{param_string}"
-                print(f"GET 요청 URL: {url}")
-                print(f"GET 요청 파라미터: {data}")
                 response = requests.get(url, headers=headers)
             elif method.upper() == 'POST':
                 response = requests.post(url, headers=headers, json=data)
@@ -233,17 +223,8 @@ class NaverShoppingAPI:
             }
             
             if log_details:
-                print(f"\n=== API 응답 상세 정보 ===")
-                print(f"응답 시간: {response_info['response_time']}")
-                print(f"상태 코드: {response.status_code}")
-                print(f"응답 크기: {response_info['content_length']} bytes")
-                print(f"응답 바디:")
-                try:
-                    response_data = response.json()
-                    print(json.dumps(response_data, ensure_ascii=False, indent=2))
-                except:
-                    print(response.text)
-                print(f"=========================")
+                status_icon = "✅" if response.status_code == 200 else "❌"
+                print(f"   {status_icon} 응답: {response.status_code} ({response_info['response_time']})")
             
             # 응답 상태 코드에 따른 처리
             if response.status_code == 200:

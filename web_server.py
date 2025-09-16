@@ -1378,12 +1378,14 @@ async def get_products():
                 origin_product_no = product.get('origin_product_no')
 
                 try:
-                    # 먼저 데이터베이스에서 캐시된 옵션 정보 확인
-                    cached_options = order_manager.db_manager.get_product_options(origin_product_no)
-                    logger.info(f"상품 {origin_product_no} 캐시 확인: {len(cached_options) if cached_options else 0}개")
+                    # 먼저 데이터베이스에서 캐시 여부 확인
+                    has_cache = order_manager.db_manager.has_cached_options(origin_product_no)
+                    logger.info(f"🔍 캐시 확인: 상품 {origin_product_no} - {'있음' if has_cache else '없음'}")
 
-                    if cached_options:
-                        logger.info(f"상품 {product.get('product_name')}의 캐시된 옵션 사용: {len(cached_options)}개")
+                    if has_cache:
+                        # 캐시가 있으면 옵션 정보 로드
+                        cached_options = order_manager.db_manager.get_product_options(origin_product_no)
+                        logger.info(f"💾 캐시 사용: 상품 {product.get('product_name')} - {len(cached_options)}개 옵션")
 
                         # 원상품의 실제 판매가 계산 (원가 - 셀러할인가)
                         original_price = product.get('sale_price', 0)
@@ -1426,7 +1428,7 @@ async def get_products():
                         if i > 0:
                             time.sleep(0.5)  # 0.5초 지연
 
-                        logger.info(f"상품 {product.get('product_name')}의 옵션 정보 API에서 로드 중...")
+                        logger.info(f"🌐 API 호출: 상품 {product.get('product_name')} 옵션 조회")
                         option_response = order_manager.naver_api.get_origin_product(origin_product_no)
 
                         if option_response.get('success') and option_response.get('data'):
