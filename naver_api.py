@@ -731,26 +731,31 @@ class NaverShoppingAPI:
                 'memo': ''  # 기본값
             }
 
+            print(f"📝 주문 저장 시도: ID={order_data.get('order_id')}, 상태={order_data.get('status')}, 날짜={order_data.get('order_date')}")
+
             if db_manager.add_order(order_data):
                 synced_count += 1
+                print(f"✅ 주문 저장 성공: {order_data.get('order_id')}")
+            else:
+                print(f"❌ 주문 저장 실패: {order_data.get('order_id')}")
 
         return synced_count
 
     def _map_naver_status_to_local(self, naver_status: str) -> str:
-        """네이버 API 상태를 로컬 상태로 매핑"""
+        """네이버 API 상태를 로컬 상태로 매핑 (대시보드와 일관성 유지)"""
         status_mapping = {
-            'ORDERED': '신규주문',
-            'PAYED': '신규주문',
-            'READY': '발송대기',
-            'SHIPPED': '배송중',
-            'DELIVERED': '배송완료',
-            'CONFIRMED': '구매확정',
-            'CANCELED': 'CANCELED',  # 네이버 API에서는 CANCELED 사용
-            'CANCELLED': 'CANCELED',  # 혹시 CANCELLED도 있을 수 있음
-            'RETURNED': '반품주문',
-            'EXCHANGED': '교환주문'
+            'ORDERED': 'PAYMENT_WAITING',      # 신규주문
+            'PAYED': 'PAYED',                  # 발송대기
+            'READY': 'PAYED',                  # 발송대기
+            'SHIPPED': 'DELIVERING',           # 배송중
+            'DELIVERED': 'DELIVERED',          # 배송완료
+            'CONFIRMED': 'PURCHASE_DECIDED',   # 구매확정
+            'CANCELED': 'CANCELED',            # 취소주문
+            'CANCELLED': 'CANCELED',           # 취소주문
+            'RETURNED': 'RETURNED',            # 반품주문
+            'EXCHANGED': 'EXCHANGED'           # 교환주문
         }
-        return status_mapping.get(naver_status, '신규주문')
+        return status_mapping.get(naver_status, 'PAYMENT_WAITING')
     
     # 주문관리 핵심 API 메서드들
     
