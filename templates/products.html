@@ -815,12 +815,24 @@ async function openProductViewPopup(originProductId, productName = "") {
 
             // 디버깅: 전체 데이터 구조 확인
             console.log('전체 API 응답 데이터:', data);
+            console.log('data 타입:', typeof data);
+            console.log('data 키들:', Object.keys(data));
             console.log('originProduct 존재 여부:', !!data.originProduct);
+
+            // 다양한 가능한 경로 확인
+            console.log('data.data 확인:', data.data);
+            console.log('data.data?.originProduct 확인:', data.data?.originProduct);
             console.log('detailAttribute 존재 여부:', !!data.originProduct?.detailAttribute);
             console.log('optionInfo 존재 여부:', !!data.originProduct?.detailAttribute?.optionInfo);
 
-            // optionInfo 경로 확인 (originProduct.detailAttribute.optionInfo)
-            const optionInfo = data.originProduct?.detailAttribute?.optionInfo;
+            // optionInfo 경로 확인 - 여러 가능한 경로 시도
+            let optionInfo = data.originProduct?.detailAttribute?.optionInfo;
+
+            // 첫 번째 경로가 실패하면 data.data 경로 시도
+            if (!optionInfo) {
+                optionInfo = data.data?.originProduct?.detailAttribute?.optionInfo;
+                console.log('두 번째 경로 시도: data.data.originProduct.detailAttribute.optionInfo');
+            }
             console.log('추출된 optionInfo:', optionInfo);
 
             if (!optionInfo) {
