@@ -185,35 +185,15 @@
     <div class="col-md-6">
         <div class="card">
             <div class="card-header">
-                <i class="fas fa-clock text-primary"></i> 시스템 정보
+                <i class="fas fa-sync-alt text-primary"></i> 자동 새로고침
             </div>
-            <div class="card-body">
-                <table class="table table-sm">
-                    <tr>
-                        <td>마지막 확인:</td>
-                        <td><strong>{{ last_check }}</strong></td>
-                    </tr>
-                    <tr>
-                        <td>모니터링 상태:</td>
-                        <td>
-                            {% if monitoring_active %}
-                                <span class="badge bg-success">활성화</span>
-                            {% else %}
-                                <span class="badge bg-warning">비활성화</span>
-                            {% endif %}
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>현재 시간:</td>
-                        <td><strong class="current-time">-</strong></td>
-                    </tr>
-                    <tr>
-                        <td>다음 새로고침:</td>
-                        <td>
-                            <span id="refresh-countdown" class="badge bg-info">-</span>
-                        </td>
-                    </tr>
-                </table>
+            <div class="card-body text-center">
+                <div class="mb-2">
+                    <span class="text-muted">다음 새로고침:</span>
+                </div>
+                <div>
+                    <span id="refresh-countdown" class="badge bg-info fs-6 px-3 py-2">-</span>
+                </div>
             </div>
         </div>
     </div>
@@ -455,28 +435,10 @@ let refreshTimer = null;
 let countdownTimer = null;
 let nextRefreshTime = null;
 
-// 현재 시간 업데이트 (완전 고정된 24시간 형식)
+// 현재 시간 업데이트 함수 (제거됨 - 더 이상 사용하지 않음)
 function updateCurrentTime() {
-    const now = new Date();
-
-    // 완전히 수동으로 24시간 형식 계산 (모든 브라우저 호환성 보장)
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const date = String(now.getDate()).padStart(2, '0');
-
-    // getHours()는 항상 0-23을 반환하므로 확실히 24시간 형식
-    const hours24 = now.getHours(); // 0-23
-    const hoursStr = String(hours24).padStart(2, '0');
-    const minutes = String(now.getMinutes()).padStart(2, '0');
-    const seconds = String(now.getSeconds()).padStart(2, '0');
-
-    // 서버의 strftime('%Y-%m-%d %H:%M:%S')와 동일한 형식
-    const timeString = `${year}-${month}-${date} ${hoursStr}:${minutes}:${seconds}`;
-
-    const timeElement = document.querySelector('.current-time');
-    if (timeElement && timeElement.textContent !== timeString) {
-        timeElement.textContent = timeString;
-    }
+    // 현재 시간 표시가 제거되었으므로 함수 내용 비움
+    return;
 }
 
 // 리프레시 카운트다운 업데이트
@@ -551,10 +513,6 @@ function setupAutoRefresh() {
 
 // 페이지 로드 시 실행
 document.addEventListener('DOMContentLoaded', function() {
-    // 현재 시간을 1초마다 업데이트
-    setInterval(updateCurrentTime, 1000);
-    updateCurrentTime();
-
     // 자동 새로고침 설정
     setupAutoRefresh();
 });
