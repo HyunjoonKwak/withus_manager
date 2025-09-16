@@ -746,7 +746,7 @@ async def new_orders_page(request: Request):
         "title": "신규주문 - " + get_full_title(),
         "version_info": get_detailed_version_info(),
         "page_type": "new_orders",
-        "order_status": "PAYED",
+        "order_status": "PAYMENT_WAITING",  # 수정: 신규주문 상태는 PAYMENT_WAITING
         "description": "신규주문이란 구매자가 결제완료후 판매자 주문확인 전 주문건입니다. [주문확인] 또는 [발송지연안내], [판매취소]를 할수 있습니다."
     }
     return templates.TemplateResponse("order_management.html", context)
@@ -1198,13 +1198,19 @@ async def refresh_orders_from_api(
         logger.info(f"API 조건 확인: naver_api={bool(order_manager.naver_api)}, order_status='{order_status}'")
 
         if order_manager.naver_api and order_status:
-            logger.info(f"🚀 네이버 API 갱신 시작: {start_date_str} ~ {end_date_str}, 상태: {order_status}")
+            # 신규주문(PAYMENT_WAITING)과 발송대기(PAYED)는 모두 네이버 API에서 PAYED 상태로 조회
+            naver_api_status = order_status
+            if order_status == 'PAYMENT_WAITING':
+                naver_api_status = 'PAYED'
+                logger.info(f"🚀 네이버 API 갱신 시작: {start_date_str} ~ {end_date_str}, 요청 상태: {order_status} → API 상태: {naver_api_status}")
+            else:
+                logger.info(f"🚀 네이버 API 갱신 시작: {start_date_str} ~ {end_date_str}, 상태: {order_status}")
 
             # 1단계: 네이버 API에서 주문 조회
             api_response = order_manager.naver_api.get_orders(
                 start_date=start_date_str,
                 end_date=end_date_str,
-                order_status=order_status,
+                order_status=naver_api_status,
                 limit=limit
             )
 
