@@ -464,6 +464,23 @@ async function loadFromSettings() {
     }
 }
 
+// 문자열 이스케이프 함수 (JavaScript 템플릿 리터럴용)
+function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#x27;');
+}
+
+// JavaScript 함수 인자용 이스케이프 (작은따옴표 처리)
+function escapeJsString(str) {
+    if (!str) return '';
+    return String(str).replace(/'/g, "\\'").replace(/"/g, '\\"').replace(/\n/g, '\\n').replace(/\r/g, '\\r');
+}
+
 // 상품 테이블 렌더링
 function renderProducts(productList) {
     console.log('renderProducts 호출됨, 상품 개수:', productList.length);
@@ -484,20 +501,24 @@ function renderProducts(productList) {
     noProductsMessage.classList.add('d-none');
 
 
-    const tableHTML = productList.map((product, index) => `
+    const tableHTML = productList.map((product, index) => {
+        const productId = escapeJsString(product.origin_product_no || product.product_id);
+        const productName = escapeJsString(product.name);
+
+        return `
         <tr>
             <td class="text-center">
-                <button class="btn btn-outline-warning btn-sm" onclick="openProductEdit('${product.origin_product_no || product.product_id}', '${product.name}')" title="상품 수정">
+                <button class="btn btn-outline-warning btn-sm" onclick="openProductEdit('${productId}', '${productName}')" title="상품 수정">
                     ⚙️ 변경
                 </button>
             </td>
             <td class="text-center">
-                <button class="btn btn-outline-info btn-sm" onclick="openProductViewPopup('${product.origin_product_no || product.product_id}', '${product.name}')" title="상품 정보 조회">
+                <button class="btn btn-outline-info btn-sm" onclick="openProductViewPopup('${productId}', '${productName}')" title="상품 정보 조회">
                     🔍 조회
                 </button>
             </td>
             <td class="text-center">
-                <button class="btn btn-outline-secondary btn-sm" onclick="openProductDetailPopup('${product.origin_product_no || product.product_id}', '${product.name}')" title="원본 데이터 상세 (디버깅용)">
+                <button class="btn btn-outline-secondary btn-sm" onclick="openProductDetailPopup('${productId}', '${productName}')" title="원본 데이터 상세 (디버깅용)">
                     📄 상세
                 </button>
             </td>
@@ -506,11 +527,11 @@ function renderProducts(productList) {
                      alt="상품이미지" class="product-image"
                      onerror="this.src='/static/images/no-image.png'">
             </td>
-            <td onclick="showProductDetail('${product.product_id}')" style="cursor: pointer;">
-                <div class="text-truncate" style="max-width: 200px;" title="${product.name}">
-                    <strong>${product.name || '-'}</strong>
+            <td onclick="showProductDetail('${escapeJsString(product.product_id)}')" style="cursor: pointer;">
+                <div class="text-truncate" style="max-width: 200px;" title="${escapeHtml(product.name)}">
+                    <strong>${escapeHtml(product.name || '-')}</strong>
                 </div>
-                <small class="text-muted">${product.brand || ''}</small>
+                <small class="text-muted">${escapeHtml(product.brand || '')}</small>
             </td>
             <td>
                 <small class="text-muted">${product.product_id || '-'}</small>
@@ -550,7 +571,8 @@ function renderProducts(productList) {
                 <small class="text-muted">${product.origin_product_no || '-'}</small>
             </td>
         </tr>
-    `).join('');
+        `;
+    }).join('');
 
     console.log('테이블 HTML 길이:', tableHTML.length);
     console.log('테이블 HTML 미리보기:', tableHTML.substring(0, 200) + '...');
