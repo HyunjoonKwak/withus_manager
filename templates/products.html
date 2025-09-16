@@ -75,8 +75,8 @@
                     <label class="form-check-label small" for="status_CLOSE">종료</label>
                 </div>
                 <div class="form-check form-check-inline">
-                    <input class="form-check-input status-filter" type="checkbox" id="status_RESTRICTION" value="RESTRICTION" onchange="updateStatusFilter()">
-                    <label class="form-check-label small" for="status_RESTRICTION">판매금지</label>
+                    <input class="form-check-input status-filter" type="checkbox" id="status_PROHIBITION" value="PROHIBITION" onchange="updateStatusFilter()">
+                    <label class="form-check-label small" for="status_PROHIBITION">판매금지</label>
                 </div>
             </div>
         </div>
@@ -498,13 +498,19 @@ function renderProducts(productList) {
                 <small class="text-muted">${product.product_id || '-'}</small>
             </td>
             <td class="text-end">
-                <small class="text-muted">${formatPrice(product.sale_price)}</small>
+                <strong>${formatPrice(product.sale_price)}</strong>
             </td>
             <td class="text-end">
-                <small class="text-danger">${formatPrice((product.sale_price || 0) - (product.discounted_price || 0))}</small>
+                ${product.discounted_price && product.discounted_price > 0 && product.discounted_price < product.sale_price ?
+                    `<small class="text-danger">${formatPrice(product.sale_price - product.discounted_price)}</small>` :
+                    '<small class="text-muted">-</small>'
+                }
             </td>
             <td class="text-end">
-                <strong class="text-primary">${formatPrice(product.discounted_price)}</strong>
+                ${product.discounted_price && product.discounted_price > 0 ?
+                    `<strong class="text-primary">${formatPrice(product.discounted_price)}</strong>` :
+                    '<small class="text-muted">-</small>'
+                }
             </td>
             <td class="text-center">
                 <span class="stock-badge ${getStockBadgeClass(product.stock)}">
