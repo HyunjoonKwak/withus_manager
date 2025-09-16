@@ -1354,6 +1354,7 @@ async def get_products():
             product_dict = {
                 'id': product.get('channel_product_no', ''),
                 'product_id': product.get('channel_product_no', ''),
+                'origin_product_no': product.get('origin_product_no', ''),
                 'name': product.get('product_name', ''),
                 'price': product.get('sale_price', 0),
                 'sale_price': product.get('sale_price', 0),

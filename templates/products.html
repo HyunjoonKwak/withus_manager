@@ -117,17 +117,19 @@
         <table class="table table-hover mb-0">
             <thead class="bg-light">
                 <tr>
-                    <th width="5%">이미지</th>
-                    <th width="20%">상품명</th>
-                    <th width="10%">상품ID</th>
-                    <th width="10%">원래판매가</th>
-                    <th width="10%">셀러할인가</th>
-                    <th width="10%">실제판매가</th>
-                    <th width="8%">재고</th>
-                    <th width="8%">상태</th>
-                    <th width="10%">등록일</th>
-                    <th width="8%">판매량</th>
-                    <th width="11%">액션</th>
+                    <th width="5%">변경</th>
+                    <th width="5%">조회</th>
+                    <th width="4%">이미지</th>
+                    <th width="18%">상품명</th>
+                    <th width="8%">상품ID</th>
+                    <th width="8%">원래판매가</th>
+                    <th width="8%">셀러할인가</th>
+                    <th width="8%">실제판매가</th>
+                    <th width="6%">재고</th>
+                    <th width="6%">상태</th>
+                    <th width="8%">등록일</th>
+                    <th width="6%">판매량</th>
+                    <th width="10%">원상품ID</th>
                 </tr>
             </thead>
             <tbody id="productsTableBody">
@@ -482,13 +484,23 @@ function renderProducts(productList) {
 
 
     const tableHTML = productList.map((product, index) => `
-        <tr onclick="showProductDetail('${product.product_id}')" style="cursor: pointer;">
+        <tr>
+            <td class="text-center">
+                <button class="btn btn-outline-warning btn-sm" onclick="openProductEdit('${product.origin_product_no || product.product_id}', '${product.name}')" title="상품 수정">
+                    ⚙️ 변경
+                </button>
+            </td>
+            <td class="text-center">
+                <button class="btn btn-outline-info btn-sm" onclick="openProductView('${product.product_id}', '${product.name}')" title="상품 조회">
+                    🔍 조회
+                </button>
+            </td>
             <td>
                 <img src="${product.image_url || '/static/images/no-image.png'}"
                      alt="상품이미지" class="product-image"
                      onerror="this.src='/static/images/no-image.png'">
             </td>
-            <td>
+            <td onclick="showProductDetail('${product.product_id}')" style="cursor: pointer;">
                 <div class="text-truncate" style="max-width: 200px;" title="${product.name}">
                     <strong>${product.name || '-'}</strong>
                 </div>
@@ -529,14 +541,7 @@ function renderProducts(productList) {
                 ${product.sales_count || 0}건
             </td>
             <td>
-                <div class="btn-group btn-group-sm">
-                    <button class="btn btn-outline-primary btn-sm" onclick="event.stopPropagation(); editProduct('${product.product_id}')" title="수정">
-                        <i class="fas fa-edit"></i>
-                    </button>
-                    <button class="btn btn-outline-secondary btn-sm" onclick="event.stopPropagation(); toggleProductStatus('${product.product_id}')" title="상태변경">
-                        <i class="fas fa-toggle-on"></i>
-                    </button>
-                </div>
+                <small class="text-muted">${product.origin_product_no || '-'}</small>
             </td>
         </tr>
     `).join('');
@@ -710,9 +715,93 @@ function showProductDetail(productId) {
     new bootstrap.Modal(document.getElementById('productDetailModal')).show();
 }
 
-// 상품 수정
+// 스마트스토어 상품 수정 페이지 열기 (원상품ID 사용)
+function openProductEdit(originProductId, productName = "") {
+    try {
+        console.log('상품 수정 페이지 열기:', originProductId, productName);
+
+        if (!originProductId || originProductId === 'undefined' || originProductId === '-') {
+            alert('원상품ID를 찾을 수 없습니다. 상품 수정 페이지를 열 수 없습니다.');
+            return;
+        }
+
+        // 스마트스토어 상품 수정 URL (원상품ID 포함)
+        const url = `https://sell.smartstore.naver.com/#/products/edit/${originProductId}`;
+        window.open(url, '_blank');
+
+        console.log('상품 수정 페이지 열기 완료:', originProductId, productName);
+
+        // 성공 메시지 표시
+        showStatusMessage(`상품 수정 페이지를 브라우저에서 열었습니다: ${productName}`, 'success');
+
+    } catch (error) {
+        console.error('상품 수정 페이지 열기 오류:', error);
+        alert('상품 수정 페이지를 여는 중 오류가 발생했습니다: ' + error.message);
+    }
+}
+
+// 스마트스토어 상품 조회 페이지 열기 (상품ID 사용)
+function openProductView(productId, productName = "") {
+    try {
+        console.log('상품 조회 페이지 열기:', productId, productName);
+
+        if (!productId || productId === 'undefined' || productId === '-') {
+            alert('상품ID를 찾을 수 없습니다. 상품 조회 페이지를 열 수 없습니다.');
+            return;
+        }
+
+        // 스마트스토어 상품 조회 URL (상품ID 포함)
+        const url = `https://smartstore.naver.com/us-shop/products/${productId}`;
+        window.open(url, '_blank');
+
+        console.log('상품 조회 페이지 열기 완료:', productId, productName);
+
+        // 성공 메시지 표시
+        showStatusMessage(`상품 조회 페이지를 브라우저에서 열었습니다: ${productName}`, 'info');
+
+    } catch (error) {
+        console.error('상품 조회 페이지 열기 오류:', error);
+        alert('상품 조회 페이지를 여는 중 오류가 발생했습니다: ' + error.message);
+    }
+}
+
+// 상태 메시지 표시 함수
+function showStatusMessage(message, type = 'info') {
+    const alertClass = type === 'success' ? 'alert-success' :
+                      type === 'error' ? 'alert-danger' : 'alert-info';
+
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert ${alertClass} alert-dismissible fade show mt-3`;
+    alertDiv.innerHTML = `
+        <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'}"></i>
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+
+    // 첫 번째 카드 위에 삽입
+    const firstCard = document.querySelector('.product-header');
+    if (firstCard && firstCard.parentNode) {
+        firstCard.parentNode.insertBefore(alertDiv, firstCard.nextSibling);
+    } else {
+        document.querySelector('.container').prepend(alertDiv);
+    }
+
+    // 5초 후 자동 제거
+    setTimeout(() => {
+        if (alertDiv.parentNode) {
+            alertDiv.remove();
+        }
+    }, 5000);
+}
+
+// 기존 상품 수정 함수 (호환성 유지)
 function editProduct(productId) {
-    alert('상품 수정 기능이 곧 구현될 예정입니다.');
+    const product = products.find(p => p.product_id === productId);
+    if (product) {
+        openProductEdit(product.origin_product_no || productId, product.name);
+    } else {
+        alert('상품 정보를 찾을 수 없습니다.');
+    }
 }
 
 // 상품 상태 변경
