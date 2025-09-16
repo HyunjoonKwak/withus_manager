@@ -304,43 +304,6 @@ class BasicSettingsTab(BaseTab):
         # 구분선 추가
         self.add_separator()
         
-        # 홈탭 리프레시 설정
-        refresh_frame = ttk.LabelFrame(self.scrollable_frame, text="⚡ 홈탭 리프레시 설정", style="Section.TLabelframe")
-        refresh_frame.pack(fill="x", padx=5, pady=(5, 10))
-        
-        # 자동 리프레시 활성화
-        auto_refresh_frame = ttk.Frame(refresh_frame)
-        auto_refresh_frame.pack(fill="x", padx=5, pady=2)
-        
-        self.auto_refresh_var = tk.BooleanVar()
-        self.auto_refresh_cb = ttk.Checkbutton(
-            auto_refresh_frame, 
-            text="자동 리프레시 활성화", 
-            variable=self.auto_refresh_var
-        )
-        self.auto_refresh_cb.pack(side="left", padx=5)
-        
-        # 리프레시 간격 설정
-        interval_frame = ttk.Frame(refresh_frame)
-        interval_frame.pack(fill="x", padx=5, pady=2)
-        
-        ttk.Label(interval_frame, text="리프레시 간격 (초):").pack(side="left", padx=5)
-        self.refresh_interval_var = tk.StringVar()
-        self.refresh_interval_entry = ttk.Entry(interval_frame, textvariable=self.refresh_interval_var, width=10)
-        self.refresh_interval_entry.pack(side="left", padx=5)
-        
-        ttk.Label(interval_frame, text="권장: 60초 이상 (너무 짧으면 API 제한에 걸릴 수 있습니다)").pack(side="left", padx=10, anchor="w")
-        
-        # 리프레시 설정 저장 버튼
-        refresh_buttons_frame = ttk.Frame(refresh_frame)
-        refresh_buttons_frame.pack(fill="x", padx=5, pady=5)
-        
-        ttk.Button(refresh_buttons_frame, text="리프레시 설정 저장", command=self.save_refresh_settings).pack(side="left", padx=5)
-        ttk.Button(refresh_buttons_frame, text="지금 새로고침", command=self.manual_refresh).pack(side="left", padx=5)
-        
-        # 구분선 추가
-        self.add_separator()
-        
         # IP 관리 설정
         ip_management_frame = ttk.LabelFrame(self.scrollable_frame, text="🌐 허가된 공인 IP 관리", style="Section.TLabelframe")
         ip_management_frame.pack(fill="x", padx=5, pady=(5, 10))
@@ -403,7 +366,6 @@ class BasicSettingsTab(BaseTab):
         enable_context_menu(self.client_secret_entry)
         enable_context_menu(self.discord_webhook_entry)
         enable_context_menu(self.new_ip_entry)
-        enable_context_menu(self.refresh_interval_entry)
     
     def setup_keyboard_shortcuts(self):
         """키보드 단축키 설정"""
@@ -412,8 +374,7 @@ class BasicSettingsTab(BaseTab):
                 self.client_id_entry,
                 self.client_secret_entry,
                 self.discord_webhook_entry,
-                self.new_ip_entry,
-                self.refresh_interval_entry
+                self.new_ip_entry
             ]
             
             for widget in entry_widgets:
@@ -491,9 +452,6 @@ class BasicSettingsTab(BaseTab):
             self.discord_enabled_var.set(config.get('DISCORD_ENABLED', 'false').lower() == 'true')
             self.discord_webhook_var.set(config.get('DISCORD_WEBHOOK_URL', ''))
             
-            # 리프레시 설정 로드
-            self.auto_refresh_var.set(config.get('AUTO_REFRESH', 'false').lower() == 'true')
-            self.refresh_interval_var.set(config.get('REFRESH_INTERVAL', '60'))
             
             # IP 설정 로드
             self.load_ip_settings()
@@ -918,50 +876,3 @@ class BasicSettingsTab(BaseTab):
         except Exception as e:
             print(f"IP 허가 경고 표시 오류: {e}")
     
-    def save_refresh_settings(self):
-        """리프레시 설정 저장"""
-        try:
-            auto_refresh = self.auto_refresh_var.get()
-            interval_str = self.refresh_interval_var.get().strip()
-            
-            # 간격 유효성 검사
-            try:
-                interval = int(interval_str)
-                if interval < 30:
-                    messagebox.showwarning("설정 오류", "리프레시 간격은 30초 이상이어야 합니다.")
-                    return
-                elif interval > 3600:
-                    messagebox.showwarning("설정 오류", "리프레시 간격은 3600초(1시간) 이하여야 합니다.")
-                    return
-            except ValueError:
-                messagebox.showwarning("설정 오류", "리프레시 간격은 숫자로 입력해주세요.")
-                return
-            
-            # 설정 저장
-            config.set('AUTO_REFRESH', str(auto_refresh).lower())
-            config.set('REFRESH_INTERVAL', str(interval))
-            config.save()  # .env 파일에 저장
-            
-            # 설정이 저장되었음을 알림
-            if auto_refresh:
-                messagebox.showinfo("설정 저장", f"리프레시 설정이 저장되었습니다.\n자동 리프레시: 활성화\n간격: {interval}초\n\n변경사항은 애플리케이션 재시작 후 적용됩니다.")
-            else:
-                messagebox.showinfo("설정 저장", "리프레시 설정이 저장되었습니다.\n자동 리프레시: 비활성화\n\n변경사항은 애플리케이션 재시작 후 적용됩니다.")
-            
-            print(f"리프레시 설정 저장: AUTO_REFRESH={auto_refresh}, REFRESH_INTERVAL={interval}")
-            
-        except Exception as e:
-            print(f"리프레시 설정 저장 오류: {e}")
-            messagebox.showerror("저장 오류", f"리프레시 설정 저장 중 오류가 발생했습니다: {str(e)}")
-    
-    def manual_refresh(self):
-        """수동으로 홈탭 대시보드 새로고침"""
-        try:
-            if hasattr(self.app, 'home_tab') and hasattr(self.app.home_tab, 'refresh_dashboard'):
-                self.app.home_tab.refresh_dashboard()
-                messagebox.showinfo("새로고침", "홈탭 대시보드 새로고침을 실행했습니다.")
-            else:
-                messagebox.showwarning("새로고침 오류", "홈탭 대시보드 새로고침 기능을 찾을 수 없습니다.")
-        except Exception as e:
-            print(f"수동 새로고침 오류: {e}")
-            messagebox.showerror("새로고침 오류", f"수동 새로고침 중 오류가 발생했습니다: {str(e)}")

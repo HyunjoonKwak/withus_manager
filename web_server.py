@@ -878,12 +878,18 @@ async def users_page(request: Request):
 
 @app.get("/settings", response_class=HTMLResponse)
 async def settings_page(request: Request):
-    """설정 페이지"""
+    """설정 페이지 (관리자 전용)"""
+    # 관리자 권한 확인
+    user_info = get_user_info_from_cookie(request)
+    if not user_info or not user_info.get('is_admin'):
+        return RedirectResponse(url="/login", status_code=302)
+
     context = {
         "request": request,
         "title": "설정 - " + get_full_title(),
         "version_info": get_detailed_version_info(),
-        "config": web_config
+        "config": web_config,
+        "user_info": user_info
     }
     return templates.TemplateResponse("settings.html", context)
 

@@ -318,7 +318,44 @@ class ConditionSettingsTab(BaseTab):
         
         # 구분선 추가
         self.add_separator()
-        
+
+        # 모니터링 설정
+        monitoring_frame = ttk.LabelFrame(self.scrollable_frame, text="⚡ 모니터링 설정", style="Section.TLabelframe")
+        monitoring_frame.pack(fill="x", padx=5, pady=(5, 10))
+
+        # 자동 리프레시 활성화
+        auto_refresh_frame = ttk.Frame(monitoring_frame)
+        auto_refresh_frame.pack(fill="x", padx=5, pady=2)
+
+        self.auto_refresh_var = tk.BooleanVar()
+        self.auto_refresh_cb = ttk.Checkbutton(
+            auto_refresh_frame,
+            text="자동 리프레시 활성화",
+            variable=self.auto_refresh_var
+        )
+        self.auto_refresh_cb.pack(side="left", padx=5)
+
+        # 리프레시 간격 설정
+        interval_frame = ttk.Frame(monitoring_frame)
+        interval_frame.pack(fill="x", padx=5, pady=2)
+
+        ttk.Label(interval_frame, text="리프레시 간격 (초):").pack(side="left", padx=5)
+        self.refresh_interval_var = tk.StringVar()
+        self.refresh_interval_entry = ttk.Entry(interval_frame, textvariable=self.refresh_interval_var, width=10)
+        self.refresh_interval_entry.pack(side="left", padx=5)
+
+        ttk.Label(interval_frame, text="권장: 60초 이상 (너무 짧으면 API 제한에 걸릴 수 있습니다)").pack(side="left", padx=10, anchor="w")
+
+        # 리프레시 설정 저장 버튼
+        refresh_buttons_frame = ttk.Frame(monitoring_frame)
+        refresh_buttons_frame.pack(fill="x", padx=5, pady=5)
+
+        ttk.Button(refresh_buttons_frame, text="모니터링 설정 저장", command=self.save_monitoring_settings).pack(side="left", padx=5)
+        ttk.Button(refresh_buttons_frame, text="지금 새로고침", command=self.manual_refresh).pack(side="left", padx=5)
+
+        # 구분선 추가
+        self.add_separator()
+
         # 상품 상태 설정
         product_status_frame = ttk.LabelFrame(self.scrollable_frame, text="📦 상품 상태 설정", style="Section.TLabelframe")
         product_status_frame.pack(fill="x", padx=5, pady=(5, 10))
@@ -364,6 +401,9 @@ class ConditionSettingsTab(BaseTab):
             
             # 상품 상태 설정 로드
             self.load_product_status_settings()
+
+            # 모니터링 설정 로드
+            self.load_monitoring_settings()
             
         except Exception as e:
             print(f"조건설정 로드 오류: {e}")
@@ -574,3 +614,64 @@ class ConditionSettingsTab(BaseTab):
             
         except Exception as e:
             messagebox.showerror("오류", f"상품 상태 설정 저장 실패: {str(e)}")
+
+    # 모니터링 설정 메서드들
+    def load_monitoring_settings(self):
+        """모니터링 설정 로드"""
+        try:
+            # 리프레시 설정 로드
+            self.auto_refresh_var.set(config.get('AUTO_REFRESH', 'false').lower() == 'true')
+            self.refresh_interval_var.set(config.get('REFRESH_INTERVAL', '60'))
+            print(f"모니터링 설정 로드: AUTO_REFRESH={self.auto_refresh_var.get()}, REFRESH_INTERVAL={self.refresh_interval_var.get()}")
+        except Exception as e:
+            print(f"모니터링 설정 로드 오류: {e}")
+            self.auto_refresh_var.set(False)
+            self.refresh_interval_var.set('60')
+
+    def save_monitoring_settings(self):
+        """모니터링 설정 저장"""
+        try:
+            auto_refresh = self.auto_refresh_var.get()
+            interval_str = self.refresh_interval_var.get().strip()
+
+            # 간격 유효성 검사
+            try:
+                interval = int(interval_str)
+                if interval < 30:
+                    messagebox.showwarning("설정 오류", "리프레시 간격은 30초 이상이어야 합니다.")
+                    return
+                elif interval > 3600:
+                    messagebox.showwarning("설정 오류", "리프레시 간격은 3600초(1시간) 이하여야 합니다.")
+                    return
+            except ValueError:
+                messagebox.showwarning("설정 오류", "리프레시 간격은 숫자로 입력해주세요.")
+                return
+
+            # 설정 저장
+            config.set('AUTO_REFRESH', str(auto_refresh).lower())
+            config.set('REFRESH_INTERVAL', str(interval))
+            config.save()  # .env 파일에 저장
+
+            # 설정이 저장되었음을 알림
+            if auto_refresh:
+                messagebox.showinfo("설정 저장", f"모니터링 설정이 저장되었습니다.\n자동 리프레시: 활성화\n간격: {interval}초\n\n변경사항은 애플리케이션 재시작 후 적용됩니다.")
+            else:
+                messagebox.showinfo("설정 저장", "모니터링 설정이 저장되었습니다.\n자동 리프레시: 비활성화\n\n변경사항은 애플리케이션 재시작 후 적용됩니다.")
+
+            print(f"모니터링 설정 저장: AUTO_REFRESH={auto_refresh}, REFRESH_INTERVAL={interval}")
+
+        except Exception as e:
+            print(f"모니터링 설정 저장 오류: {e}")
+            messagebox.showerror("저장 오류", f"모니터링 설정 저장 중 오류가 발생했습니다: {str(e)}")
+
+    def manual_refresh(self):
+        """수동으로 홈탭 대시보드 새로고침"""
+        try:
+            if hasattr(self.app, 'home_tab') and hasattr(self.app.home_tab, 'refresh_dashboard'):
+                self.app.home_tab.refresh_dashboard()
+                messagebox.showinfo("새로고침", "홈탭 대시보드 새로고침을 실행했습니다.")
+            else:
+                messagebox.showwarning("새로고침 오류", "홈탭 대시보드 새로고침 기능을 찾을 수 없습니다.")
+        except Exception as e:
+            print(f"수동 새로고침 오류: {e}")
+            messagebox.showerror("새로고침 오류", f"수동 새로고침 중 오류가 발생했습니다: {str(e)}")

@@ -95,11 +95,13 @@
                             <i class="fas fa-tags"></i> 상품관리
                         </a>
                     </li>
+                    {% if user_info and user_info.is_admin %}
                     <li class="nav-item">
                         <a class="nav-link" href="/settings">
                             <i class="fas fa-cog"></i> 설정
                         </a>
                     </li>
+                    {% endif %}
                     {% if user_info and user_info.is_admin %}
                     <li class="nav-item">
                         <a class="nav-link" href="/users">
