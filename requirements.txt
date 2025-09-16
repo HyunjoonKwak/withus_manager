@@ -15,6 +15,7 @@ fastapi>=0.104.1
 uvicorn[standard]>=0.24.0
 jinja2>=3.1.2
 python-multipart>=0.0.6
+itsdangerous>=2.1.0
 
 # 선택적 의존성 (Discord 알림용)
 discord.py>=2.3.2
