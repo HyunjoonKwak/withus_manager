@@ -1401,6 +1401,7 @@ async def get_products():
                                 option_data = {
                                     'id': option.get('id', ''),
                                     'name': option.get('optionName', ''),
+                                    'optionName1': option.get('optionName1', ''),  # 추가
                                     'price': option_price,
                                     'actual_price': option_actual_price,  # 계산된 실제 판매가
                                     'stock': option.get('stockQuantity', 0),

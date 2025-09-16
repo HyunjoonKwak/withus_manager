@@ -591,9 +591,11 @@ function renderProducts(productList) {
                 const actualPrice = option.actual_price || 0;  // 서버에서 계산된 실제 판매가
                 const statusBadge = getStatusBadgeClass(option.status);
 
-                // 옵션명 구성 (옵션값들을 조합)
-                let optionName = option.name || '옵션';
-                if (option.option_values && option.option_values.length > 0) {
+                // 옵션명 구성 - optionName1을 우선 사용, 없으면 optionName, 그것도 없으면 옵션값 조합
+                let optionName = option.optionName1 || option.name || '옵션';
+
+                // optionName1이 없고 옵션값들이 있으면 조합하여 사용
+                if (!option.optionName1 && option.option_values && option.option_values.length > 0) {
                     optionName = option.option_values.map(val => `${val.group_name}: ${val.value}`).join(', ');
                 }
 
@@ -615,13 +617,14 @@ function renderProducts(productList) {
                         <small class="text-muted">-</small>
                     </td>
                     <td class="ps-4">
-                        <div class="d-flex align-items-center">
-                            <small class="text-primary">📦 ${escapeHtml(optionName)}</small>
-                            <div class="ms-2">
-                                <span class="badge ${statusBadge} badge-sm">${getStatusText(option.status)}</span>
-                            </div>
+                        <div class="text-truncate" style="max-width: 200px;" title="${escapeHtml(product.name + ' - ' + optionName)}">
+                            <strong>${escapeHtml(product.name)}</strong>
+                            <br><small class="text-primary">📦 ${escapeHtml(optionName)}</small>
                         </div>
-                        <small class="text-muted">관리코드: ${escapeHtml(option.manage_code || '-')} | ID: ${option.id}</small>
+                        <div class="d-flex align-items-center mt-1">
+                            <span class="badge ${statusBadge} badge-sm me-1">${getStatusText(option.status)}</span>
+                            <small class="text-muted">관리코드: ${escapeHtml(option.manage_code || '-')}</small>
+                        </div>
                     </td>
                     <td>
                         <small class="text-muted">${product.product_id}-${optionIndex + 1}</small>
