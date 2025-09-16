@@ -846,8 +846,9 @@ async function openProductViewPopup(originProductId, productName = "") {
 function generateProductInfoTable(data, productName, originProductId) {
     const formatValue = (value) => {
         if (value === null || value === undefined || value === '') return '-';
-        if (typeof value === 'object') return JSON.stringify(value, null, 2);
+        if (typeof value === 'object') return `<pre style="margin: 0; white-space: pre-wrap; font-size: 11px;">${JSON.stringify(value, null, 2)}</pre>`;
         if (typeof value === 'number' && value >= 1000) return value.toLocaleString();
+        if (typeof value === 'boolean') return value ? '예' : '아니오';
         return String(value);
     };
 
@@ -866,6 +867,23 @@ function generateProductInfoTable(data, productName, originProductId) {
         const info = statusMap[status] || { color: '#6c757d', text: status || '-' };
         return `<span style="background: ${info.color}; color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px;">${info.text}</span>`;
     };
+
+    // 이미지 관련 필드들을 제외할 목록
+    const imageFields = [
+        'representativeImage', 'productImages', 'detailImages', 'additionalImages',
+        'imageUrl', 'thumbnailUrl', 'mainImage', 'subImages'
+    ];
+
+    // 주요 필드들을 먼저 표시하고, 나머지는 추가 정보로 표시
+    const mainFields = [
+        'channelProductNo', 'statusType', 'salePrice', 'stockPrice', 'supplyPrice',
+        'discountedPrice', 'stockQuantity', 'wholeCategoryName', 'brandName',
+        'manufacturerName', 'regDate', 'editDate', 'saleStartDate', 'saleEndDate'
+    ];
+
+    const additionalFields = Object.keys(data).filter(key =>
+        !mainFields.includes(key) && !imageFields.includes(key)
+    );
 
     return `
         <div style="background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 4px; padding: 15px; margin-bottom: 15px;">
@@ -908,22 +926,44 @@ function generateProductInfoTable(data, productName, originProductId) {
             </div>
         </div>
 
-        ${data.representativeImage ? `
-        <div style="background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 4px; padding: 15px; margin-bottom: 15px;">
-            <h6 style="margin: 0 0 10px 0; color: #495057;">🖼️ 상품 이미지</h6>
-            <img src="${data.representativeImage.url}" alt="상품이미지" style="max-width: 200px; max-height: 200px; border-radius: 4px; border: 1px solid #ddd;">
-        </div>
-        ` : ''}
-
-        ${Object.keys(data).length > 0 ? `
-        <div style="background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 4px; padding: 15px;">
-            <h6 style="margin: 0 0 10px 0; color: #495057;">🔧 추가 정보</h6>
-            <div style="font-family: 'Courier New', monospace; font-size: 11px; max-height: 200px; overflow: auto; background: white; padding: 10px; border-radius: 4px;">
-                전체 필드 수: ${Object.keys(data).length}개<br>
-                주요 미표시 필드들이 있을 수 있습니다. 상세 버튼으로 전체 데이터를 확인하세요.
+        ${data.optionInfo ? `
+        <div style="background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 4px; padding: 15px; margin-bottom: 15px;">
+            <h6 style="margin: 0 0 10px 0; color: #856404;">🎛️ 옵션 정보 (optionInfo)</h6>
+            <div style="background: white; padding: 10px; border-radius: 4px; border: 1px solid #ddd;">
+                ${formatValue(data.optionInfo)}
             </div>
         </div>
         ` : ''}
+
+        ${additionalFields.length > 0 ? `
+        <div style="background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 4px; padding: 15px; margin-bottom: 15px;">
+            <h6 style="margin: 0 0 10px 0; color: #495057;">🔧 추가 정보 (${additionalFields.length}개 필드)</h6>
+            <div style="max-height: 400px; overflow: auto;">
+                ${additionalFields.map(key => {
+                    const value = data[key];
+                    if (value === null || value === undefined || value === '') return '';
+                    return `
+                        <div style="background: white; margin-bottom: 8px; padding: 8px; border-radius: 4px; border: 1px solid #ddd;">
+                            <strong style="color: #495057;">${key}:</strong><br>
+                            <div style="margin-top: 4px; color: #6c757d;">
+                                ${formatValue(value)}
+                            </div>
+                        </div>
+                    `;
+                }).filter(item => item !== '').join('')}
+            </div>
+        </div>
+        ` : ''}
+
+        <div style="background: #e9ecef; border: 1px solid #dee2e6; border-radius: 4px; padding: 15px;">
+            <h6 style="margin: 0 0 10px 0; color: #495057;">📊 데이터 요약</h6>
+            <div style="font-size: 12px; color: #6c757d;">
+                • 전체 필드 수: ${Object.keys(data).length}개<br>
+                • 표시된 필드 수: ${mainFields.filter(f => data[f] !== undefined).length + additionalFields.length}개<br>
+                • 이미지 필드 제외: ${imageFields.filter(f => data[f] !== undefined).length}개<br>
+                • optionInfo 포함 여부: ${data.optionInfo ? '✅ 포함' : '❌ 없음'}
+            </div>
+        </div>
     `;
 }
 
