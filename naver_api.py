@@ -725,13 +725,17 @@ class NaverShoppingAPI:
                 'product_name': product_info.get('productName'),  # content.productOrder.productName
                 'quantity': product_info.get('quantity', 1),  # content.productOrder.quantity
                 'price': product_info.get('totalPaymentAmount', 0),  # content.productOrder.totalPaymentAmount
-                'status': self._map_naver_status_to_local(product_info.get('productOrderStatus')),  # content.productOrder.productOrderStatus
+                'status': self._map_naver_status_to_local(
+                    product_info.get('productOrderStatus'),
+                    product_info.get('placeOrderStatusType')
+                ),  # 두 개 상태 필드 모두 사용
                 'shipping_company': product_info.get('expectedDeliveryCompany'),  # content.productOrder.expectedDeliveryCompany
                 'tracking_number': '',  # 추후 배송 조회 API에서 가져와야 함
                 'memo': ''  # 기본값
             }
 
             print(f"📝 주문 저장 시도: ID={order_data.get('order_id')}, 상태={order_data.get('status')}, 날짜={order_data.get('order_date')}")
+            print(f"   🔍 원본 상태: productOrderStatus={product_info.get('productOrderStatus')}, placeOrderStatusType={product_info.get('placeOrderStatusType')}")
 
             if db_manager.add_order(order_data):
                 synced_count += 1
@@ -741,11 +745,21 @@ class NaverShoppingAPI:
 
         return synced_count
 
-    def _map_naver_status_to_local(self, naver_status: str) -> str:
+    def _map_naver_status_to_local(self, naver_status: str, place_order_status: str = None) -> str:
         """네이버 API 상태를 로컬 상태로 매핑 (대시보드와 일관성 유지)"""
+        # PAYED 상태의 경우 placeOrderStatusType에 따라 구분
+        if naver_status == 'PAYED':
+            if place_order_status == 'NOT_YET':
+                return 'PAYMENT_WAITING'  # 신규주문 (결제완료, 발주미확인)
+            elif place_order_status == 'OK':
+                return 'PAYED'            # 발송대기 (결제완료, 발주확인)
+            else:
+                # placeOrderStatusType이 없거나 예상하지 못한 값인 경우 기본값
+                return 'PAYMENT_WAITING'
+
+        # 기타 상태들은 기존 매핑 유지
         status_mapping = {
             'ORDERED': 'PAYMENT_WAITING',      # 신규주문
-            'PAYED': 'PAYED',                  # 발송대기
             'READY': 'PAYED',                  # 발송대기
             'SHIPPED': 'DELIVERING',           # 배송중
             'DELIVERED': 'DELIVERED',          # 배송완료
