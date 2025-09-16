@@ -119,6 +119,7 @@
                 <tr>
                     <th width="5%">변경</th>
                     <th width="5%">조회</th>
+                    <th width="5%">상세</th>
                     <th width="4%">이미지</th>
                     <th width="18%">상품명</th>
                     <th width="8%">상품ID</th>
@@ -491,8 +492,13 @@ function renderProducts(productList) {
                 </button>
             </td>
             <td class="text-center">
-                <button class="btn btn-outline-info btn-sm" onclick="openProductDetailPopup('${product.origin_product_no || product.product_id}', '${product.name}')" title="상품 정보 조회">
+                <button class="btn btn-outline-info btn-sm" onclick="openProductViewPopup('${product.origin_product_no || product.product_id}', '${product.name}')" title="상품 정보 조회">
                     🔍 조회
+                </button>
+            </td>
+            <td class="text-center">
+                <button class="btn btn-outline-secondary btn-sm" onclick="openProductDetailPopup('${product.origin_product_no || product.product_id}', '${product.name}')" title="원본 데이터 상세 (디버깅용)">
+                    📄 상세
                 </button>
             </td>
             <td>
@@ -765,7 +771,171 @@ function openProductView(productId, productName = "") {
     }
 }
 
-// 네이버 API 원본 응답을 팝업으로 보여주는 함수
+// 상품 정보를 가독성 좋은 형태로 보여주는 함수
+async function openProductViewPopup(originProductId, productName = "") {
+    try {
+        console.log('상품 정보 조회:', originProductId, productName);
+
+        if (!originProductId || originProductId === 'undefined' || originProductId === '-') {
+            alert('원상품ID를 찾을 수 없습니다. 상품 정보를 조회할 수 없습니다.');
+            return;
+        }
+
+        // 로딩 표시
+        showStatusMessage('상품 정보를 조회하고 있습니다...', 'info');
+
+        // 서버에서 네이버 API 응답 조회
+        const response = await fetch(`/api/products/${originProductId}/detail`);
+        const result = await response.json();
+
+        if (result.success) {
+            const data = result.data;
+
+            // 데이터를 가독성 좋은 표 형태로 구성
+            const productInfo = generateProductInfoTable(data, productName, originProductId);
+
+            // 팝업 창 HTML 생성
+            const popupHtml = `
+                <div style="
+                    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+                    background: rgba(0,0,0,0.5); z-index: 10000;
+                    display: flex; align-items: center; justify-content: center;
+                " onclick="closeProductViewPopup()">
+                    <div style="
+                        background: white; width: 90%; max-width: 900px; max-height: 90%;
+                        border-radius: 8px; padding: 20px; overflow: auto;
+                        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                    " onclick="event.stopPropagation()">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                            <h5 style="margin: 0; color: #333;">🔍 상품 상세 정보</h5>
+                            <button onclick="closeProductViewPopup()" style="
+                                background: #dc3545; color: white; border: none;
+                                border-radius: 4px; padding: 8px 12px; cursor: pointer;
+                            ">✕ 닫기</button>
+                        </div>
+                        ${productInfo}
+                        <div style="margin-top: 15px; text-align: center;">
+                            <button onclick="closeProductViewPopup()" style="
+                                background: #6c757d; color: white; border: none;
+                                border-radius: 4px; padding: 8px 16px; cursor: pointer;
+                            ">닫기</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // 팝업을 body에 추가
+            const popupDiv = document.createElement('div');
+            popupDiv.id = 'productViewPopup';
+            popupDiv.innerHTML = popupHtml;
+            document.body.appendChild(popupDiv);
+
+            showStatusMessage('상품 정보 조회 완료', 'success');
+
+        } else {
+            throw new Error(result.error || '상품 정보 조회 실패');
+        }
+
+    } catch (error) {
+        console.error('상품 정보 조회 오류:', error);
+        showStatusMessage(`상품 정보 조회 중 오류가 발생했습니다: ${error.message}`, 'error');
+    }
+}
+
+// 상품 정보를 표 형태로 구성하는 함수
+function generateProductInfoTable(data, productName, originProductId) {
+    const formatValue = (value) => {
+        if (value === null || value === undefined || value === '') return '-';
+        if (typeof value === 'object') return JSON.stringify(value, null, 2);
+        if (typeof value === 'number' && value >= 1000) return value.toLocaleString();
+        return String(value);
+    };
+
+    const formatCurrency = (value) => {
+        if (!value || value === 0) return '-';
+        return Number(value).toLocaleString() + '원';
+    };
+
+    const getStatusBadge = (status) => {
+        const statusMap = {
+            'SALE': { color: '#28a745', text: '판매중' },
+            'WAIT': { color: '#ffc107', text: '승인대기' },
+            'OUTOFSTOCK': { color: '#dc3545', text: '품절' },
+            'SUSPENSION': { color: '#6c757d', text: '판매중지' }
+        };
+        const info = statusMap[status] || { color: '#6c757d', text: status || '-' };
+        return `<span style="background: ${info.color}; color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px;">${info.text}</span>`;
+    };
+
+    return `
+        <div style="background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 4px; padding: 15px; margin-bottom: 15px;">
+            <h6 style="margin: 0 0 10px 0; color: #495057;">📦 기본 정보</h6>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <div><strong>상품명:</strong> ${productName}</div>
+                <div><strong>원상품ID:</strong> ${originProductId}</div>
+                <div><strong>채널상품ID:</strong> ${formatValue(data.channelProductNo)}</div>
+                <div><strong>상품상태:</strong> ${data.statusType ? getStatusBadge(data.statusType) : '-'}</div>
+            </div>
+        </div>
+
+        <div style="background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 4px; padding: 15px; margin-bottom: 15px;">
+            <h6 style="margin: 0 0 10px 0; color: #495057;">💰 가격 정보</h6>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <div><strong>판매가:</strong> ${formatCurrency(data.salePrice)}</div>
+                <div><strong>정가:</strong> ${formatCurrency(data.stockPrice)}</div>
+                <div><strong>공급가:</strong> ${formatCurrency(data.supplyPrice)}</div>
+                <div><strong>할인가:</strong> ${formatCurrency(data.discountedPrice)}</div>
+            </div>
+        </div>
+
+        <div style="background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 4px; padding: 15px; margin-bottom: 15px;">
+            <h6 style="margin: 0 0 10px 0; color: #495057;">📦 재고 및 카테고리</h6>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <div><strong>재고수량:</strong> ${formatValue(data.stockQuantity)}</div>
+                <div><strong>카테고리:</strong> ${formatValue(data.wholeCategoryName)}</div>
+                <div><strong>브랜드:</strong> ${formatValue(data.brandName)}</div>
+                <div><strong>제조업체:</strong> ${formatValue(data.manufacturerName)}</div>
+            </div>
+        </div>
+
+        <div style="background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 4px; padding: 15px; margin-bottom: 15px;">
+            <h6 style="margin: 0 0 10px 0; color: #495057;">📅 날짜 정보</h6>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <div><strong>등록일:</strong> ${formatValue(data.regDate)}</div>
+                <div><strong>수정일:</strong> ${formatValue(data.editDate)}</div>
+                <div><strong>승인일:</strong> ${formatValue(data.saleStartDate)}</div>
+                <div><strong>판매종료일:</strong> ${formatValue(data.saleEndDate)}</div>
+            </div>
+        </div>
+
+        ${data.representativeImage ? `
+        <div style="background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 4px; padding: 15px; margin-bottom: 15px;">
+            <h6 style="margin: 0 0 10px 0; color: #495057;">🖼️ 상품 이미지</h6>
+            <img src="${data.representativeImage.url}" alt="상품이미지" style="max-width: 200px; max-height: 200px; border-radius: 4px; border: 1px solid #ddd;">
+        </div>
+        ` : ''}
+
+        ${Object.keys(data).length > 0 ? `
+        <div style="background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 4px; padding: 15px;">
+            <h6 style="margin: 0 0 10px 0; color: #495057;">🔧 추가 정보</h6>
+            <div style="font-family: 'Courier New', monospace; font-size: 11px; max-height: 200px; overflow: auto; background: white; padding: 10px; border-radius: 4px;">
+                전체 필드 수: ${Object.keys(data).length}개<br>
+                주요 미표시 필드들이 있을 수 있습니다. 상세 버튼으로 전체 데이터를 확인하세요.
+            </div>
+        </div>
+        ` : ''}
+    `;
+}
+
+// 팝업 닫기 함수 (조회용)
+function closeProductViewPopup() {
+    const popup = document.getElementById('productViewPopup');
+    if (popup) {
+        popup.remove();
+    }
+}
+
+// 네이버 API 원본 응답을 팝업으로 보여주는 함수 (디버깅용)
 async function openProductDetailPopup(originProductId, productName = "") {
     try {
         console.log('상품 상세 정보 조회:', originProductId, productName);
