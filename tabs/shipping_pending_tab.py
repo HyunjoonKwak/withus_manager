@@ -121,10 +121,29 @@ class ShippingPendingTab(BaseTab):
         # Treeview 생성
         self.tree = ttk.Treeview(tree_frame, columns=self.display_columns, show="headings", height=15)
 
-        # 컬럼 헤더 설정
+        # 컬럼 헤더 설정 및 너비 조정
+        column_widths = {
+            '발송기한': 90,
+            '주문일자': 90,
+            '상품주문번호': 120,
+            '상품번호': 100,
+            '상품명': 200,
+            '옵션정보': 150,
+            '가격': 80,
+            '구매자명': 80,
+            '구매자연락처': 120,
+            '수취인명': 80,
+            '배송지주소': 200,
+            '수취인연락처': 120,
+            '택배사': 80,
+            '송장번호': 120,
+            '발주확인상태': 100
+        }
+
         for col in self.display_columns:
             self.tree.heading(col, text=col, command=lambda c=col: self.sort_treeview(c, False))
-            self.tree.column(col, width=100, minwidth=50)
+            width = column_widths.get(col, 100)
+            self.tree.column(col, width=width, minwidth=50)
 
         # 스크롤바
         v_scrollbar = ttk.Scrollbar(tree_frame, orient="vertical", command=self.tree.yview)
@@ -138,6 +157,13 @@ class ShippingPendingTab(BaseTab):
 
         # 컨텍스트 메뉴 활성화
         enable_context_menu(self.tree)
+
+        # 컬럼 너비 변경 감지 이벤트 바인딩
+        self.tree.bind('<ButtonRelease-1>', self.on_column_resize, add='+')
+        self.tree.bind('<Button-3>', self.show_column_context_menu)
+
+        # 저장된 컬럼 너비 불러오기
+        self.load_column_widths()
 
         # 기본 날짜 설정 (환경변수에서 가져옴)
         from env_config import config
@@ -500,6 +526,118 @@ class ShippingPendingTab(BaseTab):
                     print("발송대기 탭 - 캐시된 발송대기 주문 없음")
         except Exception as e:
             print(f"발송대기 탭 - 캐시된 주문 로드 오류: {e}")
+
+    def on_column_resize(self, event):
+        """컬럼 너비 변경 감지 이벤트"""
+        try:
+            # 너비 변경 감지를 위해 약간의 지연 후 저장
+            if hasattr(self, '_resize_timer'):
+                self.app.root.after_cancel(self._resize_timer)
+
+            self._resize_timer = self.app.root.after(500, self.save_column_widths)  # 0.5초 후 저장
+
+        except Exception as e:
+            print(f"컬럼 너비 변경 감지 오류: {e}")
+
+    def save_column_widths(self):
+        """현재 컬럼 너비들을 DB에 저장"""
+        try:
+            column_widths = {}
+
+            # 모든 컬럼의 현재 너비 수집
+            for column in self.display_columns:
+                width = self.tree.column(column, "width")
+                column_widths[column] = width
+
+            # JSON 형태로 저장
+            import json
+            widths_json = json.dumps(column_widths, ensure_ascii=False)
+
+            # DB에 저장
+            if hasattr(self.app, 'db_manager'):
+                self.app.db_manager.save_setting('shipping_pending_column_widths', widths_json)
+                print(f"발송대기 탭 컬럼 너비 저장: {column_widths}")
+
+        except Exception as e:
+            print(f"컬럼 너비 저장 오류: {e}")
+
+    def load_column_widths(self):
+        """저장된 컬럼 너비들을 DB에서 불러와서 적용"""
+        try:
+            if hasattr(self.app, 'db_manager'):
+                widths_json = self.app.db_manager.get_setting('shipping_pending_column_widths')
+                if widths_json:
+                    import json
+                    saved_widths = json.loads(widths_json)
+                    print(f"발송대기 탭 저장된 컬럼 너비 불러오기: {saved_widths}")
+
+                    # 저장된 너비 적용
+                    for column, width in saved_widths.items():
+                        try:
+                            # 컬럼이 존재하는지 확인 후 적용
+                            if column in self.display_columns:
+                                self.tree.column(column, width=int(width))
+                        except Exception as col_error:
+                            print(f"컬럼 {column} 너비 적용 오류: {col_error}")
+
+                    print("발송대기 탭 저장된 컬럼 너비 적용 완료")
+
+        except Exception as e:
+            print(f"컬럼 너비 불러오기 오류: {e}")
+
+    def show_column_context_menu(self, event):
+        """컬럼 헤더 우클릭 컨텍스트 메뉴 표시"""
+        try:
+            # 헤더 영역에서만 메뉴 표시
+            if event.y > 25:
+                return
+
+            # 컨텍스트 메뉴 생성
+            context_menu = tk.Menu(self.tree, tearoff=0)
+            context_menu.add_command(label="컬럼 너비 초기화", command=self.reset_column_widths)
+            context_menu.add_separator()
+            context_menu.add_command(label="취소")
+
+            # 메뉴 표시
+            context_menu.tk_popup(event.x_root, event.y_root)
+
+        except Exception as e:
+            print(f"컨텍스트 메뉴 표시 오류: {e}")
+
+    def reset_column_widths(self):
+        """컬럼 너비를 기본값으로 초기화"""
+        try:
+            # 기본 컬럼 너비 설정
+            default_widths = {
+                '발송기한': 90,
+                '주문일자': 90,
+                '상품주문번호': 120,
+                '상품번호': 100,
+                '상품명': 200,
+                '옵션정보': 150,
+                '가격': 80,
+                '구매자명': 80,
+                '구매자연락처': 120,
+                '수취인명': 80,
+                '배송지주소': 200,
+                '수취인연락처': 120,
+                '택배사': 80,
+                '송장번호': 120,
+                '발주확인상태': 100
+            }
+
+            # 기본 너비 적용
+            for column, width in default_widths.items():
+                if column in self.display_columns:
+                    self.tree.column(column, width=width)
+
+            # DB에서 설정 삭제
+            if hasattr(self.app, 'db_manager'):
+                self.app.db_manager.save_setting('shipping_pending_column_widths', '')
+                print("발송대기 탭 컬럼 너비 초기화 완료")
+
+        except Exception as e:
+            print(f"컬럼 너비 초기화 오류: {e}")
 
     def update_order_status_display(self):
         """주문 상태 표시 업데이트"""
