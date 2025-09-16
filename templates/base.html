@@ -100,6 +100,13 @@
                             <i class="fas fa-cog"></i> 설정
                         </a>
                     </li>
+                    {% if user_info and user_info.is_admin %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="/users">
+                            <i class="fas fa-users"></i> 사용자 관리
+                        </a>
+                    </li>
+                    {% endif %}
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
                             <i class="fas fa-question-circle"></i> 도움말

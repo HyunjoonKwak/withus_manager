@@ -1,0 +1,390 @@
+{% extends "base.html" %}
+
+{% block title %}사용자 관리 - {{ title }}{% endblock %}
+
+{% block extra_head %}
+<style>
+    .user-card {
+        transition: all 0.2s ease;
+        border: 1px solid #dee2e6;
+    }
+    .user-card:hover {
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        border-color: #007bff;
+    }
+    .admin-badge {
+        background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+        color: white;
+        border: none;
+    }
+    .user-badge {
+        background: linear-gradient(45deg, #74b9ff, #0984e3);
+        color: white;
+        border: none;
+    }
+    .inactive-badge {
+        background: #6c757d;
+        color: white;
+    }
+    .btn-toggle {
+        border: none;
+        border-radius: 20px;
+        padding: 5px 15px;
+        font-size: 0.8rem;
+        transition: all 0.3s ease;
+    }
+    .btn-toggle:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+    .stats-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        border-radius: 15px;
+    }
+    .user-avatar {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: bold;
+        font-size: 1.2rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="fas fa-users me-2"></i>사용자 관리</h2>
+    <button class="btn btn-primary" onclick="refreshUserList()">
+        <i class="fas fa-sync-alt me-2"></i>새로고침
+    </button>
+</div>
+
+<!-- 사용자 통계 -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card stats-card">
+            <div class="card-body text-center">
+                <i class="fas fa-users fa-2x mb-2"></i>
+                <h4 id="totalUsers">-</h4>
+                <small>전체 사용자</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stats-card">
+            <div class="card-body text-center">
+                <i class="fas fa-user-shield fa-2x mb-2"></i>
+                <h4 id="adminUsers">-</h4>
+                <small>관리자</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stats-card">
+            <div class="card-body text-center">
+                <i class="fas fa-user-check fa-2x mb-2"></i>
+                <h4 id="activeUsers">-</h4>
+                <small>활성 사용자</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stats-card">
+            <div class="card-body text-center">
+                <i class="fas fa-user-times fa-2x mb-2"></i>
+                <h4 id="inactiveUsers">-</h4>
+                <small>비활성 사용자</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 사용자 목록 -->
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="fas fa-list me-2"></i>사용자 목록</h5>
+    </div>
+    <div class="card-body">
+        <div id="loadingSpinner" class="text-center py-4">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">로딩 중...</span>
+            </div>
+            <div class="mt-2">사용자 목록을 불러오는 중...</div>
+        </div>
+
+        <div id="usersList" style="display: none;">
+            <!-- 사용자 목록이 여기에 동적으로 생성됩니다 -->
+        </div>
+    </div>
+</div>
+
+<!-- 확인 모달 -->
+<div class="modal fade" id="confirmModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">확인</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="confirmMessage">
+                <!-- 확인 메시지가 여기에 표시됩니다 -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                <button type="button" class="btn btn-danger" id="confirmButton">확인</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+let currentAction = null;
+let currentUsername = null;
+
+// 페이지 로드 시 사용자 목록 불러오기
+document.addEventListener('DOMContentLoaded', function() {
+    loadUserList();
+});
+
+// 사용자 목록 불러오기
+async function loadUserList() {
+    try {
+        document.getElementById('loadingSpinner').style.display = 'block';
+        document.getElementById('usersList').style.display = 'none';
+
+        const response = await fetch('/api/users');
+        const result = await response.json();
+
+        if (result.success) {
+            displayUsers(result.users);
+            updateStats(result.users);
+        } else {
+            throw new Error(result.message);
+        }
+    } catch (error) {
+        console.error('사용자 목록 로드 오류:', error);
+        document.getElementById('usersList').innerHTML =
+            '<div class="alert alert-danger"><i class="fas fa-exclamation-triangle me-2"></i>사용자 목록을 불러오는데 실패했습니다.</div>';
+    } finally {
+        document.getElementById('loadingSpinner').style.display = 'none';
+        document.getElementById('usersList').style.display = 'block';
+    }
+}
+
+// 사용자 목록 표시
+function displayUsers(users) {
+    const usersList = document.getElementById('usersList');
+
+    if (users.length === 0) {
+        usersList.innerHTML = '<div class="text-center text-muted py-4">등록된 사용자가 없습니다.</div>';
+        return;
+    }
+
+    let html = '<div class="row">';
+
+    users.forEach(user => {
+        const avatar = user.full_name ? user.full_name.charAt(0).toUpperCase() : user.username.charAt(0).toUpperCase();
+        const roleClass = user.is_admin ? 'admin-badge' : 'user-badge';
+        const roleText = user.is_admin ? '관리자' : '사용자';
+        const statusClass = user.is_active ? 'text-success' : 'text-danger';
+        const statusText = user.is_active ? '활성' : '비활성';
+        const createdDate = new Date(user.created_at).toLocaleDateString('ko-KR');
+
+        html += `
+            <div class="col-md-6 col-lg-4 mb-3">
+                <div class="card user-card h-100">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="user-avatar me-3">${avatar}</div>
+                            <div class="flex-grow-1">
+                                <h6 class="mb-1">${user.full_name || user.username}</h6>
+                                <small class="text-muted">${user.username}</small>
+                            </div>
+                            <span class="badge ${roleClass}">${roleText}</span>
+                        </div>
+
+                        <div class="mb-2">
+                            <small class="text-muted">
+                                <i class="fas fa-envelope me-1"></i>
+                                ${user.email || '이메일 없음'}
+                            </small>
+                        </div>
+
+                        <div class="mb-3">
+                            <small class="text-muted">
+                                <i class="fas fa-calendar me-1"></i>
+                                가입일: ${createdDate}
+                            </small>
+                        </div>
+
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="badge ${statusClass === 'text-success' ? 'bg-success' : 'bg-danger'}">
+                                ${statusText}
+                            </span>
+
+                            <div class="btn-group" role="group">
+                                <button class="btn btn-sm btn-outline-primary btn-toggle"
+                                        onclick="toggleAdminStatus('${user.username}', ${!user.is_admin})"
+                                        title="${user.is_admin ? '관리자 권한 제거' : '관리자 권한 부여'}">
+                                    <i class="fas ${user.is_admin ? 'fa-user-minus' : 'fa-user-plus'}"></i>
+                                </button>
+
+                                <button class="btn btn-sm btn-outline-warning btn-toggle"
+                                        onclick="toggleUserStatus('${user.username}', ${!user.is_active})"
+                                        title="${user.is_active ? '비활성화' : '활성화'}">
+                                    <i class="fas ${user.is_active ? 'fa-user-slash' : 'fa-user-check'}"></i>
+                                </button>
+
+                                <button class="btn btn-sm btn-outline-danger btn-toggle"
+                                        onclick="deleteUser('${user.username}')"
+                                        title="사용자 삭제">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+
+    html += '</div>';
+    usersList.innerHTML = html;
+}
+
+// 통계 업데이트
+function updateStats(users) {
+    const total = users.length;
+    const admins = users.filter(u => u.is_admin).length;
+    const active = users.filter(u => u.is_active).length;
+    const inactive = total - active;
+
+    document.getElementById('totalUsers').textContent = total;
+    document.getElementById('adminUsers').textContent = admins;
+    document.getElementById('activeUsers').textContent = active;
+    document.getElementById('inactiveUsers').textContent = inactive;
+}
+
+// 관리자 권한 토글
+function toggleAdminStatus(username, isAdmin) {
+    const action = isAdmin ? '관리자 권한을 부여' : '관리자 권한을 제거';
+    showConfirmModal(`${username} 사용자의 ${action}하시겠습니까?`, () => {
+        updateUserAdminStatus(username, isAdmin);
+    });
+}
+
+// 사용자 상태 토글
+function toggleUserStatus(username, isActive) {
+    const action = isActive ? '활성화' : '비활성화';
+    showConfirmModal(`${username} 사용자를 ${action}하시겠습니까?`, () => {
+        updateUserActiveStatus(username, isActive);
+    });
+}
+
+// 사용자 삭제
+function deleteUser(username) {
+    showConfirmModal(`${username} 사용자를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.`, () => {
+        deleteUserAccount(username);
+    });
+}
+
+// 관리자 권한 업데이트 API 호출
+async function updateUserAdminStatus(username, isAdmin) {
+    try {
+        const response = await fetch(`/api/users/${username}/admin`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ is_admin: isAdmin })
+        });
+
+        const result = await response.json();
+        if (result.success) {
+            showToast('success', result.message);
+            loadUserList();
+        } else {
+            showToast('error', result.message);
+        }
+    } catch (error) {
+        showToast('error', '권한 변경 중 오류가 발생했습니다.');
+    }
+}
+
+// 사용자 상태 업데이트 API 호출
+async function updateUserActiveStatus(username, isActive) {
+    try {
+        const response = await fetch(`/api/users/${username}/status`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ is_active: isActive })
+        });
+
+        const result = await response.json();
+        if (result.success) {
+            showToast('success', result.message);
+            loadUserList();
+        } else {
+            showToast('error', result.message);
+        }
+    } catch (error) {
+        showToast('error', '상태 변경 중 오류가 발생했습니다.');
+    }
+}
+
+// 사용자 삭제 API 호출
+async function deleteUserAccount(username) {
+    try {
+        const response = await fetch(`/api/users/${username}`, {
+            method: 'DELETE'
+        });
+
+        const result = await response.json();
+        if (result.success) {
+            showToast('success', result.message);
+            loadUserList();
+        } else {
+            showToast('error', result.message);
+        }
+    } catch (error) {
+        showToast('error', '사용자 삭제 중 오류가 발생했습니다.');
+    }
+}
+
+// 확인 모달 표시
+function showConfirmModal(message, onConfirm) {
+    document.getElementById('confirmMessage').textContent = message;
+
+    const confirmBtn = document.getElementById('confirmButton');
+    confirmBtn.onclick = () => {
+        onConfirm();
+        bootstrap.Modal.getInstance(document.getElementById('confirmModal')).hide();
+    };
+
+    new bootstrap.Modal(document.getElementById('confirmModal')).show();
+}
+
+// 토스트 메시지 표시
+function showToast(type, message) {
+    // 간단한 alert로 대체 (나중에 토스트 컴포넌트로 교체 가능)
+    if (type === 'success') {
+        alert('✅ ' + message);
+    } else {
+        alert('❌ ' + message);
+    }
+}
+
+// 사용자 목록 새로고침
+function refreshUserList() {
+    loadUserList();
+}
+</script>
+{% endblock %}

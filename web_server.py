@@ -311,7 +311,7 @@ app.add_middleware(SessionMiddleware, secret_key=session_secret)
 async def auth_middleware(request: Request, call_next):
     """모든 요청에 대한 인증 체크"""
     # 인증이 필요없는 경로들
-    public_paths = ["/login", "/api/login"]
+    public_paths = ["/login", "/register", "/api/login", "/api/register"]
 
     # 현재 경로가 public_paths에 있으면 통과
     if request.url.path in public_paths:
@@ -356,7 +356,7 @@ def require_auth(request: Request):
     return True
 
 def get_users() -> dict:
-    """사용자 목록 가져오기"""
+    """사용자 목록 가져오기 (하위 호환성용)"""
     users_str = web_config.get('WEB_USERS', '')
     users = {}
 
@@ -374,10 +374,42 @@ def get_users() -> dict:
 
     return users
 
-def check_user_credentials(username: str, password: str) -> bool:
-    """사용자 자격증명 검증"""
-    users = get_users()
-    return username in users and users[username] == password
+def check_user_credentials(username: str, password: str) -> Optional[Dict]:
+    """사용자 자격증명 검증 (데이터베이스 기반)"""
+    # 먼저 데이터베이스에서 확인
+    user = order_manager.db_manager.verify_user(username, password)
+    if user:
+        return user
+
+    # 하위 호환성: .env 파일 기반 인증도 시도
+    env_users = get_users()
+    if username in env_users and env_users[username] == password:
+        return {
+            'username': username,
+            'full_name': username,
+            'is_admin': username == 'admin',  # env 기반에서는 admin만 관리자
+            'is_active': True
+        }
+
+    return None
+
+def get_current_user(request: Request) -> Optional[Dict]:
+    """현재 로그인된 사용자 정보 반환"""
+    try:
+        username = request.session.get("username")
+        if username:
+            # 세션에 사용자 정보가 있으면 반환
+            return request.session.get("user_info")
+        return None
+    except (AttributeError, AssertionError):
+        return None
+
+def require_admin(request: Request):
+    """관리자 권한이 필요한 엔드포인트용"""
+    user = get_current_user(request)
+    if not user or not user.get('is_admin', False):
+        raise HTTPException(status_code=403, detail="Admin access required")
+    return user
 
 def check_password(password: str) -> bool:
     """패스워드 검증 (하위 호환성)"""
@@ -396,6 +428,11 @@ async def login_page(request: Request):
     # 로그인 페이지는 항상 표시 (세션 체크 없이)
     return templates.TemplateResponse("login.html", {"request": request})
 
+@app.get("/register", response_class=HTMLResponse)
+async def register_page(request: Request):
+    """회원가입 페이지"""
+    return templates.TemplateResponse("register.html", {"request": request})
+
 @app.post("/api/login")
 async def login(request: Request):
     """로그인 API (다중 사용자 지원)"""
@@ -405,19 +442,23 @@ async def login(request: Request):
         password = data.get("password", "").strip()
 
         # 다중 사용자 방식 우선 시도
-        if username and check_user_credentials(username, password):
-            # 로그인 성공 시 세션에 인증 정보 저장
-            request.session["authenticated"] = True
-            request.session["username"] = username
-            request.session["login_time"] = datetime.now().isoformat()
+        if username:
+            user = check_user_credentials(username, password)
+            if user:
+                # 로그인 성공 시 세션에 인증 정보 저장
+                request.session["authenticated"] = True
+                request.session["username"] = username
+                request.session["user_info"] = user
+                request.session["login_time"] = datetime.now().isoformat()
 
-            logger.info(f"사용자 로그인 성공 - 사용자: {username}, IP: {request.client.host}")
+                logger.info(f"사용자 로그인 성공 - 사용자: {username}, IP: {request.client.host}")
 
-            return {
-                "success": True,
-                "message": f"환영합니다, {username}님!",
-                "username": username
-            }
+                return {
+                    "success": True,
+                    "message": f"환영합니다, {user.get('full_name', username)}님!",
+                    "username": username,
+                    "is_admin": user.get('is_admin', False)
+                }
         # 하위 호환성: 패스워드만 있는 경우 (기존 방식)
         elif not username and password and check_password(password):
             request.session["authenticated"] = True
@@ -451,6 +492,166 @@ async def logout(request: Request):
     logger.info(f"사용자 로그아웃 - IP: {request.client.host}")
     return {"success": True, "message": "로그아웃 되었습니다."}
 
+# ==================== 사용자 관리 API ====================
+
+@app.post("/api/register")
+async def register_user(request: Request):
+    """사용자 등록 API"""
+    try:
+        data = await request.json()
+        username = data.get("username", "").strip()
+        password = data.get("password", "").strip()
+        email = data.get("email", "").strip() or None
+        full_name = data.get("full_name", "").strip() or None
+
+        # 입력 검증
+        if not username or not password:
+            return {
+                "success": False,
+                "message": "사용자명과 패스워드는 필수 항목입니다."
+            }
+
+        if len(username) < 3:
+            return {
+                "success": False,
+                "message": "사용자명은 3자 이상이어야 합니다."
+            }
+
+        if len(password) < 6:
+            return {
+                "success": False,
+                "message": "패스워드는 6자 이상이어야 합니다."
+            }
+
+        # 사용자 생성
+        if order_manager.db_manager.create_user(username, password, email, full_name, is_admin=False):
+            logger.info(f"새 사용자 등록 성공 - 사용자: {username}, IP: {request.client.host}")
+            return {
+                "success": True,
+                "message": "회원가입이 완료되었습니다."
+            }
+        else:
+            return {
+                "success": False,
+                "message": "사용자명이 이미 존재합니다."
+            }
+
+    except Exception as e:
+        logger.error(f"사용자 등록 오류: {e}")
+        return {
+            "success": False,
+            "message": "회원가입 처리 중 오류가 발생했습니다."
+        }
+
+@app.get("/api/users")
+async def get_users_api(request: Request):
+    """사용자 목록 조회 API (관리자 전용)"""
+    require_admin(request)
+
+    try:
+        users = order_manager.db_manager.get_all_users()
+        return {
+            "success": True,
+            "users": users
+        }
+    except Exception as e:
+        logger.error(f"사용자 목록 조회 오류: {e}")
+        return {
+            "success": False,
+            "message": "사용자 목록 조회 중 오류가 발생했습니다."
+        }
+
+@app.post("/api/users/{username}/admin")
+async def toggle_admin_status(request: Request, username: str):
+    """사용자 관리자 권한 토글 API (관리자 전용)"""
+    require_admin(request)
+
+    try:
+        data = await request.json()
+        is_admin = data.get("is_admin", False)
+
+        if order_manager.db_manager.update_user_admin_status(username, is_admin):
+            action = "부여" if is_admin else "제거"
+            logger.info(f"사용자 관리자 권한 {action} - 대상: {username}, 처리자: {get_current_user(request)['username']}")
+            return {
+                "success": True,
+                "message": f"관리자 권한이 {action}되었습니다."
+            }
+        else:
+            return {
+                "success": False,
+                "message": "사용자를 찾을 수 없습니다."
+            }
+
+    except Exception as e:
+        logger.error(f"관리자 권한 변경 오류: {e}")
+        return {
+            "success": False,
+            "message": "권한 변경 중 오류가 발생했습니다."
+        }
+
+@app.post("/api/users/{username}/status")
+async def toggle_user_status(request: Request, username: str):
+    """사용자 활성 상태 토글 API (관리자 전용)"""
+    require_admin(request)
+
+    try:
+        data = await request.json()
+        is_active = data.get("is_active", True)
+
+        if order_manager.db_manager.update_user_active_status(username, is_active):
+            status = "활성화" if is_active else "비활성화"
+            logger.info(f"사용자 {status} - 대상: {username}, 처리자: {get_current_user(request)['username']}")
+            return {
+                "success": True,
+                "message": f"사용자가 {status}되었습니다."
+            }
+        else:
+            return {
+                "success": False,
+                "message": "사용자를 찾을 수 없습니다."
+            }
+
+    except Exception as e:
+        logger.error(f"사용자 상태 변경 오류: {e}")
+        return {
+            "success": False,
+            "message": "상태 변경 중 오류가 발생했습니다."
+        }
+
+@app.delete("/api/users/{username}")
+async def delete_user_api(request: Request, username: str):
+    """사용자 삭제 API (관리자 전용)"""
+    require_admin(request)
+    current_user = get_current_user(request)
+
+    try:
+        # 자기 자신은 삭제할 수 없음
+        if username == current_user['username']:
+            return {
+                "success": False,
+                "message": "자기 자신은 삭제할 수 없습니다."
+            }
+
+        if order_manager.db_manager.delete_user(username):
+            logger.info(f"사용자 삭제 - 대상: {username}, 처리자: {current_user['username']}")
+            return {
+                "success": True,
+                "message": "사용자가 삭제되었습니다."
+            }
+        else:
+            return {
+                "success": False,
+                "message": "사용자를 찾을 수 없습니다."
+            }
+
+    except Exception as e:
+        logger.error(f"사용자 삭제 오류: {e}")
+        return {
+            "success": False,
+            "message": "사용자 삭제 중 오류가 발생했습니다."
+        }
+
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
     """홈 페이지"""
@@ -479,7 +680,8 @@ async def home(request: Request):
             "dashboard_data": {"period": period_info},
             "last_check": order_manager.last_check_time.strftime('%Y-%m-%d %H:%M:%S') if order_manager.last_check_time else "미확인",
             "monitoring_active": order_manager.monitoring_active,
-            "total_orders": sum(dashboard_data.values())
+            "total_orders": sum(dashboard_data.values()),
+            "user_info": get_current_user(request)
         }
 
         return templates.TemplateResponse("home.html", context)
@@ -624,6 +826,18 @@ async def help_page(request: Request):
         "version_info": get_detailed_version_info()
     }
     return templates.TemplateResponse("help.html", context)
+
+@app.get("/users", response_class=HTMLResponse)
+async def users_page(request: Request):
+    """사용자 관리 페이지 (관리자 전용)"""
+    require_admin(request)
+    context = {
+        "request": request,
+        "title": "사용자 관리 - " + get_full_title(),
+        "version_info": get_version_info(),
+        "last_check": "방금 전"
+    }
+    return templates.TemplateResponse("users.html", context)
 
 @app.get("/settings", response_class=HTMLResponse)
 async def settings_page(request: Request):

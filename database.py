@@ -88,12 +88,31 @@ class DatabaseManager:
                     sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             ''')
-            
+
+            # 사용자 테이블
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS users (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    username TEXT UNIQUE NOT NULL,
+                    password TEXT NOT NULL,
+                    email TEXT,
+                    full_name TEXT,
+                    is_admin BOOLEAN DEFAULT 0,
+                    is_active BOOLEAN DEFAULT 1,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
+
             # 기존 테이블에 누락된 컬럼들 추가
             self._add_missing_columns(cursor)
-            
+
             conn.commit()
             conn.close()
+
+            # 기본 관리자 계정 생성
+            self.create_default_admin()
+
             print("데이터베이스 초기화 완료")
         except Exception as e:
             print(f"데이터베이스 초기화 오류: {e}")
@@ -532,3 +551,167 @@ class DatabaseManager:
     def get_products(self) -> List[Dict]:
         """모든 상품 조회 (get_all_products의 별칭)"""
         return self.get_all_products()
+
+    # ==================== 사용자 관리 메소드 ====================
+
+    def create_user(self, username: str, password: str, email: str = None,
+                   full_name: str = None, is_admin: bool = False) -> bool:
+        """새 사용자 생성"""
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+
+            # 패스워드 해싱 (bcrypt 사용)
+            import bcrypt
+            hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+
+            cursor.execute('''
+                INSERT INTO users (username, password, email, full_name, is_admin)
+                VALUES (?, ?, ?, ?, ?)
+            ''', (username, hashed_password, email, full_name, is_admin))
+
+            conn.commit()
+            conn.close()
+            return True
+
+        except sqlite3.IntegrityError:
+            print(f"사용자 생성 실패: 사용자명 '{username}'이 이미 존재합니다")
+            return False
+        except Exception as e:
+            print(f"사용자 생성 오류: {e}")
+            return False
+
+    def verify_user(self, username: str, password: str) -> Optional[Dict]:
+        """사용자 인증 및 정보 반환"""
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+
+            cursor.execute('''
+                SELECT * FROM users
+                WHERE username = ? AND is_active = 1
+            ''', (username,))
+
+            row = cursor.fetchone()
+            conn.close()
+
+            if row:
+                columns = ['id', 'username', 'password', 'email', 'full_name',
+                          'is_admin', 'is_active', 'created_at', 'updated_at']
+                user = dict(zip(columns, row))
+
+                # 패스워드 검증
+                import bcrypt
+                if bcrypt.checkpw(password.encode('utf-8'), user['password'].encode('utf-8')):
+                    # 패스워드 필드 제거 후 반환
+                    del user['password']
+                    return user
+
+            return None
+
+        except Exception as e:
+            print(f"사용자 인증 오류: {e}")
+            return None
+
+    def get_all_users(self) -> List[Dict]:
+        """모든 사용자 조회 (관리자용)"""
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+
+            cursor.execute('''
+                SELECT id, username, email, full_name, is_admin, is_active,
+                       created_at, updated_at FROM users
+                ORDER BY created_at DESC
+            ''')
+
+            columns = [description[0] for description in cursor.description]
+            users = [dict(zip(columns, row)) for row in cursor.fetchall()]
+
+            conn.close()
+            return users
+
+        except Exception as e:
+            print(f"사용자 목록 조회 오류: {e}")
+            return []
+
+    def update_user_admin_status(self, username: str, is_admin: bool) -> bool:
+        """사용자 관리자 권한 변경"""
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+
+            cursor.execute('''
+                UPDATE users SET is_admin = ?, updated_at = CURRENT_TIMESTAMP
+                WHERE username = ?
+            ''', (is_admin, username))
+
+            conn.commit()
+            affected_rows = cursor.rowcount
+            conn.close()
+
+            return affected_rows > 0
+
+        except Exception as e:
+            print(f"사용자 권한 변경 오류: {e}")
+            return False
+
+    def update_user_active_status(self, username: str, is_active: bool) -> bool:
+        """사용자 활성 상태 변경"""
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+
+            cursor.execute('''
+                UPDATE users SET is_active = ?, updated_at = CURRENT_TIMESTAMP
+                WHERE username = ?
+            ''', (is_active, username))
+
+            conn.commit()
+            affected_rows = cursor.rowcount
+            conn.close()
+
+            return affected_rows > 0
+
+        except Exception as e:
+            print(f"사용자 상태 변경 오류: {e}")
+            return False
+
+    def delete_user(self, username: str) -> bool:
+        """사용자 삭제"""
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+
+            cursor.execute('DELETE FROM users WHERE username = ?', (username,))
+
+            conn.commit()
+            affected_rows = cursor.rowcount
+            conn.close()
+
+            return affected_rows > 0
+
+        except Exception as e:
+            print(f"사용자 삭제 오류: {e}")
+            return False
+
+    def create_default_admin(self) -> bool:
+        """기본 관리자 계정 생성 (최초 설치시)"""
+        try:
+            # 관리자 계정이 이미 있는지 확인
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+
+            cursor.execute('SELECT COUNT(*) FROM users WHERE is_admin = 1')
+            admin_count = cursor.fetchone()[0]
+            conn.close()
+
+            if admin_count == 0:
+                # 기본 관리자 계정 생성
+                return self.create_user("admin", "admin123", "admin@example.com",
+                                      "시스템 관리자", is_admin=True)
+            return True
+
+        except Exception as e:
+            print(f"기본 관리자 생성 오류: {e}")
+            return False
