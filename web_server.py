@@ -1341,6 +1341,9 @@ async def perform_order_action(action_data: dict):
 @app.get("/api/products")
 async def get_products():
     """상품 목록 조회 API"""
+    import time
+    import asyncio
+
     try:
         logger.info("상품 목록 조회 API 호출")
         products = order_manager.db_manager.get_all_products()
@@ -1350,7 +1353,8 @@ async def get_products():
             logger.info(f"첫 번째 상품 데이터: {products[0]}")
 
         products_data = []
-        for product in products:
+        for i, product in enumerate(products):
+            # 기본 상품 정보 구성
             product_dict = {
                 'id': product.get('channel_product_no', ''),
                 'product_id': product.get('channel_product_no', ''),
@@ -1365,13 +1369,63 @@ async def get_products():
                 'brand': product.get('brand_name', ''),
                 'image_url': product.get('representative_image_url', ''),
                 'created_at': product.get('reg_date', ''),
-                'sales_count': 0,  # This field is not available in the database yet
-                'options': []  # 옵션 정보를 저장할 필드
+                'sales_count': 0,
+                'options': []
             }
 
-            # 옵션 정보는 지연 로딩으로 변경 - 초기에는 빈 배열로 설정
-            # 사용자가 옵션 버튼을 클릭할 때만 별도 API로 로드
-            product_dict['has_options'] = bool(product.get('origin_product_no'))  # 원상품ID 있으면 옵션 가능성 표시
+            # 원상품ID가 있는 경우 옵션 정보 로드
+            if product.get('origin_product_no'):
+                try:
+                    # 요청 간 지연시간 추가 (API 레이트 리미트 방지)
+                    if i > 0:
+                        time.sleep(0.5)  # 0.5초 지연
+
+                    logger.info(f"상품 {product.get('product_name')}의 옵션 정보 로드 중...")
+                    option_response = order_manager.naver_api.get_origin_product(product.get('origin_product_no'))
+
+                    if option_response.get('success') and option_response.get('data'):
+                        option_info = option_response['data'].get('originProduct', {}).get('detailAttribute', {}).get('optionInfo')
+
+                        if option_info and option_info.get('optionCombinations'):
+                            # 원상품의 실제 판매가 계산 (원가 - 셀러할인가)
+                            original_price = product.get('sale_price', 0)
+                            seller_discount = product.get('sale_price', 0) - product.get('discounted_price', 0)
+                            actual_selling_price = original_price - seller_discount
+
+                            options = []
+                            for option in option_info['optionCombinations']:
+                                # 옵션별 실제 판매가 계산 (실제 판매가 + 옵션 가격)
+                                option_price = option.get('price', 0)
+                                option_actual_price = actual_selling_price + option_price
+
+                                option_data = {
+                                    'id': option.get('id', ''),
+                                    'name': option.get('optionName', ''),
+                                    'price': option_price,
+                                    'actual_price': option_actual_price,  # 계산된 실제 판매가
+                                    'stock': option.get('stockQuantity', 0),
+                                    'status': option.get('statusType', ''),
+                                    'manage_code': option.get('sellerManageCode', ''),
+                                    'option_values': []
+                                }
+
+                                # 옵션 값들 추가
+                                if 'optionItems' in option:
+                                    for item in option['optionItems']:
+                                        option_data['option_values'].append({
+                                            'group_name': item.get('groupName', ''),
+                                            'value': item.get('value', '')
+                                        })
+
+                                options.append(option_data)
+
+                            product_dict['options'] = options
+                            logger.info(f"상품 {product.get('product_name')}에 {len(options)}개 옵션 로드 완료")
+
+                except Exception as option_error:
+                    logger.warning(f"상품 {product.get('product_name')}의 옵션 로드 실패: {option_error}")
+                    # 옵션 로드 실패해도 상품 자체는 표시
+                    product_dict['options'] = []
 
             products_data.append(product_dict)
 
@@ -1450,39 +1504,6 @@ async def save_product_filter_settings(request: Request):
         logger.error(f"상품 필터 설정 저장 실패: {e}")
         return {"success": False, "error": str(e)}
 
-@app.get("/api/products/{origin_product_id}/options")
-async def get_product_options(origin_product_id: str):
-    """상품 옵션 정보만 조회 API - 지연 로딩용"""
-    try:
-        logger.info(f"상품 옵션 조회 API 호출: {origin_product_id}")
-
-        # 네이버 API에서 원상품 정보 조회
-        response = order_manager.naver_api.get_origin_product(origin_product_id)
-
-        if response.get('success') and response.get('data'):
-            option_info = response['data'].get('originProduct', {}).get('detailAttribute', {}).get('optionInfo')
-
-            if option_info and option_info.get('optionCombinations'):
-                logger.info(f"상품 {origin_product_id}에서 {len(option_info['optionCombinations'])}개 옵션 발견")
-                return {
-                    "success": True,
-                    "options": option_info['optionCombinations'],
-                    "option_group_names": option_info.get('optionCombinationGroupNames', {}),
-                    "origin_product_id": origin_product_id
-                }
-            else:
-                logger.info(f"상품 {origin_product_id}에 옵션 정보 없음")
-                return {
-                    "success": True,
-                    "options": [],
-                    "origin_product_id": origin_product_id
-                }
-        else:
-            raise Exception("네이버 API 호출 실패")
-
-    except Exception as e:
-        logger.error(f"상품 옵션 조회 API 오류: {e}")
-        return {"success": False, "error": str(e)}
 
 @app.get("/api/products/{origin_product_id}/detail")
 async def get_product_detail(origin_product_id: str):
