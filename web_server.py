@@ -878,37 +878,16 @@ async def users_page(request: Request):
 
 @app.get("/settings", response_class=HTMLResponse)
 async def settings_page(request: Request):
-    """설정 페이지 (관리자 전용)"""
-    # 관리자 권한 확인
-    user_info = get_current_user(request)
-    if not user_info or not user_info.get('is_admin'):
-        return RedirectResponse(url="/login", status_code=302)
-
+    """설정 페이지"""
     context = {
         "request": request,
         "title": "설정 - " + get_full_title(),
         "version_info": get_detailed_version_info(),
         "config": web_config,
-        "user_info": user_info
+        "user_info": get_current_user(request)
     }
     return templates.TemplateResponse("settings.html", context)
 
-@app.get("/condition-settings", response_class=HTMLResponse)
-async def condition_settings_page(request: Request):
-    """조건설정 페이지 (모든 로그인 사용자 접근 가능)"""
-    # 로그인 확인 (관리자가 아니어도 접근 가능)
-    user_info = get_current_user(request)
-    if not user_info:
-        return RedirectResponse(url="/login", status_code=302)
-
-    context = {
-        "request": request,
-        "title": "조건설정 - " + get_full_title(),
-        "version_info": get_detailed_version_info(),
-        "config": web_config,
-        "user_info": user_info
-    }
-    return templates.TemplateResponse("condition_settings.html", context)
 
 @app.get("/api/dashboard/refresh")
 async def refresh_dashboard():
