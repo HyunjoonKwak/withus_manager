@@ -393,14 +393,7 @@ if os.path.exists("static"):
 @app.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request):
     """로그인 페이지"""
-    # 이미 로그인된 사용자는 홈으로 리다이렉트 (세션 오류 처리)
-    try:
-        if is_authenticated(request):
-            return RedirectResponse(url="/", status_code=302)
-    except (AttributeError, AssertionError):
-        # 세션이 없으면 로그인 페이지 표시
-        pass
-
+    # 로그인 페이지는 항상 표시 (세션 체크 없이)
     return templates.TemplateResponse("login.html", {"request": request})
 
 @app.post("/api/login")
