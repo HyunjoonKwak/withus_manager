@@ -43,63 +43,52 @@
 
 <!-- 상품 필터 -->
 <div class="filter-card p-3 mb-3">
-    <h5 class="mb-3"><i class="fas fa-filter"></i> 상품 필터</h5>
-    <div class="row">
-        <div class="col-md-4">
-            <label class="form-label">판매 상태 <small class="text-muted">(다중 선택 가능)</small></label>
-            <div class="border rounded p-2" style="max-height: 150px; overflow-y: auto;">
-                <div class="form-check">
-                    <input class="form-check-input" type="checkbox" id="status_all" value="" onchange="toggleAllStatus()">
-                    <label class="form-check-label" for="status_all">
-                        <strong>전체 선택/해제</strong>
-                    </label>
+    <div class="row align-items-center">
+        <div class="col-md-8">
+            <h6 class="mb-2"><i class="fas fa-filter"></i> 판매 상태 필터</h6>
+            <div class="d-flex flex-wrap gap-3">
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" name="statusFilter" id="status_ALL" value="" onchange="updateStatusFilter()" checked>
+                    <label class="form-check-label small" for="status_ALL">전체</label>
                 </div>
-                <hr class="my-1">
-                <div class="form-check">
-                    <input class="form-check-input status-filter" type="checkbox" id="status_SALE" value="SALE" onchange="updateStatusFilter()">
-                    <label class="form-check-label" for="status_SALE">판매중</label>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" name="statusFilter" id="status_SALE" value="SALE" onchange="updateStatusFilter()">
+                    <label class="form-check-label small" for="status_SALE">판매중</label>
                 </div>
-                <div class="form-check">
-                    <input class="form-check-input status-filter" type="checkbox" id="status_WAIT" value="WAIT" onchange="updateStatusFilter()">
-                    <label class="form-check-label" for="status_WAIT">승인대기</label>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" name="statusFilter" id="status_WAIT" value="WAIT" onchange="updateStatusFilter()">
+                    <label class="form-check-label small" for="status_WAIT">승인대기</label>
                 </div>
-                <div class="form-check">
-                    <input class="form-check-input status-filter" type="checkbox" id="status_OUTOFSTOCK" value="OUTOFSTOCK" onchange="updateStatusFilter()">
-                    <label class="form-check-label" for="status_OUTOFSTOCK">품절</label>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" name="statusFilter" id="status_OUTOFSTOCK" value="OUTOFSTOCK" onchange="updateStatusFilter()">
+                    <label class="form-check-label small" for="status_OUTOFSTOCK">품절</label>
                 </div>
-                <div class="form-check">
-                    <input class="form-check-input status-filter" type="checkbox" id="status_SUSPENSION" value="SUSPENSION" onchange="updateStatusFilter()">
-                    <label class="form-check-label" for="status_SUSPENSION">판매중지</label>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" name="statusFilter" id="status_SUSPENSION" value="SUSPENSION" onchange="updateStatusFilter()">
+                    <label class="form-check-label small" for="status_SUSPENSION">판매중지</label>
                 </div>
-                <div class="form-check">
-                    <input class="form-check-input status-filter" type="checkbox" id="status_CLOSE" value="CLOSE" onchange="updateStatusFilter()">
-                    <label class="form-check-label" for="status_CLOSE">종료</label>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" name="statusFilter" id="status_CLOSE" value="CLOSE" onchange="updateStatusFilter()">
+                    <label class="form-check-label small" for="status_CLOSE">종료</label>
                 </div>
-                <div class="form-check">
-                    <input class="form-check-input status-filter" type="checkbox" id="status_PROHIBITION" value="PROHIBITION" onchange="updateStatusFilter()">
-                    <label class="form-check-label" for="status_PROHIBITION">판매금지</label>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" name="statusFilter" id="status_PROHIBITION" value="PROHIBITION" onchange="updateStatusFilter()">
+                    <label class="form-check-label small" for="status_PROHIBITION">판매금지</label>
                 </div>
             </div>
         </div>
-        <div class="col-md-8 d-flex align-items-end gap-2">
-            <button type="button" class="btn btn-primary" onclick="filterProducts()">
-                <i class="fas fa-search"></i> 필터 적용
-            </button>
-            <button type="button" class="btn btn-outline-secondary" onclick="resetFilters()">
-                <i class="fas fa-undo"></i> 초기화
-            </button>
-            <button type="button" class="btn btn-outline-info" onclick="saveFilterSettings()">
-                <i class="fas fa-save"></i> 필터 저장
-            </button>
-            <button type="button" class="btn btn-outline-warning" onclick="loadFromSettings()" title="설정 페이지의 상품조회설정에서 불러오기">
-                <i class="fas fa-cog"></i> 설정에서 불러오기
-            </button>
-            <button type="button" class="btn btn-success" onclick="refreshProducts()">
-                <i class="fas fa-sync"></i> 새로고침
-            </button>
-            <small class="ms-2 text-muted">
-                선택된 상태: <span id="selectedStatusCount">0</span>개
-            </small>
+        <div class="col-md-4 text-end">
+            <div class="d-flex gap-2 justify-content-end">
+                <button type="button" class="btn btn-outline-info btn-sm" onclick="saveFilterSettings()">
+                    <i class="fas fa-save"></i> 저장
+                </button>
+                <button type="button" class="btn btn-outline-warning btn-sm" onclick="loadFromSettings()" title="설정에서 불러오기">
+                    <i class="fas fa-cog"></i> 설정
+                </button>
+                <button type="button" class="btn btn-success btn-sm" onclick="refreshProducts()">
+                    <i class="fas fa-sync"></i> 새로고침
+                </button>
+            </div>
         </div>
     </div>
 </div>
@@ -305,42 +294,24 @@ async function loadProducts() {
     }
 }
 
-// 멀티셀렉션 필터 관련 함수들
-function getSelectedStatuses() {
-    const checkboxes = document.querySelectorAll('.status-filter:checked');
-    return Array.from(checkboxes).map(cb => cb.value);
-}
-
-function updateStatusCount() {
-    const count = getSelectedStatuses().length;
-    document.getElementById('selectedStatusCount').textContent = count;
+// 라디오버튼 필터 관련 함수들
+function getSelectedStatus() {
+    const radio = document.querySelector('input[name="statusFilter"]:checked');
+    return radio ? radio.value : '';
 }
 
 function updateStatusFilter() {
-    updateStatusCount();
-    // 자동 필터링 적용 (선택사항)
+    // 자동 필터링 적용
     filterProducts();
 }
 
-function toggleAllStatus() {
-    const allCheckbox = document.getElementById('status_all');
-    const statusCheckboxes = document.querySelectorAll('.status-filter');
-
-    statusCheckboxes.forEach(cb => {
-        cb.checked = allCheckbox.checked;
-    });
-
-    updateStatusCount();
-    filterProducts();
-}
-
-// 상품 필터링 (멀티셀렉션 지원)
+// 상품 필터링 (단일 라디오버튼 지원)
 function filterProducts() {
-    const selectedStatuses = getSelectedStatuses();
+    const selectedStatus = getSelectedStatus();
 
     filteredProducts = products.filter(product => {
-        // 상태 필터 - 아무것도 선택하지 않으면 모든 상품 표시
-        if (selectedStatuses.length > 0 && !selectedStatuses.includes(product.status)) {
+        // 상태 필터 - "전체"가 선택되거나 빈 값이면 모든 상품 표시
+        if (selectedStatus && selectedStatus !== '' && product.status !== selectedStatus) {
             return false;
         }
 
@@ -353,9 +324,9 @@ function filterProducts() {
 
 // 필터 설정 저장
 async function saveFilterSettings() {
-    const selectedStatuses = getSelectedStatuses();
+    const selectedStatus = getSelectedStatus();
     const filterSettings = {
-        selectedStatuses: selectedStatuses
+        selectedStatus: selectedStatus
     };
 
     try {
@@ -402,16 +373,19 @@ async function loadFilterSettings() {
         if (data.success && data.settings) {
             const settings = data.settings;
 
-            // 상태 필터 복원
-            if (settings.selectedStatuses && settings.selectedStatuses.length > 0) {
-                settings.selectedStatuses.forEach(status => {
-                    const checkbox = document.getElementById(`status_${status}`);
-                    if (checkbox) {
-                        checkbox.checked = true;
-                    }
-                });
-                updateStatusCount();
-                filterProducts();
+            // 상태 필터 복원 (라디오버튼)
+            if (settings.selectedStatus) {
+                const radioButton = document.getElementById(`status_${settings.selectedStatus}`);
+                if (radioButton) {
+                    radioButton.checked = true;
+                    filterProducts();
+                }
+            } else {
+                // 기본값으로 "전체" 선택
+                const allRadio = document.getElementById('status_ALL');
+                if (allRadio) {
+                    allRadio.checked = true;
+                }
             }
         }
     } catch (error) {
@@ -435,26 +409,38 @@ async function loadFromSettings() {
             const productStatusTypes = result.data.product_status_types;
 
             if (productStatusTypes) {
-                // 모든 체크박스 초기화
-                resetFilters();
-
-                // 설정에서 가져온 상태들 체크
+                // 설정에서 가져온 첫 번째 상태를 라디오버튼으로 선택 (라디오버튼은 단일 선택)
                 const statusList = productStatusTypes.split(',').map(s => s.trim()).filter(s => s);
-                statusList.forEach(status => {
-                    const checkbox = document.getElementById(`status_${status}`);
-                    if (checkbox) {
-                        checkbox.checked = true;
+                if (statusList.length > 0) {
+                    const firstStatus = statusList[0];
+                    const radioButton = document.getElementById(`status_${firstStatus}`);
+
+                    // 먼저 "전체" 선택을 해제
+                    const allRadio = document.getElementById('status_ALL');
+                    if (allRadio) allRadio.checked = false;
+
+                    // 해당 상태 라디오버튼 선택
+                    if (radioButton) {
+                        radioButton.checked = true;
+                    } else {
+                        // 해당하는 라디오버튼이 없으면 "전체" 선택
+                        if (allRadio) allRadio.checked = true;
                     }
-                });
 
-                // 필터 업데이트
-                updateStatusCount();
-                filterProducts();
+                    // 필터 업데이트
+                    filterProducts();
 
-                // 상품 필터 설정도 동기화
-                await saveFilterSettings();
+                    // 상품 필터 설정도 동기화
+                    await saveFilterSettings();
 
-                alert(`설정 페이지에서 ${statusList.length}개의 상품 상태를 불러왔습니다: ${statusList.join(', ')}`);
+                    alert(`설정 페이지에서 "${firstStatus}" 상태를 적용했습니다.`);
+                } else {
+                    // "전체" 선택
+                    const allRadio = document.getElementById('status_ALL');
+                    if (allRadio) allRadio.checked = true;
+                    filterProducts();
+                    alert('상품조회설정이 비어있어 "전체"를 선택했습니다.');
+                }
             } else {
                 alert('설정 페이지에 상품조회설정이 없습니다.\n설정 > 조건설정 > 상품 상태 조회 설정을 먼저 구성해주세요.');
             }
@@ -550,15 +536,11 @@ function renderProducts(productList) {
 
 // 필터 초기화
 function resetFilters() {
-    // 모든 체크박스 해제
-    document.getElementById('status_all').checked = false;
-    const statusCheckboxes = document.querySelectorAll('.status-filter');
-    statusCheckboxes.forEach(cb => {
-        cb.checked = false;
-    });
-
-    // 카운트 업데이트
-    updateStatusCount();
+    // "전체" 라디오버튼 선택
+    const allRadio = document.getElementById('status_ALL');
+    if (allRadio) {
+        allRadio.checked = true;
+    }
 
     // 모든 상품 표시
     filteredProducts = [...products];
