@@ -187,21 +187,27 @@
         <table class="table table-hover mb-0">
             <thead>
                 <tr>
-                    <th width="3%" data-column="select">
+                    <th width="2%" data-column="select">
                         <input type="checkbox" id="selectAll" onchange="toggleAllOrders()">
                     </th>
-                    <th width="12%" data-column="order_id">주문번호</th>
-                    <th width="15%" data-column="product_name">상품명</th>
-                    <th width="10%" data-column="customer_name">고객명</th>
-                    <th width="10%" data-column="order_date">주문일시</th>
-                    <th width="8%" data-column="price">금액</th>
-                    <th width="8%" data-column="quantity">수량</th>
-                    <th width="10%" data-column="status">상태</th>
+                    <th width="8%" data-column="shipping_due_date">발송기한</th>
+                    <th width="8%" data-column="order_date">주문일자</th>
+                    <th width="10%" data-column="product_order_id">상품주문번호</th>
+                    <th width="8%" data-column="product_number">상품번호</th>
+                    <th width="12%" data-column="product_name">상품명</th>
+                    <th width="10%" data-column="product_option">옵션정보</th>
+                    <th width="7%" data-column="price">가격</th>
+                    <th width="8%" data-column="buyer_name">구매자명</th>
+                    <th width="9%" data-column="buyer_phone">구매자연락처</th>
+                    <th width="8%" data-column="recipient_name">수취인명</th>
+                    <th width="12%" data-column="shipping_address">배송지주소</th>
+                    <th width="9%" data-column="recipient_phone">수취인연락처</th>
+                    <th width="6%" data-column="shipping_company">택배사</th>
+                    <th width="8%" data-column="tracking_number">송장번호</th>
+                    <th width="8%" data-column="place_order_status">발주확인상태</th>
                     {% if show_confirmation_status %}
-                    <th width="10%" data-column="confirmation_status">발주확인</th>
+                    <th width="8%" data-column="actions">액션</th>
                     {% endif %}
-                    <th width="12%" data-column="tracking_number">송장번호</th>
-                    <th width="12%" data-column="actions">액션</th>
                 </tr>
             </thead>
             <tbody id="ordersTableBody">
@@ -539,39 +545,57 @@ function renderOrders(orderList) {
                 <input type="checkbox" class="order-checkbox" value="${order.order_id}">
             </td>
             <td>
-                <small class="text-muted">${order.order_id || '-'}</small>
+                <small>${formatDate(order.shipping_due_date)}</small>
             </td>
             <td>
-                <div class="text-truncate" style="max-width: 150px;" title="${order.product_name || '-'}">
+                <small>${formatDate(order.order_date)}</small>
+            </td>
+            <td>
+                <small class="text-muted">${order.product_order_id || '-'}</small>
+            </td>
+            <td>
+                <small class="text-muted">${order.product_number || '-'}</small>
+            </td>
+            <td>
+                <div class="text-truncate" style="max-width: 120px;" title="${order.product_name || '-'}">
                     ${order.product_name || '-'}
                 </div>
             </td>
-            <td>${order.customer_name || '-'}</td>
             <td>
-                <small>${formatDate(order.order_date)}</small>
+                <div class="text-truncate" style="max-width: 100px;" title="${order.product_option || '-'}">
+                    ${order.product_option || '-'}
+                </div>
             </td>
             <td class="text-end">
                 ${formatPrice(order.price)}
             </td>
-            <td class="text-center">${order.quantity || 1}</td>
+            <td>${order.buyer_name || order.customer_name || '-'}</td>
             <td>
-                <span class="status-badge ${getStatusBadgeClass(order.status)}">
-                    ${getStatusText(order.status)}
-                </span>
+                <small>${order.buyer_phone || order.customer_phone || '-'}</small>
             </td>
-            ${currentPageType === 'order_confirmation' ? `
+            <td>${order.recipient_name || '-'}</td>
+            <td>
+                <div class="text-truncate" style="max-width: 120px;" title="${order.shipping_address || '-'}">
+                    ${order.shipping_address || '-'}
+                </div>
+            </td>
+            <td>
+                <small>${order.recipient_phone || '-'}</small>
+            </td>
+            <td>${order.shipping_company || '-'}</td>
+            <td>
+                <small>${order.tracking_number || '-'}</small>
+            </td>
             <td>
                 <span class="badge ${getConfirmationStatusClass(order.place_order_status)}">
                     ${getConfirmationStatusText(order.place_order_status)}
                 </span>
             </td>
-            ` : ''}
-            <td>
-                <small>${order.tracking_number || '-'}</small>
-            </td>
+            ${currentPageType === 'order_confirmation' ? `
             <td>
                 ${getActionButtons(order)}
             </td>
+            ` : ''}
         </tr>
     `).join('');
 }

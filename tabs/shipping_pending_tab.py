@@ -114,8 +114,8 @@ class ShippingPendingTab(BaseTab):
 
         # 컬럼 정의 (환경설정에서 가져옴)
         from env_config import config
-        order_columns_str = config.get('ORDER_COLUMNS',
-            '주문ID,상품주문ID,주문자,상품명,옵션정보,판매자상품코드,수량,단가,할인금액,금액,결제방법,배송지주소,배송예정일,주문일시,상태')
+        order_columns_str = config.get('SHIPPING_PENDING_COLUMNS',
+            '발송기한,주문일자,상품주문번호,상품번호,상품명,옵션정보,가격,구매자명,구매자연락처,수취인명,배송지주소,수취인연락처,택배사,송장번호,발주확인상태')
         self.display_columns = [col.strip() for col in order_columns_str.split(',') if col.strip()]
 
         # Treeview 생성
@@ -301,16 +301,63 @@ class ShippingPendingTab(BaseTab):
         """주문 데이터를 행 데이터로 변환"""
         row_data = []
         for col in self.display_columns:
-            if col == "주문ID":
+            if col == "발송기한":
+                shipping_due = order.get('shippingDueDate', '')
+                if shipping_due:
+                    try:
+                        dt = datetime.fromisoformat(shipping_due.replace('Z', '+00:00'))
+                        row_data.append(dt.strftime('%Y-%m-%d'))
+                    except:
+                        row_data.append(shipping_due)
+                else:
+                    row_data.append('')
+            elif col == "주문일자":
+                order_date = order.get('orderDate', '')
+                if order_date:
+                    try:
+                        dt = datetime.fromisoformat(order_date.replace('Z', '+00:00'))
+                        row_data.append(dt.strftime('%Y-%m-%d'))
+                    except:
+                        row_data.append(order_date)
+                else:
+                    row_data.append('')
+            elif col == "상품주문번호":
+                row_data.append(order.get('productOrderId', ''))
+            elif col == "상품번호":
+                row_data.append(order.get('sellerProductCode', ''))
+            elif col == "상품명":
+                row_data.append(order.get('productName', ''))
+            elif col == "옵션정보":
+                row_data.append(order.get('productOption', ''))
+            elif col == "가격":
+                row_data.append(f"{order.get('totalPaymentAmount', 0):,}")
+            elif col == "구매자명":
+                row_data.append(order.get('ordererName', ''))
+            elif col == "구매자연락처":
+                row_data.append(order.get('ordererPhone', ''))
+            elif col == "수취인명":
+                shipping_addr = order.get('shippingAddress', {})
+                row_data.append(shipping_addr.get('name', ''))
+            elif col == "배송지주소":
+                shipping_addr = order.get('shippingAddress', {})
+                addr = f"{shipping_addr.get('baseAddress', '')} {shipping_addr.get('detailAddress', '')}"
+                row_data.append(addr.strip())
+            elif col == "수취인연락처":
+                shipping_addr = order.get('shippingAddress', {})
+                row_data.append(shipping_addr.get('tel1', ''))
+            elif col == "택배사":
+                row_data.append(order.get('shippingCompany', ''))
+            elif col == "송장번호":
+                row_data.append(order.get('trackingNumber', ''))
+            elif col == "발주확인상태":
+                row_data.append(order.get('productOrderStatus', ''))
+            # 기존 컬럼들 호환성 유지
+            elif col == "주문ID":
                 row_data.append(order.get('orderId', ''))
             elif col == "상품주문ID":
                 row_data.append(order.get('productOrderId', ''))
             elif col == "주문자":
                 row_data.append(order.get('ordererName', ''))
-            elif col == "상품명":
-                row_data.append(order.get('productName', ''))
-            elif col == "옵션정보":
-                row_data.append(order.get('productOption', ''))
             elif col == "판매자상품코드":
                 row_data.append(order.get('sellerProductCode', ''))
             elif col == "수량":
@@ -323,10 +370,6 @@ class ShippingPendingTab(BaseTab):
                 row_data.append(f"{order.get('totalPaymentAmount', 0):,}")
             elif col == "결제방법":
                 row_data.append(order.get('paymentMeans', ''))
-            elif col == "배송지주소":
-                shipping_addr = order.get('shippingAddress', {})
-                addr = f"{shipping_addr.get('baseAddress', '')} {shipping_addr.get('detailAddress', '')}"
-                row_data.append(addr.strip())
             elif col == "배송예정일":
                 shipping_due = order.get('shippingDueDate', '')
                 if shipping_due:
