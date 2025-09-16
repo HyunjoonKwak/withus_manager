@@ -1380,6 +1380,7 @@ async def get_products():
                 try:
                     # 먼저 데이터베이스에서 캐시된 옵션 정보 확인
                     cached_options = order_manager.db_manager.get_product_options(origin_product_no)
+                    logger.info(f"상품 {origin_product_no} 캐시 확인: {len(cached_options) if cached_options else 0}개")
 
                     if cached_options:
                         logger.info(f"상품 {product.get('product_name')}의 캐시된 옵션 사용: {len(cached_options)}개")
@@ -1434,7 +1435,11 @@ async def get_products():
                             if option_info and option_info.get('optionCombinations'):
                                 # 데이터베이스에 옵션 정보 저장
                                 save_result = order_manager.db_manager.save_product_options(origin_product_no, option_info['optionCombinations'])
-                                logger.info(f"옵션 정보 DB 저장 결과: {save_result}, 상품ID: {origin_product_no}")
+                                logger.info(f"옵션 정보 DB 저장 결과: {save_result}, 상품ID: {origin_product_no}, 옵션 개수: {len(option_info['optionCombinations'])}")
+                            else:
+                                logger.info(f"상품 {product.get('product_name')} (ID: {origin_product_no})에는 옵션이 없습니다.")
+                                # 옵션이 없다는 것도 캐시에 저장 (빈 배열로 저장)
+                                order_manager.db_manager.save_product_options(origin_product_no, [])
 
                                 # 원상품의 실제 판매가 계산 (원가 - 셀러할인가)
                                 original_price = product.get('sale_price', 0)

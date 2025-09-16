@@ -745,27 +745,48 @@ class DatabaseManager:
             # 기존 옵션 정보 삭제 (새로 업데이트)
             cursor.execute('DELETE FROM product_options WHERE origin_product_no = ?', (origin_product_no,))
 
-            # 새로운 옵션 정보 저장
-            for option in options:
-                option_items_json = json.dumps(option.get('optionItems', []), ensure_ascii=False)
+            if options:
+                # 옵션이 있는 경우 실제 옵션 정보 저장
+                for option in options:
+                    option_items_json = json.dumps(option.get('optionItems', []), ensure_ascii=False)
 
+                    cursor.execute('''
+                        INSERT OR REPLACE INTO product_options (
+                            origin_product_no, option_id, option_name, option_name1,
+                            price, stock_quantity, status_type, seller_manager_code,
+                            usable, option_items
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ''', (
+                        origin_product_no,
+                        option.get('id', ''),
+                        option.get('optionName', ''),
+                        option.get('optionName1', ''),
+                        option.get('price', 0),
+                        option.get('stockQuantity', 0),
+                        option.get('statusType', ''),
+                        option.get('sellerManagerCode', ''),
+                        option.get('usable', True),
+                        option_items_json
+                    ))
+            else:
+                # 옵션이 없는 경우 더미 레코드 저장 (캐시됐음을 표시)
                 cursor.execute('''
-                    INSERT OR REPLACE INTO product_options (
+                    INSERT INTO product_options (
                         origin_product_no, option_id, option_name, option_name1,
                         price, stock_quantity, status_type, seller_manager_code,
                         usable, option_items
                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ''', (
                     origin_product_no,
-                    option.get('id', ''),
-                    option.get('optionName', ''),
-                    option.get('optionName1', ''),
-                    option.get('price', 0),
-                    option.get('stockQuantity', 0),
-                    option.get('statusType', ''),
-                    option.get('sellerManagerCode', ''),
-                    option.get('usable', True),
-                    option_items_json
+                    'NO_OPTIONS',  # 옵션 없음 표시용 더미 ID
+                    'NO_OPTIONS',
+                    '',
+                    0,
+                    0,
+                    '',
+                    '',
+                    True,
+                    '[]'
                 ))
 
             conn.commit()
@@ -786,7 +807,7 @@ class DatabaseManager:
 
             cursor.execute('''
                 SELECT * FROM product_options
-                WHERE origin_product_no = ?
+                WHERE origin_product_no = ? AND option_id != 'NO_OPTIONS'
                 ORDER BY created_at ASC
             ''', (origin_product_no,))
 
@@ -817,11 +838,13 @@ class DatabaseManager:
             return []
 
     def has_cached_options(self, origin_product_no: str) -> bool:
-        """해당 상품의 캐시된 옵션 정보가 있는지 확인"""
+        """해당 상품의 캐시된 옵션 정보가 있는지 확인 (빈 배열이라도 캐시됨)"""
         try:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
 
+            # origin_product_no가 한 번이라도 조회되어 저장되었는지 확인
+            # (옵션이 없어도 더미 레코드로 저장되므로 COUNT > 0이면 캐시됨)
             cursor.execute('SELECT COUNT(*) FROM product_options WHERE origin_product_no = ?', (origin_product_no,))
             count = cursor.fetchone()[0]
             conn.close()
