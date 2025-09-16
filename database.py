@@ -180,14 +180,16 @@ class DatabaseManager:
     def add_order(self, order_data: Dict) -> bool:
         """새 주문 추가"""
         try:
+            print(f"🗄️ DB 저장 시도: 주문 ID={order_data.get('order_id')}")
+
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
-            
+
             cursor.execute('''
-                INSERT OR REPLACE INTO orders 
-                (order_id, order_date, customer_name, customer_phone, 
-                 product_name, quantity, price, status, shipping_company, 
-                 tracking_number, memo, product_order_id, shipping_due_date, 
+                INSERT OR REPLACE INTO orders
+                (order_id, order_date, customer_name, customer_phone,
+                 product_name, quantity, price, status, shipping_company,
+                 tracking_number, memo, product_order_id, shipping_due_date,
                  product_option, updated_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (
@@ -207,12 +209,15 @@ class DatabaseManager:
                 order_data.get('product_option'),
                 datetime.now().isoformat()
             ))
-            
+
+            rows_affected = cursor.rowcount
             conn.commit()
             conn.close()
+
+            print(f"✅ DB 저장 성공: {rows_affected}개 행 영향받음")
             return True
         except Exception as e:
-            print(f"주문 추가 오류: {e}")
+            print(f"❌ DB 저장 실패: {e}")
             return False
     
     def get_orders_by_status(self, status: str) -> List[Dict]:
@@ -553,10 +558,10 @@ class DatabaseManager:
             cursor = conn.cursor()
             
             cursor.execute('''
-                SELECT * FROM orders 
-                WHERE order_date >= ? AND order_date <= ?
+                SELECT * FROM orders
+                WHERE DATE(order_date) >= ? AND DATE(order_date) <= ?
                 ORDER BY order_date DESC
-            ''', (start_date, end_date))
+            ''', (start_date, end_date[:10]))
             
             columns = [description[0] for description in cursor.description]
             orders = [dict(zip(columns, row)) for row in cursor.fetchall()]
