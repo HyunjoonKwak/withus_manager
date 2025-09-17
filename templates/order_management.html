@@ -252,6 +252,8 @@
                     <th style="width: 40px; min-width: 40px;" data-column="select">
                         <input type="checkbox" id="selectAll" onchange="toggleAllOrders()">
                     </th>
+                    {% if page_type == 'order_confirmation' %}
+                    <!-- 발주확인/발송관리 페이지 전용 컬럼들 -->
                     <th style="width: 90px; min-width: 90px;" data-column="shipping_due_date">발송기한</th>
                     <th style="width: 90px; min-width: 90px;" data-column="order_date">주문일자</th>
                     <th style="width: 130px; min-width: 130px;" data-column="product_order_id">상품주문번호</th>
@@ -267,6 +269,17 @@
                     <th style="width: 80px; min-width: 80px;" data-column="shipping_company">택배사</th>
                     <th style="width: 120px; min-width: 120px;" data-column="tracking_number">송장번호</th>
                     <th style="width: 100px; min-width: 100px;" data-column="place_order_status">발주확인상태</th>
+                    {% else %}
+                    <!-- 다른 페이지들의 기본 컬럼들 -->
+                    <th style="width: 120px; min-width: 120px;" data-column="order_id">주문번호</th>
+                    <th style="width: 200px; min-width: 200px;" data-column="product_name">상품명</th>
+                    <th style="width: 100px; min-width: 100px;" data-column="customer_name">고객명</th>
+                    <th style="width: 120px; min-width: 120px;" data-column="order_date">주문일시</th>
+                    <th style="width: 80px; min-width: 80px;" data-column="price">금액</th>
+                    <th style="width: 60px; min-width: 60px;" data-column="quantity">수량</th>
+                    <th style="width: 100px; min-width: 100px;" data-column="status">상태</th>
+                    <th style="width: 120px; min-width: 120px;" data-column="tracking_number">송장번호</th>
+                    {% endif %}
                     {% if show_confirmation_status %}
                     <th style="width: 100px; min-width: 100px;" data-column="actions">액션</th>
                     {% endif %}
@@ -333,43 +346,8 @@
             </div>
             <div class="modal-body">
                 <p class="text-muted">표시하고 싶은 컬럼을 선택하세요:</p>
-                <div class="row">
-                    <div class="col-6">
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="col-order_id" value="order_id" checked>
-                            <label class="form-check-label" for="col-order_id">주문번호</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="col-product_name" value="product_name" checked>
-                            <label class="form-check-label" for="col-product_name">상품명</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="col-customer_name" value="customer_name" checked>
-                            <label class="form-check-label" for="col-customer_name">고객명</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="col-order_date" value="order_date" checked>
-                            <label class="form-check-label" for="col-order_date">주문일시</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="col-price" value="price" checked>
-                            <label class="form-check-label" for="col-price">금액</label>
-                        </div>
-                    </div>
-                    <div class="col-6">
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="col-quantity" value="quantity" checked>
-                            <label class="form-check-label" for="col-quantity">수량</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="col-status" value="status" checked>
-                            <label class="form-check-label" for="col-status">상태</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="col-tracking_number" value="tracking_number" checked>
-                            <label class="form-check-label" for="col-tracking_number">송장번호</label>
-                        </div>
-                    </div>
+                <div id="columnCheckboxContainer">
+                    <!-- JavaScript로 동적 생성 -->
                 </div>
                 <hr>
                 <div class="d-flex gap-2">
@@ -400,6 +378,7 @@ document.addEventListener('DOMContentLoaded', function() {
     loadOrders();
     initializeColumnResize();
     loadColumnWidths();
+    loadColumnSettings();
 
     // 기간 선택 이벤트
     document.getElementById('periodSelect').addEventListener('change', function() {
@@ -604,65 +583,109 @@ function renderOrders(orderList) {
     console.log('주문 목록 렌더링 시작, 총', orderList.length, '건');
     noOrdersMessage.classList.add('d-none');
 
-    tbody.innerHTML = orderList.map((order, index) => `
-        <tr>
-            <td>
-                <input type="checkbox" class="order-checkbox" value="${order.order_id}">
-            </td>
-            <td>
-                <small>${formatDate(order.shipping_due_date)}</small>
-            </td>
-            <td>
-                <small>${formatDate(order.order_date)}</small>
-            </td>
-            <td>
-                <small class="text-muted">${order.product_order_id || '-'}</small>
-            </td>
-            <td>
-                <small class="text-muted">${order.product_number || '-'}</small>
-            </td>
-            <td>
-                <div class="text-truncate" style="max-width: 190px;" title="${order.product_name || '-'}">
-                    ${order.product_name || '-'}
-                </div>
-            </td>
-            <td>
-                <div class="text-truncate" style="max-width: 140px;" title="${order.product_option || '-'}">
-                    ${order.product_option || '-'}
-                </div>
-            </td>
-            <td class="text-end">
-                ${formatPrice(order.price)}
-            </td>
-            <td>${order.buyer_name || order.customer_name || '-'}</td>
-            <td>
-                <small>${order.buyer_phone || order.customer_phone || '-'}</small>
-            </td>
-            <td>${order.recipient_name || '-'}</td>
-            <td>
-                <div class="text-truncate" style="max-width: 190px;" title="${order.shipping_address || '-'}">
-                    ${order.shipping_address || '-'}
-                </div>
-            </td>
-            <td>
-                <small>${order.recipient_phone || '-'}</small>
-            </td>
-            <td>${order.shipping_company || '-'}</td>
-            <td>
-                <small>${order.tracking_number || '-'}</small>
-            </td>
-            <td>
-                <span class="badge ${getConfirmationStatusClass(order.place_order_status)}">
-                    ${getConfirmationStatusText(order.place_order_status)}
-                </span>
-            </td>
-            ${currentPageType === 'order_confirmation' ? `
-            <td>
-                ${getActionButtons(order)}
-            </td>
-            ` : ''}
-        </tr>
-    `).join('');
+    tbody.innerHTML = orderList.map((order, index) => {
+        if (currentPageType === 'order_confirmation') {
+            // 발주확인/발송관리 페이지
+            return `
+                <tr>
+                    <td>
+                        <input type="checkbox" class="order-checkbox" value="${order.order_id}">
+                    </td>
+                    <td>
+                        <small>${formatDate(order.shipping_due_date)}</small>
+                    </td>
+                    <td>
+                        <small>${formatDate(order.order_date)}</small>
+                    </td>
+                    <td>
+                        <small class="text-muted">${order.product_order_id || '-'}</small>
+                    </td>
+                    <td>
+                        <small class="text-muted">${order.product_number || '-'}</small>
+                    </td>
+                    <td>
+                        <div class="text-truncate" style="max-width: 190px;" title="${order.product_name || '-'}">
+                            ${order.product_name || '-'}
+                        </div>
+                    </td>
+                    <td>
+                        <div class="text-truncate" style="max-width: 140px;" title="${order.product_option || '-'}">
+                            ${order.product_option || '-'}
+                        </div>
+                    </td>
+                    <td class="text-end">
+                        ${formatPrice(order.price)}
+                    </td>
+                    <td>${order.buyer_name || order.customer_name || '-'}</td>
+                    <td>
+                        <small>${order.buyer_phone || order.customer_phone || '-'}</small>
+                    </td>
+                    <td>${order.recipient_name || '-'}</td>
+                    <td>
+                        <div class="text-truncate" style="max-width: 190px;" title="${order.shipping_address || '-'}">
+                            ${order.shipping_address || '-'}
+                        </div>
+                    </td>
+                    <td>
+                        <small>${order.recipient_phone || '-'}</small>
+                    </td>
+                    <td>${order.shipping_company || '-'}</td>
+                    <td>
+                        <small>${order.tracking_number || '-'}</small>
+                    </td>
+                    <td>
+                        <span class="badge ${getConfirmationStatusClass(order.place_order_status)}">
+                            ${getConfirmationStatusText(order.place_order_status)}
+                        </span>
+                    </td>
+                    <td>
+                        ${getActionButtons(order)}
+                    </td>
+                </tr>
+            `;
+        } else {
+            // 다른 페이지들
+            return `
+                <tr>
+                    <td>
+                        <input type="checkbox" class="order-checkbox" value="${order.order_id}">
+                    </td>
+                    <td>
+                        <small class="text-muted">${order.order_id || '-'}</small>
+                    </td>
+                    <td>
+                        <div class="text-truncate" style="max-width: 190px;" title="${order.product_name || '-'}">
+                            ${order.product_name || '-'}
+                        </div>
+                    </td>
+                    <td>${order.customer_name || '-'}</td>
+                    <td>
+                        <small>${formatDate(order.order_date)}</small>
+                    </td>
+                    <td class="text-end">
+                        ${formatPrice(order.price)}
+                    </td>
+                    <td class="text-center">${order.quantity || 1}</td>
+                    <td>
+                        <span class="status-badge ${getStatusBadgeClass(order.status)}">
+                            ${getStatusText(order.status)}
+                        </span>
+                    </td>
+                    <td>
+                        <small>${order.tracking_number || '-'}</small>
+                    </td>
+                    ${currentPageType !== 'order_confirmation' ? `
+                    <td>
+                        ${getActionButtons(order)}
+                    </td>
+                    ` : ''}
+                </tr>
+            `;
+        }
+    }).join('');
+
+    // 렌더링 후 컬럼 표시 설정 적용
+    updateTableColumns();
 }
 
 // 상태별 배지 클래스
@@ -933,19 +956,48 @@ function showPeriodHelp() {
     alert(helpText);
 }
 
-// 컬럼 관리 기능
-let columnSettings = {
-    order_id: true,
-    product_name: true,
-    customer_name: true,
-    order_date: true,
-    price: true,
-    quantity: true,
-    status: true,
-    tracking_number: true
-};
+// 페이지 타입별 컬럼 설정
+function getDefaultColumnSettings() {
+    if (currentPageType === 'order_confirmation') {
+        // 발주확인/발송관리 페이지 전용 컬럼들
+        return {
+            shipping_due_date: true,
+            order_date: true,
+            product_order_id: true,
+            product_number: true,
+            product_name: true,
+            product_option: true,
+            price: true,
+            buyer_name: true,
+            buyer_phone: true,
+            recipient_name: true,
+            shipping_address: true,
+            recipient_phone: true,
+            shipping_company: true,
+            tracking_number: true,
+            place_order_status: true
+        };
+    } else {
+        // 다른 페이지들의 기본 컬럼들
+        return {
+            order_id: true,
+            product_name: true,
+            customer_name: true,
+            order_date: true,
+            price: true,
+            quantity: true,
+            status: true,
+            tracking_number: true
+        };
+    }
+}
+
+let columnSettings = getDefaultColumnSettings();
 
 function showColumnSettings() {
+    // 컬럼 체크박스를 동적으로 생성
+    generateColumnCheckboxes();
+
     // 현재 설정으로 체크박스 상태 업데이트
     Object.keys(columnSettings).forEach(column => {
         const checkbox = document.getElementById(`col-${column}`);
@@ -953,7 +1005,78 @@ function showColumnSettings() {
             checkbox.checked = columnSettings[column];
         }
     });
+
+    // 모달 표시
     new bootstrap.Modal(document.getElementById('columnSettingsModal')).show();
+}
+
+function generateColumnCheckboxes() {
+    const container = document.getElementById('columnCheckboxContainer');
+
+    // 페이지 타입별 컬럼 라벨 정의
+    const columnLabels = currentPageType === 'order_confirmation' ? {
+        shipping_due_date: '발송기한',
+        order_date: '주문일자',
+        product_order_id: '상품주문번호',
+        product_number: '상품번호',
+        product_name: '상품명',
+        product_option: '옵션정보',
+        price: '가격',
+        buyer_name: '구매자명',
+        buyer_phone: '구매자연락처',
+        recipient_name: '수취인명',
+        shipping_address: '배송지주소',
+        recipient_phone: '수취인연락처',
+        shipping_company: '택배사',
+        tracking_number: '송장번호',
+        place_order_status: '발주확인상태'
+    } : {
+        order_id: '주문번호',
+        product_name: '상품명',
+        customer_name: '고객명',
+        order_date: '주문일시',
+        price: '금액',
+        quantity: '수량',
+        status: '상태',
+        tracking_number: '송장번호'
+    };
+
+    const columns = Object.keys(columnLabels);
+    const mid = Math.ceil(columns.length / 2);
+
+    let html = '<div class="row">';
+
+    // 첫 번째 컬럼
+    html += '<div class="col-6">';
+    for (let i = 0; i < mid; i++) {
+        const column = columns[i];
+        const label = columnLabels[column];
+        html += `
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="col-${column}" value="${column}" checked>
+                <label class="form-check-label" for="col-${column}">${label}</label>
+            </div>
+        `;
+    }
+    html += '</div>';
+
+    // 두 번째 컬럼
+    html += '<div class="col-6">';
+    for (let i = mid; i < columns.length; i++) {
+        const column = columns[i];
+        const label = columnLabels[column];
+        html += `
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="col-${column}" value="${column}" checked>
+                <label class="form-check-label" for="col-${column}">${label}</label>
+            </div>
+        `;
+    }
+    html += '</div>';
+
+    html += '</div>';
+
+    container.innerHTML = html;
 }
 
 function selectAllColumns() {
@@ -971,6 +1094,9 @@ function deselectAllColumns() {
 }
 
 function resetToDefault() {
+    // 페이지별 기본 설정으로 초기화
+    columnSettings = getDefaultColumnSettings();
+
     Object.keys(columnSettings).forEach(column => {
         const checkbox = document.getElementById(`col-${column}`);
         if (checkbox) checkbox.checked = true;
@@ -1023,7 +1149,16 @@ function updateTableColumns() {
                 return;
             }
 
-            const columnOrder = ['order_id', 'product_name', 'customer_name', 'order_date', 'price', 'quantity', 'status', 'tracking_number'];
+            const columnOrder = currentPageType === 'order_confirmation' ? [
+                'shipping_due_date', 'order_date', 'product_order_id', 'product_number',
+                'product_name', 'product_option', 'price', 'buyer_name', 'buyer_phone',
+                'recipient_name', 'shipping_address', 'recipient_phone', 'shipping_company',
+                'tracking_number', 'place_order_status'
+            ] : [
+                'order_id', 'product_name', 'customer_name', 'order_date',
+                'price', 'quantity', 'status', 'tracking_number'
+            ];
+
             const column = columnOrder[index - 1];
             if (column) {
                 cell.style.display = columnSettings[column] ? '' : 'none';
@@ -1040,10 +1175,7 @@ function loadColumnSettings() {
     }
 }
 
-// 페이지 로드 시 컬럼 설정 적용
-document.addEventListener('DOMContentLoaded', function() {
-    loadColumnSettings();
-});
+// 중복 제거됨 - 이미 위에서 처리함
 
 // 컬럼 크기 조절 기능 초기화
 function initializeColumnResize() {
